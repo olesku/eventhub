@@ -15,14 +15,25 @@ using namespace std;
 namespace eventhub {
   class connection {
     public:
+      enum state {
+        INIT,
+        HTTP_PARSE,
+        HTTP_OK,
+        WS_PARSE,
+        WS_OK
+      };
+
       connection(int fd, struct sockaddr_in* csin);
       ~connection();
       ssize_t write(const string &data);
-      ssize_t read(void* buf, size_t len);
+      ssize_t read(char *buf, size_t bytes);
       ssize_t flush_send_buffer();
       int get_fd();
       const string get_ip();
       int add_to_epoll(int epoll_fd, uint32_t events);
+
+      inline void set_state(state new_state) { _state = new_state; };
+      inline state get_state()               { return _state; };
     
     private:
       int _fd;
@@ -31,6 +42,7 @@ namespace eventhub {
       int   _epoll_fd;
       string _write_buffer;
       std::mutex _write_lock;
+      state _state;
       
       void _enable_epoll_out();
       void _disable_epoll_out();

@@ -31,7 +31,7 @@ namespace eventhub {
     }
   }
 
-  void connection_worker::_acceptConnection() {
+  void connection_worker::_accept_connection() {
     struct sockaddr_in csin;
       socklen_t clen;
       int client_fd;
@@ -56,12 +56,12 @@ namespace eventhub {
       }
 
     // Create the client object and add it to our client list.
-    _newConnection(client_fd, &csin);
+    _new_connection(client_fd, &csin);
 
     DLOG(INFO) << "Client accepted in worker " << thread_id();
   }
 
-  void connection_worker::_newConnection(int fd, struct sockaddr_in* csin) {
+  void connection_worker::_new_connection(int fd, struct sockaddr_in* csin) {
     std::lock_guard<std::mutex> guard(_connection_list_mutex);
     auto client = make_shared<connection>(fd, csin);
 
@@ -70,8 +70,26 @@ namespace eventhub {
       LOG(WARNING) << "Could not add client to epoll: " << strerror(errno);
       return;
     }
-
+  
     _connection_list.emplace(make_pair(fd, client));
+  }
+
+  void connection_worker::_read(std::shared_ptr<connection> client, eventhub::connection_list::iterator it) {
+
+    char r_buf[1024];
+    client->read(r_buf, 1024);
+
+    DLOG(INFO) << "Read: " << r_buf;
+
+    switch(client->get_state()) {
+      case connection::state::INIT:
+
+      break;
+
+      case connection::state::HTTP_PARSE:
+
+      break;
+    }
   }
 
 /*
@@ -160,7 +178,7 @@ namespace eventhub {
         if (event_list[i].data.fd == _server->get_server_socket()) {
           LOG(INFO) << "Event on server socket.";
           if (event_list[i].events & EPOLLIN) {
-            _acceptConnection();
+            _accept_connection();
           }
 
           continue;
@@ -193,7 +211,7 @@ namespace eventhub {
           continue;
         }
 
-        //_read(client, client_it);
+        _read(client, client_it);
       }
     }
 

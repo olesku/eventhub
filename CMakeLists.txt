@@ -3,9 +3,12 @@ cmake_minimum_required (VERSION 2.6)
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 set(CMAKE_C_FLAGS "-Wall -ggdb")
-set(CMAKE_CXX_FLAGS "-std=c++17")
+set(CMAKE_CXX_FLAGS "-std=c++11")
 
 add_executable( eventhub 
+  src/picohttpparser.c
+  src/http_request.cpp
+  src/http_response.cpp
   src/server.cpp
   src/connection.cpp
   src/connection_worker.cpp

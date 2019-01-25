@@ -33,6 +33,8 @@ namespace eventhub {
     setsockopt(_fd, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(int));
 
     DLOG(INFO) << "Initialized client with IP: " << get_ip();
+
+    set_state(INIT);
   }
 
   connection::~connection() {
@@ -75,8 +77,16 @@ namespace eventhub {
     return _write_buffer.length();
   }
 
-  ssize_t connection::read(void* buf, size_t len) {
-    return ::read(_fd, buf, len);
+  ssize_t connection::read(char *buf, size_t bytes) {
+    ssize_t bytes_read = ::read(_fd, buf, bytes);
+
+    if (bytes_read > 0) {
+      buf[bytes_read] = '\0';
+    } else {
+      buf[0] = '\0';
+    }
+
+    return bytes_read;
   }
 
   ssize_t connection::write(const string &data) {
