@@ -40,25 +40,25 @@ namespace eventhub {
         DLOG(ERROR) << "HTTP_REQ_POST_TOO_LARGE " << "POST data is bigger than " << HTTP_POST_MAX;
         _error_message = "HTTP_REQ_POST_TOO_LARGE: POST data is to large.";
         _post_data.clear();
-        return set_state(HTTP_REQ_POST_TOO_LARGE);
+        return _set_state(HTTP_REQ_POST_TOO_LARGE);
       }
 
       _post_data.append(data);
 
       if (_post_bytes_read < _post_expected_size) {
-        return set_state(HTTP_REQ_POST_INCOMPLETE);
+        return _set_state(HTTP_REQ_POST_INCOMPLETE);
       }
 
-      return set_state(HTTP_REQ_POST_OK);
+      return _set_state(HTTP_REQ_POST_OK);
     }
 
-    if (_is_complete) return set_state(HTTP_REQ_OK);
+    if (_is_complete) return _set_state(HTTP_REQ_OK);
     _bytes_read_prev = _bytes_read;
 
     // Request is to large.
     if ((_bytes_read + len) > BUFSIZ) {
       _error_message = "HTTP_REQ_TO_BIG: Request to large.";
-      return set_state(HTTP_REQ_TO_BIG);
+      return _set_state(HTTP_REQ_TO_BIG);
     }
 
     _bytes_read += len;
@@ -73,13 +73,13 @@ namespace eventhub {
     if (pret == -1) {
       DLOG(ERROR) << "HTTP_REQ_FAILED";
       _error_message = "HTTP_REQ_FAILED: Parse failed.";
-      return set_state(HTTP_REQ_FAILED);
+      return _set_state(HTTP_REQ_FAILED);
     }
 
     // Request incomplete.
     if (pret == -2) {
       DLOG(INFO) << "HTTP_REQ_INCOMPLETE";
-      return set_state(HTTP_REQ_INCOMPLETE);
+      return _set_state(HTTP_REQ_INCOMPLETE);
     }
 
     if (_phr_method_len > 0)
@@ -111,19 +111,19 @@ namespace eventhub {
     if (get_method().compare("POST") == 0) {
       if (get_header("Content-Length").empty()) {
         _error_message = "HTTP_REQ_POST_INVALID_LENGTH: No Content-Length header set.";
-        return set_state(HTTP_REQ_POST_INVALID_LENGTH);
+        return _set_state(HTTP_REQ_POST_INVALID_LENGTH);
       } else {
         try  {
           _post_expected_size = std::stoi(get_header("Content-Length"));
         } catch(...) {
           _error_message = "HTTP_REQ_POST_INVALID_LENGTH: Invalid format.";
-          return set_state(HTTP_REQ_POST_INVALID_LENGTH);
+          return _set_state(HTTP_REQ_POST_INVALID_LENGTH);
         }
       }
 
       if (_post_expected_size < 1) {
         _error_message = "HTTP_REQ_POST_INVAID_LENGTH: Cannot be zero.";
-        return set_state(HTTP_REQ_POST_INVALID_LENGTH);
+        return _set_state(HTTP_REQ_POST_INVALID_LENGTH);
       }
 
       _is_post = true;
@@ -135,14 +135,14 @@ namespace eventhub {
         return parse(tmp.c_str(), tmp.length());
       }
 
-      return set_state(HTTP_REQ_POST_START);
+      return _set_state(HTTP_REQ_POST_START);
   }
 
     _is_complete = true;
     _buf[_bytes_read] = '\0';
     DLOG(INFO) << "HTTP_REQ_OK"; 
 
-    return set_state(HTTP_REQ_OK);
+    return _set_state(HTTP_REQ_OK);
   }
 
   /**

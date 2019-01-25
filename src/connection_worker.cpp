@@ -74,85 +74,86 @@ namespace eventhub {
     _connection_list.emplace(make_pair(fd, client));
   }
 
-  void connection_worker::_read(std::shared_ptr<connection> client, eventhub::connection_list::iterator it) {
+  void connection_worker::_remove_connection(std::shared_ptr<connection> conn) {
+    shutdown(conn->get_fd(), SHUT_RDWR);
+    // epoll handler should now delete the connection from _connection_list.
+  }
 
+  void connection_worker::_parse_http(std::shared_ptr<connection> client, char* buf, ssize_t bytes_read) {
+    /*
+      case http_request::HTTP_REQ_POST_INVALID_LENGTH:
+      case http_request::HTTP_REQ_POST_TOO_LARGE:
+      case http_request::HTTP_REQ_POST_START:
+      case http_request::HTTP_REQ_POST_INCOMPLETE:
+  */
+
+    /* TODO: Implement connection timeout check. */
+
+    switch(client->get_http_request().parse(buf, bytes_read)) {
+      case http_request::HTTP_REQ_INCOMPLETE:
+        return;
+      break;
+
+      case http_request::HTTP_REQ_OK: 
+        client->set_state(connection::state::HTTP_PARSE_OK);
+      break;
+
+      case http_request::HTTP_REQ_POST_OK:
+        client->set_state(connection::state::HTTP_PARSE_OK);
+      break;
+
+      default:
+        client->set_state(connection::state::HTTP_PARSE_FAILED);
+    }
+  }
+
+  void connection_worker::_read(std::shared_ptr<connection> client) {
     char r_buf[1024];
-    client->read(r_buf, 1024);
+    ssize_t bytes_read = client->read(r_buf, 1024);
+
+    if (bytes_read < 1) {
+      _remove_connection(client);
+      return;
+    }
 
     DLOG(INFO) << "Read: " << r_buf;
 
+    // Parse request if in parse state.
     switch(client->get_state()) {
-      case connection::state::INIT:
-
-      break;
-
       case connection::state::HTTP_PARSE:
+        DLOG(INFO) << "Parsing request from connection " << client->get_ip();
+       _parse_http(client, r_buf, bytes_read);
+      break;
+    }
+
+    // Call correct handler after request is parsed.
+    switch(client->get_state()) {
+      case connection::state::HTTP_PARSE_FAILED:
+        DLOG(INFO) << "Failed to parse HTTP request from connection " << client->get_ip();
+        _remove_connection(client);
+        return;
+      break;
+
+      case connection::state::HTTP_PARSE_OK:
+        DLOG(INFO) << "Parse OK.";
+        DLOG(INFO) << "Method: " << client->get_http_request().get_method() << " Path: " << client->get_http_request().get_path();
+        
+        for (auto header : client->get_http_request().get_headers()) {
+          DLOG(INFO) << header.first << ": " << header.second;
+        }
+
+        _remove_connection(client);
+      break;
+
+      case connection::state::WS_PARSE_FAILED:
+
+      break;
+
+      case connection::state::WS_PARSE_OK:
 
       break;
     }
   }
-
-/*
-  void connection_worker::_read(std::shared_ptr<connection> client, eventhub::connection_list::iterator it) {
-    char buf[1024];
-
-    // Read from client.
-    size_t len = client->read(&buf, 1);
-
-    if (len <= 0) {
-      _connection_list.erase(it);
-    }
-
-    buf[len] = '\0';
-
-    LOG(INFO) << "Read: " << buf;
-
-    // Parse the request.
-    HTTPRequest* req = client->GetHttpReq();
-    HttpReqStatus reqRet = req->Parse(buf, 1024);
-
-    switch(reqRet) {
-      case HTTP_REQ_INCOMPLETE: return;
-
-      case HTTP_REQ_FAILED:
-        return;
-
-      case HTTP_REQ_TO_BIG:
-        return;
-
-      case HTTP_REQ_OK: break;
-
-      case HTTP_REQ_POST_INVALID_LENGTH:
-        { HTTPResponse res(411, "", false); client->write(res.Get()); }
-        return;
-
-      case HTTP_REQ_POST_TOO_LARGE:
-        DLOG(INFO) << "Client " <<  client->get_ip() << " sent too much POST data.";
-        { HTTPResponse res(413, "", false); client->write(res.Get()); }
-        return;
-
-      case HTTP_REQ_POST_START:
-        return;
-
-      case HTTP_REQ_POST_INCOMPLETE: return;
-
-      case HTTP_REQ_POST_OK:
-        return;
-    }
-
-    HTTPResponse res;
-    res.SetStatus(200);
-
-    string s;
-    for (int i = 0; i < 1000000; i++) {
-      s.append(".");
-    }
-
-    res.SetBody(s + "\nYour request was: " + req->GetMethod() + " " + req->GetPath() + ". Num clients: " + std::to_string(_connection_list.size()) + "\n");
-    client->write(res.Get());
-    //shutdown(client->Getfd(), SHUT_RDWR);
-  }
-*/
 
   void connection_worker::worker_main() {
     std::shared_ptr<struct epoll_event[]> event_list(new struct epoll_event[MAXEVENTS]);
@@ -211,7 +212,7 @@ namespace eventhub {
           continue;
         }
 
-        _read(client, client_it);
+        _read(client);
       }
     }
 

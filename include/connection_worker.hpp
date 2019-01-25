@@ -22,8 +22,10 @@ namespace eventhub {
       std::mutex _connection_list_mutex;
 
       void _new_connection(int fd, struct sockaddr_in* csin);
+      void _remove_connection(std::shared_ptr<connection> conn);
       void _accept_connection();
-      void _read(std::shared_ptr<eventhub::connection> conn, eventhub::connection_list::iterator it);
+      void _parse_http(std::shared_ptr<connection> client, char* buf, ssize_t bytes_read);
+      void _read(std::shared_ptr<eventhub::connection> conn);
 
       void worker_main();
   };

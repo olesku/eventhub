@@ -38,8 +38,7 @@ namespace eventhub {
       const string& get_post_data();
       const string& get_error_message();
 
-      inline request_state set_state(request_state new_state) { _state = new_state; return new_state; };
-      inline request_state get_state()                        { return _state; };
+      inline request_state get_state() { return _state; };
 
     private:
       int _http_minor_version;
@@ -65,6 +64,7 @@ namespace eventhub {
       map<string, string> _query_parameters;
       map<string, string> _qsmap;
       size_t _parse_query_string(const std::string& buf);
+      inline request_state _set_state(request_state new_state) { _state = new_state; return new_state; };
   };
 }
 

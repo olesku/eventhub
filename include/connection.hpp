@@ -8,7 +8,7 @@
 #include <sys/epoll.h>
 #include <netinet/in.h>
 #include <stdint.h>
-#include "connection.hpp"
+#include "http_request.hpp"
 
 using namespace std;
 
@@ -16,11 +16,13 @@ namespace eventhub {
   class connection {
     public:
       enum state {
-        INIT,
         HTTP_PARSE,
-        HTTP_OK,
+        HTTP_PARSE_FAILED,
+        HTTP_PARSE_OK,
+
         WS_PARSE,
-        WS_OK
+        WS_PARSE_FAILED,
+        WS_PARSE_OK
       };
 
       connection(int fd, struct sockaddr_in* csin);
@@ -34,6 +36,7 @@ namespace eventhub {
 
       inline void set_state(state new_state) { _state = new_state; };
       inline state get_state()               { return _state; };
+      inline http_request& get_http_request() { return _http_request; }
     
     private:
       int _fd;
@@ -42,6 +45,7 @@ namespace eventhub {
       int   _epoll_fd;
       string _write_buffer;
       std::mutex _write_lock;
+      http_request _http_request;
       state _state;
       
       void _enable_epoll_out();

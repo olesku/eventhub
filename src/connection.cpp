@@ -34,7 +34,7 @@ namespace eventhub {
 
     DLOG(INFO) << "Initialized client with IP: " << get_ip();
 
-    set_state(INIT);
+    set_state(HTTP_PARSE);
   }
 
   connection::~connection() {
