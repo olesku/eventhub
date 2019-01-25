@@ -18,7 +18,6 @@ namespace eventhub {
     _is_post = false;
     _post_data = "";
     _error_message = "";
-    _is_success = false;
   }
 
   /**
@@ -176,13 +175,6 @@ namespace eventhub {
 
   const map<string, string>& http_request::get_headers() {
     return _headers;
-  }
-
-  /**
-    Returns true if the request was successful and false otherwise.
-  **/
-  bool http_request::success() {
-    return _is_success;
   }
 
   /**

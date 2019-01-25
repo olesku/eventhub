@@ -29,7 +29,6 @@ namespace eventhub {
       http_request();
       ~http_request();
       request_state parse(const char *data, int len);
-      bool success();
       const string& get_path();
       const string& get_method();
       const map<string, string>& get_headers();
@@ -44,8 +43,7 @@ namespace eventhub {
 
     private:
       int _http_minor_version;
-      bool _is_success;
-      std::string _buf;
+      string _buf;
       int _bytes_read;
       int _bytes_read_prev;
       int _post_expected_size;
