@@ -79,7 +79,7 @@ namespace eventhub {
     // epoll handler should now delete the connection from _connection_list.
   }
 
-  void connection_worker::_parse_http(std::shared_ptr<connection> client, char* buf, ssize_t bytes_read) {
+  void connection_worker::_parse_http(std::shared_ptr<connection> client, const char* buf, ssize_t bytes_read) {
     /*
       case http_request::HTTP_REQ_POST_INVALID_LENGTH:
       case http_request::HTTP_REQ_POST_TOO_LARGE:

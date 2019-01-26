@@ -24,7 +24,7 @@ namespace eventhub {
       void _new_connection(int fd, struct sockaddr_in* csin);
       void _remove_connection(std::shared_ptr<connection> conn);
       void _accept_connection();
-      void _parse_http(std::shared_ptr<connection> client, char* buf, ssize_t bytes_read);
+      void _parse_http(std::shared_ptr<connection> client, const char* buf, ssize_t bytes_read);
       void _read(std::shared_ptr<eventhub::connection> conn);
 
       void worker_main();

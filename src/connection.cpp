@@ -1,3 +1,4 @@
+#include <ctime>
 #include <string.h>
 #include <fcntl.h>
 #include <sys/socket.h>
@@ -35,6 +36,8 @@ namespace eventhub {
     DLOG(INFO) << "Initialized client with IP: " << get_ip();
 
     set_state(HTTP_PARSE);
+
+    _connect_timestamp = std::time(nullptr);
   }
 
   connection::~connection() {
