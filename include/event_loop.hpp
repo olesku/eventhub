@@ -6,64 +6,102 @@
 
 namespace eventhub {
   class event_loop {
-    typedef struct {
-      std::chrono::milliseconds fire_time;
-      std::function<void()> callback;
-    } task_t;
-
-    typedef std::map<int64_t, std::deque<task_t>> task_queue;
     public:
-      inline void next() {
-        auto cur_ms = now_ms();
-        auto cur_sec = now_sec().count();
+      typedef struct time_ctx_t time_ctx_t;
 
-        if (_queue.empty()) {
+      struct timer_ctx_t {
+        std::chrono::milliseconds fire_time;
+        std::chrono::milliseconds repeat_delay;
+        std::function<void(timer_ctx_t* ctx)> callback;
+        bool repeat;
+      };
+
+      typedef std::deque<timer_ctx_t> timer_queue_t;
+      typedef std::deque<std::function<void()>> job_queue_t;
+
+      event_loop() {
+        _next_timer_fire_time = std::chrono::milliseconds::zero();
+      }
+
+      inline void process() {
+        process_jobs();
+        process_timers();
+      }
+
+      inline void process_jobs() {
+        if (_job_queue.empty()) {
           return;
         }
 
-        for (auto it = _queue.begin(); it != _queue.end();) {
-          auto sec_group = it->first;
-          auto queue = it->second;
+        for (auto& callback : _job_queue) {
+          callback();
+        }
 
-          if (sec_group <= cur_sec) {
-            std::cout << "Should run second: " << sec_group << " <= " << cur_sec << std::endl;
+        _job_queue.clear();
+      }
 
-            for(auto it2 = queue.begin(); it2 != queue.end();) {
-              auto task = *it2;
+      inline void process_timers() {
+        auto now = _now();
 
-              if (task.fire_time <= cur_ms) {
-                std::cout << "Should run ms: " << task.fire_time.count() << " <= " << cur_ms.count() << std::endl;
-                task.callback();
-                queue.erase(it2);
-              }
-            }
+        if (_timer_queue.empty() || _next_timer_fire_time > now) {
+          return;
+        }
 
-            if (queue.empty()) {
-              _queue.erase(it++);
+        _next_timer_fire_time = std::chrono::milliseconds::zero();
+
+        for (auto timer_queue_iterator = _timer_queue.begin(); timer_queue_iterator != _timer_queue.end();) {
+          auto& timer_task = *timer_queue_iterator;
+
+          if (timer_task.fire_time <= now) {
+            timer_task.callback(&timer_task);
+
+            if (timer_task.repeat) {
+              timer_task.fire_time = _now() + timer_task.repeat_delay;
+              _decrease_next_firetime_if_less(timer_task.fire_time);
+              timer_queue_iterator++;
             } else {
-              ++it;
+              timer_queue_iterator = _timer_queue.erase(timer_queue_iterator);
             }
-          }
+          } else {
+            _decrease_next_firetime_if_less(timer_task.fire_time);
+            timer_queue_iterator++;
+          }  
         }
       }
 
-      inline void add(unsigned int delay, std::function<void()> callback) {
-        auto fire_time = now_ms() + std::chrono::milliseconds(delay);
-        auto key = now_sec().count();
+      inline void add_timer(int64_t delay, std::function<void(timer_ctx_t* ctx)> callback, bool repeat=false) {
+        auto fire_time = _now() + std::chrono::milliseconds(delay);
+        timer_ctx_t ctx{fire_time, std::chrono::milliseconds(delay), callback, repeat};
+        _decrease_next_firetime_if_less(fire_time);
+        _timer_queue.push_back(ctx);
+      }
 
-        std::cout << "Key: " << key << std::endl; 
-        _queue[key].push_back(task_t{fire_time, callback});
+      inline const std::chrono::milliseconds get_next_timer_delay() {
+        if (!_job_queue.empty()) {
+          return std::chrono::milliseconds(0);
+        }
+
+        const auto delay = _next_timer_fire_time - _now();
+        return (delay < std::chrono::milliseconds(0) || delay == std::chrono::milliseconds::zero()) ? std::chrono::milliseconds(0) : delay;
+      }
+
+      inline void add_job(std::function<void()> callback) {
+        _job_queue.push_back(callback);
       }
 
     private:
-      task_queue _queue;
+      timer_queue_t _timer_queue;
+      job_queue_t _job_queue;
+      std::chrono::milliseconds _next_timer_fire_time;
 
-      std::chrono::milliseconds now_ms() {
-        return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
+      void _decrease_next_firetime_if_less(const std::chrono::milliseconds& fire_time) {
+        if (_next_timer_fire_time == std::chrono::milliseconds::zero() || _next_timer_fire_time > fire_time) {
+          _next_timer_fire_time = fire_time;
+        }
       }
 
-      std::chrono::milliseconds now_sec() {
-        return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch());
+      const std::chrono::milliseconds _now() {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch());
       }
   };
 }
