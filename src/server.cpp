@@ -44,7 +44,7 @@ namespace eventhub {
     LOG(INFO) << "Listening on port 8080.";
 
     // Start the connection workers.
-    for (unsigned i = 0; i < 4; i++) {
+    for (unsigned i = 0; i < 1; i++) {
       DLOG(INFO) << "Added worker " << i;
       _connection_workers.add_worker(new connection_worker(shared_from_this()));
     }

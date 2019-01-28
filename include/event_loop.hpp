@@ -1,3 +1,6 @@
+#ifndef EVENTHUB_EVENT_LOOP_HPP
+#define EVENTHUB_EVENT_LOOP_HPP
+
 #include <map>
 #include <deque>
 #include <chrono>
@@ -41,7 +44,7 @@ namespace eventhub {
       }
 
       inline void process_timers() {
-        auto now = _now();
+        const auto now = _now();
 
         if (_timer_queue.empty() || _next_timer_fire_time > now) {
           return;
@@ -62,15 +65,17 @@ namespace eventhub {
             } else {
               timer_queue_iterator = _timer_queue.erase(timer_queue_iterator);
             }
-          } else {
-            _decrease_next_firetime_if_less(timer_task.fire_time);
-            timer_queue_iterator++;
-          }  
+
+            continue;
+          }
+
+          _decrease_next_firetime_if_less(timer_task.fire_time);
+          timer_queue_iterator++;
         }
       }
 
       inline void add_timer(int64_t delay, std::function<void(timer_ctx_t* ctx)> callback, bool repeat=false) {
-        auto fire_time = _now() + std::chrono::milliseconds(delay);
+        const auto fire_time = _now() + std::chrono::milliseconds(delay);
         timer_ctx_t ctx{fire_time, std::chrono::milliseconds(delay), callback, repeat};
         _decrease_next_firetime_if_less(fire_time);
         _timer_queue.push_back(ctx);
@@ -89,6 +94,10 @@ namespace eventhub {
         _job_queue.push_back(callback);
       }
 
+      inline bool has_work() {
+        return !_job_queue.empty() || !_timer_queue.empty();
+      }
+
     private:
       timer_queue_t _timer_queue;
       job_queue_t _job_queue;
@@ -105,3 +114,5 @@ namespace eventhub {
       }
   };
 }
+
+#endif

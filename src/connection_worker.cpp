@@ -13,6 +13,7 @@
 #include "server.hpp"
 #include "connection.hpp"
 #include "connection_worker.hpp"
+#include "event_loop.hpp"
 
 using namespace std;
 
@@ -72,6 +73,16 @@ namespace eventhub {
     }
   
     _connection_list.emplace(make_pair(fd, client));
+
+    std::weak_ptr<connection> wptr_connection(_connection_list[fd]);
+    _ev.add_timer(5000, [this, wptr_connection](event_loop::timer_ctx_t* ctx) {
+      auto c = wptr_connection.lock();
+
+      if (c && c->get_state() == connection::state::HTTP_PARSE) {
+        DLOG(INFO) << "Client " << c->get_ip() << " didn't send any data for 5 seconds after connect. Removing.";
+        _remove_connection(c);
+      }
+    });
   }
 
   void connection_worker::_remove_connection(std::shared_ptr<connection> conn) {
@@ -117,6 +128,8 @@ namespace eventhub {
     }
 
     DLOG(INFO) << "Read: " << r_buf;
+    
+    std::weak_ptr<connection> wptr_client(client);
 
     // Parse request if in parse state.
     switch(client->get_state()) {
@@ -142,7 +155,18 @@ namespace eventhub {
           DLOG(INFO) << header.first << ": " << header.second;
         }
 
-        _remove_connection(client);
+        _ev.add_timer(10000, [wptr_client](event_loop::timer_ctx_t *ctx){
+          auto client = wptr_client.lock();
+          if (!client) {
+            DLOG(INFO) << "Ping invalid weak_ptr";
+            ctx->repeat = false;
+            return;
+          }
+          LOG(INFO) << "PING";
+          client->write("PING\r\n");
+        }, true);
+
+        //_remove_connection(client);
       break;
 
       case connection::state::WS_PARSE_FAILED:
@@ -172,7 +196,15 @@ namespace eventhub {
     LOG_IF(FATAL, epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, _server->get_server_socket(), &server_socket_event) == -1) << "Failed to add serversocket to epoll in AcceptWorker " << thread_id();
 
     while(!stop_requested()) {
-      int n = epoll_wait(_epoll_fd, event_list.get(), MAXEVENTS, 100); // 100ms timeout.
+      unsigned int timeout = EPOLL_MAX_TIMEOUT;
+      
+      if (_ev.has_work() && _ev.get_next_timer_delay().count() < EPOLL_MAX_TIMEOUT) {
+        timeout =_ev.get_next_timer_delay().count();
+      }
+
+      DLOG(INFO) << "Timeout: " << timeout << " ms";
+
+      int n = epoll_wait(_epoll_fd, event_list.get(), MAXEVENTS, timeout);
 
       for (int i = 0; i < n; i++) {
         // Handle new connections.
@@ -188,6 +220,8 @@ namespace eventhub {
         auto client_it = _connection_list.find(event_list[i].data.fd);
         if (client_it == _connection_list.end()) {
           LOG(ERROR) << "ERROR: Received event on filedescriptor which is not present in client list.";
+          epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, event_list[i].data.fd, 0);
+          close(event_list[i].data.fd);
           continue;
         }
 
@@ -214,6 +248,8 @@ namespace eventhub {
 
         _read(client);
       }
+
+      _ev.process();
     }
 
     DLOG(INFO) << "Connection worker " << thread_id() << " destroyed.";

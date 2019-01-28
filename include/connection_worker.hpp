@@ -5,6 +5,7 @@
 #include <vector>
 #include <mutex>
 #include "connection.hpp"
+#include "event_loop.hpp"
 
 namespace eventhub {
   class server; // Forward declaration.
@@ -17,6 +18,7 @@ namespace eventhub {
     private:
       std::shared_ptr<server> _server;
       int        _epoll_fd;
+      event_loop _ev;
 
       eventhub::connection_list _connection_list;
       std::mutex _connection_list_mutex;
