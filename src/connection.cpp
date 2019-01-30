@@ -101,6 +101,8 @@ namespace eventhub {
 
     ret = ::write(_fd, _write_buffer.c_str(), _write_buffer.length());
 
+    DLOG(INFO) << "write:" << data;
+
     if (ret <= 0) {
       DLOG(INFO) << get_ip() << ": write error: " << strerror(errno);
       _enable_epoll_out();

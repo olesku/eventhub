@@ -72,6 +72,7 @@ const std::string http_response::GetStatusMsg(int statusCode) {
   switch (statusCode) {
     case 200: return "OK";
     case 100: return "Continue";
+    case 101: return "Switching Protocols";
     case 400: return "Bad Request";
     case 401: return "Unauthorized";
     case 403: return "Forbidden";

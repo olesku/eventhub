@@ -2,9 +2,9 @@
 #define EVENTHUB_HTTP_RESPONSE_H
 
 #include <string>
-#include <map>
+#include <unordered_map>
 
-typedef std::map<std::string, std::string> HeaderList_t;
+typedef std::unordered_map<std::string, std::string> HeaderList_t;
 
 class http_response {
   public:

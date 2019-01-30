@@ -14,6 +14,7 @@
 #include "connection.hpp"
 #include "connection_worker.hpp"
 #include "event_loop.hpp"
+#include "websocket_handler.hpp"
 
 using namespace std;
 
@@ -155,18 +156,9 @@ namespace eventhub {
           DLOG(INFO) << header.first << ": " << header.second;
         }
 
-        _ev.add_timer(10000, [wptr_client](event_loop::timer_ctx_t *ctx){
-          auto client = wptr_client.lock();
-          if (!client) {
-            DLOG(INFO) << "Ping invalid weak_ptr";
-            ctx->repeat = false;
-            return;
-          }
-          LOG(INFO) << "PING";
-          client->write("PING\r\n");
-        }, true);
-
-        //_remove_connection(client);
+        if (!websocket_handler::handshake(client)) {
+          _remove_connection(client);
+        }
       break;
 
       case connection::state::WS_PARSE_FAILED:
@@ -202,7 +194,7 @@ namespace eventhub {
         timeout =_ev.get_next_timer_delay().count();
       }
 
-      DLOG(INFO) << "Timeout: " << timeout << " ms";
+     // DLOG(INFO) << "Timeout: " << timeout << " ms";
 
       int n = epoll_wait(_epoll_fd, event_list.get(), MAXEVENTS, timeout);
 
