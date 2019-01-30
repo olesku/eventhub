@@ -21,6 +21,7 @@ namespace eventhub {
         HTTP_PARSE_FAILED,
         HTTP_PARSE_OK,
 
+        WS_HANDSHAKE_FAILED,
         WS_PARSE,
         WS_PARSE_FAILED,
         WS_PARSE_OK
@@ -28,14 +29,16 @@ namespace eventhub {
 
       connection(int fd, struct sockaddr_in* csin);
       ~connection();
+
       ssize_t write(const string &data);
       ssize_t read(char *buf, size_t bytes);
       ssize_t flush_send_buffer();
+
+      int add_to_epoll(int epoll_fd, uint32_t events);
       int get_fd();
       const string get_ip();
-      int add_to_epoll(int epoll_fd, uint32_t events);
 
-      inline void set_state(state new_state)  { _state = new_state; };
+      inline state set_state(state new_state) { return _state = new_state; };
       inline const state get_state()          { return _state; };
       inline http_request& get_http_request() { return _http_request; }
     

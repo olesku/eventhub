@@ -133,40 +133,35 @@ namespace eventhub {
     std::weak_ptr<connection> wptr_client(client);
 
     // Parse request if in parse state.
-    switch(client->get_state()) {
-      case connection::state::HTTP_PARSE:
-        DLOG(INFO) << "Parsing request from connection " << client->get_ip();
+    if (client->get_state() == connection::state::HTTP_PARSE) {
        _parse_http(client, r_buf, bytes_read);
-      break;
     }
 
     // Call correct handler after request is parsed.
     switch(client->get_state()) {
-      case connection::state::HTTP_PARSE_FAILED:
-        DLOG(INFO) << "Failed to parse HTTP request from connection " << client->get_ip();
-        _remove_connection(client);
-        return;
-      break;
-
-      case connection::state::HTTP_PARSE_OK:
-        DLOG(INFO) << "Parse OK.";
-        DLOG(INFO) << "Method: " << client->get_http_request().get_method() << " Path: " << client->get_http_request().get_path();
-        
-        for (auto header : client->get_http_request().get_headers()) {
-          DLOG(INFO) << header.first << ": " << header.second;
-        }
-
-        if (!websocket_handler::handshake(client)) {
-          _remove_connection(client);
-        }
-      break;
-
-      case connection::state::WS_PARSE_FAILED:
-
+      case connection::state::WS_PARSE:
+        websocket_handler::parse(client, r_buf, bytes_read);
       break;
 
       case connection::state::WS_PARSE_OK:
 
+      break;
+
+      case connection::state::WS_PARSE_FAILED:
+      
+      break;
+
+      case connection::state::HTTP_PARSE_OK:
+        DLOG(INFO) << "HTTP Parse OK.";
+        if (websocket_handler::handshake(client) == connection::state::WS_HANDSHAKE_FAILED) {
+          _remove_connection(client);
+        }
+      break;
+
+      case connection::state::HTTP_PARSE_FAILED:
+        DLOG(INFO) << "Failed to parse HTTP request from connection " << client->get_ip();
+        _remove_connection(client);
+        return;
       break;
     }
   }
