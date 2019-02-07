@@ -6,11 +6,10 @@
 
 #define CRLF "\r\n"
 
-http_response::http_response(int statusCode, const std::string body, bool close) {
+http_response::http_response(int statusCode, const std::string body) {
   m_statusCode = statusCode;
   m_statusMsg = GetStatusMsg(statusCode);
   m_body = body;
-  if (close) SetHeader("Connection", "close");
 }
 
 void http_response::SetStatus(int status, std::string statusMsg) {

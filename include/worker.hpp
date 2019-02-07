@@ -59,6 +59,7 @@ class worker_group {
   public:
     worker_group<T>() {};
     ~worker_group<T>(){};
+    using iterator = typename worker_list_t<T>::iterator;
 
     void add_worker(T* worker) {
        _workers.push_back(std::shared_ptr<T>(worker));
@@ -78,6 +79,14 @@ class worker_group {
 
     worker_list_t<T>& get_worker_list() {
       return _workers;
+    }
+
+    typename worker_list_t<T>::iterator begin() {
+      return _workers.begin();
+    }
+
+    typename worker_list_t<T>::iterator end() {
+      return _workers.end();
     }
 
   private:

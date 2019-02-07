@@ -1,4 +1,4 @@
-#ifndef EVENTUB_HTTP_RESPONSE_H
+#ifndef EVENTHUB_HTTP_RESPONSE_H
 #define EVENTHUB_HTTP_RESPONSE_H
 
 #include <string>
@@ -8,7 +8,7 @@ typedef std::unordered_map<std::string, std::string> HeaderList_t;
 
 class http_response {
   public:
-    http_response(int statusCode=200, const std::string body="", bool close=true);
+    http_response(int statusCode=200, const std::string body="");
     void SetStatus(int status, std::string statusMsg);
     void SetStatus(int status);
     void SetHeader(const std::string& name, const std::string& value);

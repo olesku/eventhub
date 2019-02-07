@@ -14,6 +14,7 @@ namespace eventhub {
     public:
       connection_worker(std::shared_ptr<server> server);
       ~connection_worker();
+      void new_connection(int fd, struct sockaddr_in* csin);
 
     private:
       std::shared_ptr<server> _server;
@@ -23,10 +24,10 @@ namespace eventhub {
       eventhub::connection_list _connection_list;
       std::mutex _connection_list_mutex;
 
-      void _new_connection(int fd, struct sockaddr_in* csin);
       void _remove_connection(std::shared_ptr<connection> conn);
       void _accept_connection();
       void _parse_http(std::shared_ptr<connection> client, const char* buf, ssize_t bytes_read);
+      void _parse_websocket(std::shared_ptr<connection> client, char* buf, ssize_t bytes_read);
       void _read(std::shared_ptr<eventhub::connection> conn);
 
       void worker_main();

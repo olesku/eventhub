@@ -10,6 +10,7 @@
 #include <netinet/in.h>
 #include <stdint.h>
 #include "http_request.hpp"
+#include "websocket_request.hpp"
 
 using namespace std;
 
@@ -17,14 +18,8 @@ namespace eventhub {
   class connection {
     public:
       enum state {
-        HTTP_PARSE,
-        HTTP_PARSE_FAILED,
-        HTTP_PARSE_OK,
-
-        WS_HANDSHAKE_FAILED,
-        WS_PARSE,
-        WS_PARSE_FAILED,
-        WS_PARSE_OK
+        HTTP_MODE,
+        WEBSOCKET_MODE
       };
 
       connection(int fd, struct sockaddr_in* csin);
@@ -41,7 +36,8 @@ namespace eventhub {
       inline state set_state(state new_state) { return _state = new_state; };
       inline const state get_state()          { return _state; };
       inline http_request& get_http_request() { return _http_request; }
-    
+      inline websocket::request& get_ws_request() { return _ws_request; }
+
     private:
       int _fd;
       struct sockaddr_in _csin;
@@ -50,8 +46,8 @@ namespace eventhub {
       string _write_buffer;
       std::mutex _write_lock;
       http_request _http_request;
+      websocket::request _ws_request;
       state _state;
-      time_t _connect_timestamp;
       
       void _enable_epoll_out();
       void _disable_epoll_out();

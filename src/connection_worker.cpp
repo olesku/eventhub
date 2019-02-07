@@ -14,7 +14,6 @@
 #include "connection.hpp"
 #include "connection_worker.hpp"
 #include "event_loop.hpp"
-#include "websocket_handler.hpp"
 
 using namespace std;
 
@@ -58,12 +57,10 @@ namespace eventhub {
       }
 
     // Create the client object and add it to our client list.
-    _new_connection(client_fd, &csin);
-
-    DLOG(INFO) << "Client accepted in worker " << thread_id();
+    _server->get_worker()->new_connection(client_fd, &csin);
   }
 
-  void connection_worker::_new_connection(int fd, struct sockaddr_in* csin) {
+  void connection_worker::new_connection(int fd, struct sockaddr_in* csin) {
     std::lock_guard<std::mutex> guard(_connection_list_mutex);
     auto client = make_shared<connection>(fd, csin);
 
@@ -74,13 +71,14 @@ namespace eventhub {
     }
   
     _connection_list.emplace(make_pair(fd, client));
+     DLOG(INFO) << "Client accepted in worker " << thread_id();
 
     std::weak_ptr<connection> wptr_connection(_connection_list[fd]);
-    _ev.add_timer(5000, [this, wptr_connection](event_loop::timer_ctx_t* ctx) {
+    _ev.add_timer(30000, [this, wptr_connection](event_loop::timer_ctx_t* ctx) {
       auto c = wptr_connection.lock();
 
-      if (c && c->get_state() == connection::state::HTTP_PARSE) {
-        DLOG(INFO) << "Client " << c->get_ip() << " didn't send any data for 5 seconds after connect. Removing.";
+      if (c && c->get_state() != connection::state::WEBSOCKET_MODE) {
+        DLOG(INFO) << "Client " << c->get_ip() << " failed to handshake in 30 seconds. Removing.";
         _remove_connection(c);
       }
     });
@@ -92,31 +90,46 @@ namespace eventhub {
   }
 
   void connection_worker::_parse_http(std::shared_ptr<connection> client, const char* buf, ssize_t bytes_read) {
-    /*
-      case http_request::HTTP_REQ_POST_INVALID_LENGTH:
-      case http_request::HTTP_REQ_POST_TOO_LARGE:
-      case http_request::HTTP_REQ_POST_START:
-      case http_request::HTTP_REQ_POST_INCOMPLETE:
-  */
+    auto& req = client->get_http_request();
+    auto& ws_req = client->get_ws_request();
 
-    /* TODO: Implement connection timeout check. */
-
-    switch(client->get_http_request().parse(buf, bytes_read)) {
+    switch(req.parse(buf, bytes_read)) {
       case http_request::HTTP_REQ_INCOMPLETE:
         return;
       break;
 
-      case http_request::HTTP_REQ_OK: 
-        client->set_state(connection::state::HTTP_PARSE_OK);
-      break;
+      case http_request::HTTP_REQ_OK:
+        client->write(ws_req.make_handshake_response(req)->Get());
 
-      case http_request::HTTP_REQ_POST_OK:
-        client->set_state(connection::state::HTTP_PARSE_OK);
+        if (ws_req.get_state() == websocket::request::state::WS_BAD_HANDSHAKE) {
+          _remove_connection(client);
+        } else {
+          client->set_state(connection::state::WEBSOCKET_MODE);
+        }
       break;
 
       default:
-        client->set_state(connection::state::HTTP_PARSE_FAILED);
+        _remove_connection(client);
     }
+  }
+
+  void connection_worker::_parse_websocket(std::shared_ptr<connection> client, char* buf, ssize_t bytes_read) {
+    auto& ws_req = client->get_ws_request();
+    ws_req.parse(buf, bytes_read);
+
+    switch(ws_req.get_state()) {
+      case websocket::request::state::WS_CONTROL_READY:
+        LOG(INFO) << "Control Type: " << ws_req.get_control_frame_type() << " payload: " << ws_req.get_control_payload();
+        ws_req.clear_control_payload();
+      break;
+
+      case websocket::request::state::WS_DATA_READY:
+        LOG(INFO) << "Data: " << ws_req.get_payload();
+        ws_req.clear_payload();
+      break;
+    }
+
+    ws_req.set_state(websocket::request::state::WS_PARSE);
   }
 
   void connection_worker::_read(std::shared_ptr<connection> client) {
@@ -128,40 +141,20 @@ namespace eventhub {
       return;
     }
 
-    DLOG(INFO) << "Read: " << r_buf;
+    if (client->get_state() != connection::state::WEBSOCKET_MODE) {
+      DLOG(INFO) << "Read: " << r_buf;
+    }
     
     std::weak_ptr<connection> wptr_client(client);
 
     // Parse request if in parse state.
-    if (client->get_state() == connection::state::HTTP_PARSE) {
-       _parse_http(client, r_buf, bytes_read);
-    }
-
-    // Call correct handler after request is parsed.
     switch(client->get_state()) {
-      case connection::state::WS_PARSE:
-        websocket_handler::parse(client, r_buf, bytes_read);
+      case connection::state::HTTP_MODE:
+       _parse_http(client, r_buf, bytes_read);
       break;
 
-      case connection::state::WS_PARSE_OK:
-
-      break;
-
-      case connection::state::WS_PARSE_FAILED:
-      
-      break;
-
-      case connection::state::HTTP_PARSE_OK:
-        DLOG(INFO) << "HTTP Parse OK.";
-        if (websocket_handler::handshake(client) == connection::state::WS_HANDSHAKE_FAILED) {
-          _remove_connection(client);
-        }
-      break;
-
-      case connection::state::HTTP_PARSE_FAILED:
-        DLOG(INFO) << "Failed to parse HTTP request from connection " << client->get_ip();
-        _remove_connection(client);
-        return;
+      case connection::state::WEBSOCKET_MODE:
+        _parse_websocket(client, r_buf, bytes_read);
       break;
     }
   }
@@ -188,8 +181,6 @@ namespace eventhub {
       if (_ev.has_work() && _ev.get_next_timer_delay().count() < EPOLL_MAX_TIMEOUT) {
         timeout =_ev.get_next_timer_delay().count();
       }
-
-     // DLOG(INFO) << "Timeout: " << timeout << " ms";
 
       int n = epoll_wait(_epoll_fd, event_list.get(), MAXEVENTS, timeout);
 

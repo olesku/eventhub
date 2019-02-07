@@ -20,10 +20,12 @@ namespace eventhub {
         void start();
         void stop();
         const int get_server_socket();
+        std::shared_ptr<connection_worker>& get_worker();
 
       private:
         int _server_socket;
         worker_group<connection_worker> _connection_workers;
+        worker_group<connection_worker>::iterator _cur_worker;
     };
 }
 

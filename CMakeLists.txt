@@ -7,10 +7,10 @@ set(CMAKE_CXX_FLAGS "-std=c++11")
 
 add_executable( eventhub 
   src/picohttpparser.c
-  src/ws_parser.c
+  src/ws_parser.cpp
   src/http_request.cpp
   src/http_response.cpp
-  src/websocket_handler.cpp
+  src/websocket_request.cpp
   src/server.cpp
   src/connection.cpp
   src/connection_worker.cpp
