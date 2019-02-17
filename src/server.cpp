@@ -46,13 +46,13 @@ namespace eventhub {
     // Start the connection workers.
     for (unsigned i = 0; i < std::thread::hardware_concurrency(); i++) {
       DLOG(INFO) << "Added worker " << i;
-      _connection_workers.add_worker(new connection_worker(shared_from_this()));
+      _connection_workers.add_worker(new io::worker(shared_from_this()));
     }
 
     _cur_worker = _connection_workers.begin();
   }
 
-  std::shared_ptr<connection_worker>& server::get_worker() {
+  std::shared_ptr<io::worker>& server::get_worker() {
     if (_cur_worker == _connection_workers.end()) {
       _cur_worker = _connection_workers.begin();
     }

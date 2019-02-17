@@ -4,34 +4,39 @@
 #include <memory>
 #include <vector>
 #include <mutex>
+#include "worker.hpp"
 #include "connection.hpp"
 #include "event_loop.hpp"
 
 namespace eventhub {
   class server; // Forward declaration.
 
-  class connection_worker : public worker {
-    public:
-      connection_worker(std::shared_ptr<server> server);
-      ~connection_worker();
-      void new_connection(int fd, struct sockaddr_in* csin);
+  namespace io {
+    typedef std::unordered_map<unsigned int, std::shared_ptr<connection> > connection_list;
 
-    private:
-      std::shared_ptr<server> _server;
-      int        _epoll_fd;
-      event_loop _ev;
+    class worker : public worker_base {
+      public:
+        worker(std::shared_ptr<server> server);
+        ~worker();
 
-      eventhub::connection_list _connection_list;
-      std::mutex _connection_list_mutex;
+        std::shared_ptr<server>& get_server() { return _server; };
 
-      void _remove_connection(std::shared_ptr<connection> conn);
-      void _accept_connection();
-      void _parse_http(std::shared_ptr<connection> client, const char* buf, ssize_t bytes_read);
-      void _parse_websocket(std::shared_ptr<connection> client, char* buf, ssize_t bytes_read);
-      void _read(std::shared_ptr<eventhub::connection> conn);
+      private:
+        std::shared_ptr<server> _server;
+        int        _epoll_fd;
+        event_loop _ev;
 
-      void worker_main();
-  };
+        connection_list _connection_list;
+        std::mutex _connection_list_mutex;
+
+        void _accept_connection();
+        void _add_connection(int fd, struct sockaddr_in* csin);
+        void _remove_connection(const connection_list::iterator& it);
+        void _read(std::shared_ptr<connection>& conn);
+
+        void worker_main();
+    };
+  }
 }
 
 #endif

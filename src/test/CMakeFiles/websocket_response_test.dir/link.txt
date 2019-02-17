@@ -1,0 +1,1 @@
+/bin/c++  -std=c++11  -rdynamic CMakeFiles/websocket_response_test.dir/home/oles/code/eventhub/src/websocket_response.cpp.o CMakeFiles/websocket_response_test.dir/websocket_response_test.cpp.o  -o websocket_response_test 

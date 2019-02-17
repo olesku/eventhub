@@ -11,17 +11,17 @@
 template <class T>
 using worker_list_t = std::vector<std::shared_ptr<T>>;
 
-class worker {
+class worker_base {
   public:
-    worker() {
+    worker_base() {
       _stop_requested_future = _stop_requested.get_future();
     }
 
-    ~worker() {}
+    ~worker_base() {}
 
     void run() {
       if (!_thread.joinable()) {
-        _thread = std::thread(&worker::worker_main, this);
+        _thread = std::thread(&worker_base::worker_main, this);
       }
     }
 

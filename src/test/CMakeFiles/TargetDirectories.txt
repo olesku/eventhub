@@ -1,0 +1,3 @@
+/home/oles/code/eventhub/src/test/CMakeFiles/rebuild_cache.dir
+/home/oles/code/eventhub/src/test/CMakeFiles/websocket_response_test.dir
+/home/oles/code/eventhub/src/test/CMakeFiles/edit_cache.dir
