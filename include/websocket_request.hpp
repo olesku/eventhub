@@ -1,10 +1,12 @@
 #ifndef EVENTHUB_WEBSOCKET_REQUEST_HPP
 #define EVENTHUB_WEBSOCKET_REQUEST_HPP
 
+#include <string>
+
 #include "http_request.hpp"
 #include "http_response.hpp"
 #include "ws_parser.h"
-#include <memory>
+
 
 namespace eventhub {
   class websocket_request {

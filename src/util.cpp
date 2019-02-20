@@ -3,7 +3,9 @@
 #include <openssl/buffer.h>
 #include <stdint.h>
 #include <string>
+#include <sstream>
 
+#include "common.hpp"
 #include "util.hpp"
 
 namespace eventhub {

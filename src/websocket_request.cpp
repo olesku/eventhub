@@ -1,16 +1,6 @@
-#include <memory>
 #include <string>
-#include <sstream>
-#include <sys/socket.h>
-#include <openssl/sha.h>
-#include <openssl/bio.h>
-#include <openssl/evp.h>
-#include <openssl/buffer.h>
-#include <stdint.h>
+
 #include "common.hpp"
-#include "connection.hpp"
-#include "http_request.hpp"
-#include "http_response.hpp"
 #include "websocket_request.hpp"
 #include "ws_parser.h"
 

@@ -117,7 +117,7 @@ namespace eventhub {
       }
     }
 
-    void worker::_remove_connection(const connection_list::iterator& it) {
+    void worker::_remove_connection(const connection_list_t::iterator& it) {
       _connection_list.erase(it);
     } 
 

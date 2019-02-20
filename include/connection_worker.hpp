@@ -12,7 +12,7 @@ namespace eventhub {
   class server; // Forward declaration.
 
   namespace io {
-    typedef std::unordered_map<unsigned int, std::shared_ptr<connection> > connection_list;
+    typedef std::unordered_map<unsigned int, std::shared_ptr<connection> > connection_list_t;
 
     class worker : public worker_base {
       public:
@@ -26,12 +26,12 @@ namespace eventhub {
         int        _epoll_fd;
         event_loop _ev;
 
-        connection_list _connection_list;
+        connection_list_t _connection_list;
         std::mutex _connection_list_mutex;
-
+        
         void _accept_connection();
         void _add_connection(int fd, struct sockaddr_in* csin);
-        void _remove_connection(const connection_list::iterator& it);
+        void _remove_connection(const connection_list_t::iterator& it);
         void _read(std::shared_ptr<connection>& conn);
 
         void worker_main();

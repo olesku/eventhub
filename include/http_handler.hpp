@@ -18,6 +18,7 @@ namespace eventhub {
 
       static void _handle_path(std::shared_ptr<io::connection>& conn, http_request& req);
       static bool _websocket_handshake(std::shared_ptr<io::connection>& conn, http_request& req);
+      static void _bad_request(std::shared_ptr<io::connection>& conn, const std::string reason);
   };
 }
 

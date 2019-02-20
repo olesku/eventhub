@@ -5,6 +5,9 @@
 #include "util.hpp"
 #include "http_response.hpp"
 #include "http_handler.hpp"
+#include "topic_manager.hpp"
+
+using namespace std;
 
 namespace eventhub {
   void http_handler::parse(std::shared_ptr<io::connection>& conn, const char* buf, size_t n_bytes) {
@@ -25,26 +28,36 @@ namespace eventhub {
   }
 
   void http_handler::_handle_path(std::shared_ptr<io::connection>& conn, http_request& req) {
-    if (req.get_path().compare("/status") == 0) {
+    const string& path = req.get_path();
+
+    if (path.empty() || path.compare("/") == 0 || path.at(0) != '/') {
+      _bad_request(conn, "Nothing here!\r\n");
+      return;
+    }
+
+    DLOG(INFO) << "Path: " << path;
+
+    if (path.compare("/status") == 0) {
       // handle status;
       return;
-    } 
+    }
   
-    // TODO: check if path is in valid format.
-    _websocket_handshake(conn, req);
+    const string topic_filter_name = path.substr(1, string::npos);
+    if (!topic_manager::is_valid_topic_filter(topic_filter_name)) {
+      _bad_request(conn, topic_filter_name + ": Topic name has invalid format.\r\n");
+      return;
+    }
+
+    if (_websocket_handshake(conn, req)) {
+      // Subscribe client to topic.
+    }
   }
 
   bool http_handler::_websocket_handshake(std::shared_ptr<io::connection>& conn, http_request& req) {
     const auto sec_ws_key = req.get_header("sec-websocket-key");
-    http_response resp;
 
     if (req.get_header("upgrade").compare("websocket") != 0 || sec_ws_key.empty()) {
-      resp.SetStatus(400, "Bad request");
-      resp.SetHeader("connection", "close");
-      resp.SetBody("Bad request\r\n");
-      conn->write(resp.Get());
-      conn->shutdown();
-
+      _bad_request(conn, "Invalid websocket request.");
       return false;
     }
 
@@ -58,6 +71,7 @@ namespace eventhub {
     SHA1(key, key_len, key_sha1);
     const std::string sec_ws_accept = util::base64_encode(key_sha1, SHA_DIGEST_LENGTH);
 
+    http_response resp;
     resp.SetStatus(101);
     resp.SetHeader("upgrade", "websocket");
     resp.SetHeader("connection", "upgrade");
@@ -70,5 +84,14 @@ namespace eventhub {
     conn->write(resp.Get());
     conn->set_state(io::connection::WEBSOCKET_MODE);
     return true;
+  }
+
+  void http_handler::_bad_request(std::shared_ptr<io::connection>& conn, const std::string reason) {
+    http_response resp;
+    resp.SetStatus(400, "Bad request");
+    resp.SetHeader("connection", "close");
+    resp.SetBody("<h1>400 Bad request</h1>\n" + reason + "\r\n");
+    conn->write(resp.Get());
+    conn->shutdown();
   }
 }

@@ -1,3 +1,6 @@
+#ifndef EVENTHUB_COMMON_HPP
+#define EVENTHUB_COMMON_HPP
+
 #undef NDEBUG
 #include <glog/logging.h>
 #include <cctype>
@@ -13,3 +16,5 @@ inline std::string& str_tolower(std::string& s) {
                   );
     return s;
 }
+
+#endif
