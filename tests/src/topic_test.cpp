@@ -1,4 +1,3 @@
-#define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 #include <vector>
 #include <utility>
@@ -7,7 +6,7 @@
 using namespace std;
 using namespace eventhub;
 
-TEST_CASE("topic_manager::is_valid_topic_filter", "[topic]") {
+TEST_CASE("is_valid_topic_filter", "[topic_manager]") {
   SECTION("Filter cannot be empty") {
     REQUIRE(topic_manager::is_valid_topic_filter("") == false);
   }
@@ -53,7 +52,7 @@ TEST_CASE("topic_manager::is_valid_topic_filter", "[topic]") {
   }
 }
 
-TEST_CASE("topic_manager::is_filter_matched", "[topic]") {
+TEST_CASE("is_filter_matched", "[topic_manager]") {
   vector<pair<string, string>> should_match;
   vector<pair<string, string>> should_not_match;
 
