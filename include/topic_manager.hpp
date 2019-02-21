@@ -13,7 +13,7 @@ namespace eventhub {
     typedef std::unordered_map<std::string, std::shared_ptr<topic> > topic_list_t;
 
     public:
-      void subscribe_connection(const std::string& topic_name, std::shared_ptr<io::connection>& conn);
+      void subscribe_connection(std::shared_ptr<io::connection>& conn, const std::string& topic_filter);
       void publish(const std::string& topic_name, const std::string& data);
       void garbage_collect();
       

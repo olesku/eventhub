@@ -1,4 +1,5 @@
 #include <memory>
+#include "common.hpp"
 #include "topic.hpp"
 #include "connection.hpp"
 #include <string>
@@ -8,6 +9,7 @@ using namespace std;
 namespace eventhub {
   void topic::add_subscriber(std::shared_ptr<io::connection>& conn) {
     _subscriber_list.push_back(weak_ptr<io::connection>(conn));
+    DLOG(INFO) << "Connection " << conn->get_ip() << " subscribed to " << _id;
   }
 
   void topic::publish(const string& data) {

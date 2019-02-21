@@ -6,13 +6,13 @@
 #include "topic.hpp"
 
 namespace eventhub {
-  void topic_manager::subscribe_connection(const std::string& topic_name, std::shared_ptr<io::connection>& conn) {
-    if (_topic_list.find(topic_name) == _topic_list.end()) {
-      DLOG(INFO) << "Created topic " << topic_name;
-      _topic_list.insert(std::make_pair(topic_name, std::make_shared<topic>(topic_name)));
+  void topic_manager::subscribe_connection(std::shared_ptr<io::connection>& conn, const std::string& topic_filter) {
+    if (!_topic_list.count(topic_filter)) {
+      DLOG(INFO) << "Created topic " << topic_filter;
+      _topic_list.insert(std::make_pair(topic_filter, std::make_shared<topic>(topic_filter)));
     }
 
-    _topic_list[topic_name]->add_subscriber(conn);
+    _topic_list[topic_filter]->add_subscriber(conn);
   }
 
   void topic_manager::garbage_collect() {
@@ -64,10 +64,8 @@ namespace eventhub {
 
   // This method assumes topic filter is validated through is_valid_topic_filter.
   bool topic_manager::is_filter_matched(const std::string& filter_name, const string& topic_name) {
-    //if (!is_valid_topic_filter(filter_name)) return false;
     for (auto fn_it = filter_name.begin(), tn_it = topic_name.begin(); 
         fn_it != filter_name.end() && tn_it != topic_name.end(); fn_it++, tn_it++) {
-      // Equal char match.
       if (*fn_it == *tn_it) {
         continue;
       }

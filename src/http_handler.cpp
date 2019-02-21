@@ -6,11 +6,12 @@
 #include "http_response.hpp"
 #include "http_handler.hpp"
 #include "topic_manager.hpp"
+#include "connection_worker.hpp"
 
 using namespace std;
 
 namespace eventhub {
-  void http_handler::parse(std::shared_ptr<io::connection>& conn, const char* buf, size_t n_bytes) {
+  void http_handler::parse(std::shared_ptr<io::connection>& conn, std::shared_ptr<io::worker> worker, const char* buf, size_t n_bytes) {
     auto& req = conn->get_http_request();
 
     switch(req.parse(buf, n_bytes)) {
@@ -19,7 +20,7 @@ namespace eventhub {
       break;
 
       case http_request::HTTP_REQ_OK:
-        _handle_path(conn, req);
+        _handle_path(conn, worker, req);
       break;
 
       default:
@@ -27,7 +28,7 @@ namespace eventhub {
     }
   }
 
-  void http_handler::_handle_path(std::shared_ptr<io::connection>& conn, http_request& req) {
+  void http_handler::_handle_path(std::shared_ptr<io::connection>& conn, std::shared_ptr<io::worker>& worker, http_request& req) {
     const string& path = req.get_path();
 
     if (path.empty() || path.compare("/") == 0 || path.at(0) != '/') {
@@ -50,6 +51,7 @@ namespace eventhub {
 
     if (_websocket_handshake(conn, req)) {
       // Subscribe client to topic.
+      worker->get_topic_manager().subscribe_connection(conn, topic_filter_name);
     }
   }
 

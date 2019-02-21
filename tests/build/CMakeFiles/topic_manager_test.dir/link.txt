@@ -1,1 +1,0 @@
-/bin/c++  -std=c++11  -rdynamic CMakeFiles/topic_manager_test.dir/home/oles/code/eventhub/src/topic_manager.cpp.o CMakeFiles/topic_manager_test.dir/src/topic_manager_test.cpp.o  -o topic_manager_test -lglog 

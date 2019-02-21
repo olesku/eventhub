@@ -8,7 +8,7 @@
 namespace eventhub {
   class topic { 
     public:
-      topic(const std::string& topic_name) { _id = topic_name; };
+      topic(const std::string& topic_filter) { _id = topic_filter; };
       ~topic() {};
 
       void add_subscriber(std::shared_ptr<io::connection>& conn);
