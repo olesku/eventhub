@@ -9,7 +9,7 @@
 
 
 template <class T>
-using worker_list_t = std::vector<std::shared_ptr<T>>;
+using worker_list_t = std::vector<std::unique_ptr<T>>;
 
 class worker_base {
   public:
@@ -62,7 +62,7 @@ class worker_group {
     using iterator = typename worker_list_t<T>::iterator;
 
     void add_worker(T* worker) {
-       _workers.push_back(std::shared_ptr<T>(worker));
+       _workers.push_back(std::unique_ptr<T>(worker));
        worker->run();
     }
 

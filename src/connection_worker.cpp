@@ -22,8 +22,8 @@ using namespace std;
 
 namespace eventhub {
   namespace io {
-    worker::worker(std::shared_ptr<eventhub::server> server) {
-      _server = server;
+    worker::worker(server* srv) {
+      _server = srv;
       _epoll_fd = epoll_create1(0);
 
       _connection_list.reserve(50000);
@@ -77,7 +77,7 @@ namespace eventhub {
       _connection_list.emplace(make_pair(fd, client));
       DLOG(INFO) << "Client accepted in worker " << thread_id();
 
-      std::weak_ptr<connection> wptr_connection(_connection_list[fd]);
+      std::weak_ptr<connection> wptr_connection(client);
       _ev.add_timer(10000, [this, wptr_connection](event_loop::timer_ctx_t* ctx) {
         auto c = wptr_connection.lock();
 
@@ -104,7 +104,7 @@ namespace eventhub {
       // Parse request if in parse state.
       switch(client->get_state()) {
         case connection::HTTP_MODE:
-        http_handler::parse(client, shared_from_this(), r_buf, bytes_read);
+        http_handler::parse(client, this, r_buf, bytes_read);
         break;
 
         case connection::WEBSOCKET_MODE:
@@ -119,7 +119,17 @@ namespace eventhub {
 
     void worker::_remove_connection(const connection_list_t::iterator& it) {
       _connection_list.erase(it);
-    } 
+    }
+
+    void worker::subscribe_connection(std::shared_ptr<connection>& conn, const string& topic_filter_name) {
+      _topic_manager.subscribe_connection(conn, topic_filter_name);
+    }
+
+    void worker::publish(const string& topic_name, const string& data) {
+      _ev.add_job([this, topic_name, data]() {
+        _topic_manager.publish(topic_name, data);
+      });
+    }
 
     void worker::worker_main() {
       std::shared_ptr<struct epoll_event[]> event_connection_list(new struct epoll_event[MAXEVENTS]);
@@ -138,6 +148,11 @@ namespace eventhub {
 
       LOG_IF(FATAL, epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, _server->get_server_socket(), &server_socket_event) == -1) 
         << "Failed to add serversocket to epoll in AcceptWorker " << thread_id();
+
+      // Run garbage collection of topics with no more connections.
+      _ev.add_timer(20000, [this](event_loop::timer_ctx_t* ctx) {
+        _topic_manager.garbage_collect();
+      }, true);
         
       while(!stop_requested()) {
         unsigned int timeout = EPOLL_MAX_TIMEOUT;

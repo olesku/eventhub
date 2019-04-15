@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <deque>
+#include <mutex>
 #include "connection.hpp"
 
 namespace eventhub {
@@ -19,6 +20,7 @@ namespace eventhub {
       std::string _id;
       uint64_t _n_messages_sent;
       std::deque<std::weak_ptr<io::connection>> _subscriber_list;
+      std::mutex  _subscriber_lock;
   };
 };
 

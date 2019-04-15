@@ -7,15 +7,29 @@
 
 namespace eventhub {
   void topic_manager::subscribe_connection(std::shared_ptr<io::connection>& conn, const std::string& topic_filter) {
+    std::lock_guard<std::mutex> lock(_topic_list_lock);
+
     if (!_topic_list.count(topic_filter)) {
       DLOG(INFO) << "Created topic " << topic_filter;
-      _topic_list.insert(std::make_pair(topic_filter, std::make_shared<topic>(topic_filter)));
+      _topic_list.insert(std::make_pair(topic_filter, std::unique_ptr<topic>(new topic(topic_filter))));
     }
 
     _topic_list[topic_filter]->add_subscriber(conn);
   }
 
+  void topic_manager::publish(const std::string& topic_name, const std::string& data) {
+    std::lock_guard<std::mutex> lock(_topic_list_lock);
+
+    for(auto& topic : _topic_list) {
+      if (is_filter_matched(topic.first, topic_name)) {
+        topic.second->publish(data);
+      }
+    }
+  }
+
   void topic_manager::garbage_collect() {
+    std::lock_guard<std::mutex> lock(_topic_list_lock);
+
     for (auto it = _topic_list.begin(); it != _topic_list.end();) {
       auto n = it->second->garbage_collect();
 
@@ -65,7 +79,9 @@ namespace eventhub {
   // This method assumes topic filter is validated through is_valid_topic_filter.
   bool topic_manager::is_filter_matched(const std::string& filter_name, const string& topic_name) {
     for (auto fn_it = filter_name.begin(), tn_it = topic_name.begin(); 
-        fn_it != filter_name.end() && tn_it != topic_name.end(); fn_it++, tn_it++) {
+        tn_it != topic_name.end(); fn_it++, tn_it++) {
+      if (fn_it == filter_name.end()) return false;
+
       if (*fn_it == *tn_it) {
         continue;
       }

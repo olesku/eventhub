@@ -15,16 +15,17 @@ namespace eventhub {
   namespace io {
     typedef std::unordered_map<unsigned int, std::shared_ptr<connection> > connection_list_t;
 
-    class worker : public worker_base, public std::enable_shared_from_this<worker> {
+    class worker : public worker_base {
       public:
-        worker(std::shared_ptr<server> server);
+        worker(server* srv);
         ~worker();
 
-        std::shared_ptr<server>& get_server() { return _server; };
-        topic_manager& get_topic_manager() { return _topic_manager; };
+        server* get_server() { return _server; };
+        void subscribe_connection(std::shared_ptr<connection>& conn, const string& topic_filter_name);
+        void publish(const string& topic_name, const string& data);
 
       private:
-        std::shared_ptr<server> _server;
+        server* _server;
         int        _epoll_fd;
         event_loop _ev;
         connection_list_t _connection_list;

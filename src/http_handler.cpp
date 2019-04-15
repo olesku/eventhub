@@ -11,7 +11,7 @@
 using namespace std;
 
 namespace eventhub {
-  void http_handler::parse(std::shared_ptr<io::connection>& conn, std::shared_ptr<io::worker> worker, const char* buf, size_t n_bytes) {
+  void http_handler::parse(std::shared_ptr<io::connection>& conn, io::worker* worker, const char* buf, size_t n_bytes) {
     auto& req = conn->get_http_request();
 
     switch(req.parse(buf, n_bytes)) {
@@ -28,7 +28,7 @@ namespace eventhub {
     }
   }
 
-  void http_handler::_handle_path(std::shared_ptr<io::connection>& conn, std::shared_ptr<io::worker>& worker, http_request& req) {
+  void http_handler::_handle_path(std::shared_ptr<io::connection>& conn, io::worker* worker, http_request& req) {
     const string& path = req.get_path();
 
     if (path.empty() || path.compare("/") == 0 || path.at(0) != '/') {
@@ -43,7 +43,7 @@ namespace eventhub {
       return;
     }
   
-    const string topic_filter_name = path.substr(1, string::npos);
+    const string topic_filter_name = topic_manager::uri_decode(path.substr(1, string::npos));
     if (!topic_manager::is_valid_topic_filter(topic_filter_name)) {
       _bad_request(conn, topic_filter_name + ": Topic name has invalid format.\r\n");
       return;
@@ -51,7 +51,7 @@ namespace eventhub {
 
     if (_websocket_handshake(conn, req)) {
       // Subscribe client to topic.
-      worker->get_topic_manager().subscribe_connection(conn, topic_filter_name);
+      worker->subscribe_connection(conn, topic_filter_name);
     }
   }
 

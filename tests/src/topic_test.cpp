@@ -69,6 +69,7 @@ TEST_CASE("is_filter_matched", "[topic_manager]") {
   SHOULD_NOT_MATCH("temperature/+/sensor1", "temperature/livingroom/#");
   SHOULD_NOT_MATCH("somethingelse/+/sensor1", "temperature/livingroom/#");
   SHOULD_NOT_MATCH("somethingelse/#", "temperature/livingroom/#");
+  SHOULD_NOT_MATCH("test/channel", "test/channel1");
 
   SECTION("Should match") {
     for (auto p : should_match) {

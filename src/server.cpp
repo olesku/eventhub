@@ -3,6 +3,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <fcntl.h>
+#include <mutex>
 #include "common.hpp"
 #include "server.hpp"
 
@@ -45,19 +46,27 @@ namespace eventhub {
 
     // Start the connection workers.
     for (unsigned i = 0; i < std::thread::hardware_concurrency(); i++) {
+    //for (unsigned i = 0; i < 1; i++) {
       DLOG(INFO) << "Added worker " << i;
-      _connection_workers.add_worker(new io::worker(shared_from_this()));
+      _connection_workers.add_worker(new io::worker(this));
     }
 
     _cur_worker = _connection_workers.begin();
   }
 
-  std::shared_ptr<io::worker>& server::get_worker() {
+  io::worker* server::get_worker() {
     if (_cur_worker == _connection_workers.end()) {
       _cur_worker = _connection_workers.begin();
     }
     
-    return *(_cur_worker++);
+    return (_cur_worker++)->get();
+  }
+
+  void server::publish(const string topic_name, const string data) {
+    std::lock_guard<std::mutex> lock(_publish_lock);
+    for (auto& worker : _connection_workers.get_worker_list()) {
+      worker->publish(topic_name, data);
+    }
   }
 
   void server::stop() {

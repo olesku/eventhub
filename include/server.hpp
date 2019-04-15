@@ -2,6 +2,7 @@
 #define EVENTHUB_SERVER_HPP
 
 #include <memory>
+#include <mutex>
 #include "worker.hpp"
 #include "connection_worker.hpp"
 
@@ -13,19 +14,17 @@ namespace eventhub {
         server();
         ~server();
 
-        std::shared_ptr<eventhub::server> shared_ptr() {
-          return shared_from_this();
-        }
-
         void start();
         void stop();
         const int get_server_socket();
-        std::shared_ptr<io::worker>& get_worker();
+        io::worker* get_worker();
+        void publish(const std::string topic_name, const std::string data);
 
       private:
         int _server_socket;
         worker_group<io::worker> _connection_workers;
         worker_group<io::worker>::iterator _cur_worker;
+        std::mutex _publish_lock;
     };
 }
 

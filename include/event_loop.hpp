@@ -6,6 +6,7 @@
 #include <chrono>
 #include <functional>
 #include <iostream>
+#include <mutex>
 
 namespace eventhub {
   class event_loop {
@@ -32,6 +33,8 @@ namespace eventhub {
       }
 
       inline void process_jobs() {
+        std::lock_guard<std::mutex> lock(_job_queue_lock);
+
         if (_job_queue.empty()) {
           return;
         }
@@ -44,6 +47,7 @@ namespace eventhub {
       }
 
       inline void process_timers() {
+        std::lock_guard<std::mutex> lock(_timer_queue_lock);
         const auto now = _now();
 
         if (_timer_queue.empty() || _next_timer_fire_time > now) {
@@ -75,6 +79,7 @@ namespace eventhub {
       }
 
       inline void add_timer(int64_t delay, std::function<void(timer_ctx_t* ctx)> callback, bool repeat=false) {
+        std::lock_guard<std::mutex> lock(_timer_queue_lock);
         const auto fire_time = _now() + std::chrono::milliseconds(delay);
         timer_ctx_t ctx{fire_time, std::chrono::milliseconds(delay), callback, repeat};
         _decrease_next_firetime_if_less(fire_time);
@@ -91,6 +96,7 @@ namespace eventhub {
       }
 
       inline void add_job(std::function<void()> callback) {
+        std::lock_guard<std::mutex> lock(_job_queue_lock);
         _job_queue.push_back(callback);
       }
 
@@ -101,6 +107,8 @@ namespace eventhub {
     private:
       timer_queue_t _timer_queue;
       job_queue_t _job_queue;
+      std::mutex _timer_queue_lock;
+      std::mutex _job_queue_lock;
       std::chrono::milliseconds _next_timer_fire_time;
 
       void _decrease_next_firetime_if_less(const std::chrono::milliseconds& fire_time) {

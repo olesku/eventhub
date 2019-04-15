@@ -6,7 +6,7 @@
 
 namespace eventhub {
   static int parser_on_data_begin(void* user_data, uint8_t frame_type) {
-    DLOG(INFO) << "on_data_begin";
+    //DLOG(INFO) << "on_data_begin";
     auto obj = static_cast<websocket_request*>(user_data);
 
     obj->clear_payload();
@@ -14,14 +14,14 @@ namespace eventhub {
   }
 
   static int parser_on_data_payload(void* user_data, const char* buff, size_t len) {
-    DLOG(INFO) << "on_data_payload: " << buff;
+    //DLOG(INFO) << "on_data_payload: " << buff;
     auto obj = static_cast<websocket_request*>(user_data);
     obj->append_payload(buff);
     return 0;
   }
 
   static int parser_on_data_end(void* user_data) {
-    DLOG(INFO) << "on_data_end";
+    //DLOG(INFO) << "on_data_end";
     auto obj = static_cast<websocket_request*>(user_data);
     obj->set_state(websocket_request::WS_DATA_READY);
     return 0;
@@ -29,14 +29,14 @@ namespace eventhub {
 
   static int parser_on_control_begin(void* user_data, uint8_t frame_type) {
     auto obj = static_cast<websocket_request*>(user_data);
-    DLOG(INFO) << "on_control_begin";
+    //DLOG(INFO) << "on_control_begin";
     obj->clear_control_payload();
     obj->set_control_frame_type(frame_type);
     return 0;
   }
 
   static int parser_on_control_payload(void* user_data, const char* buff, size_t len) {
-    DLOG(INFO) << "on_control_payload";
+    //DLOG(INFO) << "on_control_payload";
     auto obj = static_cast<websocket_request*>(user_data);
     obj->append_control_payload(buff);
     return 0;
@@ -45,7 +45,7 @@ namespace eventhub {
   static int parser_on_control_end(void* user_data) {
     auto obj = static_cast<websocket_request*>(user_data);
     obj->set_state(websocket_request::state::WS_CONTROL_READY);
-    DLOG(INFO) << "on_control_end";
+    //DLOG(INFO) << "on_control_end";
     return 0;
   }
 
