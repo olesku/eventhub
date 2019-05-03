@@ -3,6 +3,7 @@ include_directories ("${PROJECT_SOURCE_DIR}/tests/include")
 
 add_executable(eventhub_tests
   src/topic_test.cpp
+  src/eventloop_test.cpp
   src/main.cpp
 )
 
