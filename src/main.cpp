@@ -5,6 +5,7 @@
 #include <time.h>
 #include "common.hpp"
 #include "server.hpp"
+#include "redis_subscriber.hpp"
 
 
 using namespace std;
@@ -18,7 +19,7 @@ void shutdown(int sigid) {
 
 int main(int argc, char **argv) {
   struct sigaction sa;
-     time_t rawtime;
+  time_t rawtime;
    struct tm *info;
    char buffer[80];
 
@@ -33,22 +34,28 @@ int main(int argc, char **argv) {
   sigaction(SIGQUIT, &sa, NULL);
   sigaction(SIGHUP, &sa, NULL);
 
-  auto server = make_shared<eventhub::server>();
-  server->start();
+  eventhub::server server_inst;
+  eventhub::redis_subscriber redis_inst;
+
+  redis_inst.connect("localhost", "6379");
+
+  return 0;
+
+  server_inst.start();
 
   while(!stop_eventhub) {
    time( &rawtime );
    info = localtime( &rawtime );
 
    strftime(buffer,80,"%x - %H:%M:%S", info);
-    server->publish("system/clock", buffer);
-    server->publish("ole/fredrik", "Er kul");
-    server->publish("boring/channel", "This is boring");
-    server->publish("eventhub", "rocks!");
+    server_inst.publish("system/clock", buffer);
+    server_inst.publish("ole/fredrik", "Er kul");
+    server_inst.publish("boring/channel", "This is boring");
+    server_inst.publish("eventhub", "rocks!");
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   }
 
-  server->stop();
+  server_inst.stop();
 
   return 0;
 }

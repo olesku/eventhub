@@ -104,7 +104,7 @@ namespace eventhub {
       // Parse request if in parse state.
       switch(client->get_state()) {
         case connection::HTTP_MODE:
-        http_handler::parse(client, this, r_buf, bytes_read);
+          http_handler::parse(client, this, r_buf, bytes_read);
         break;
 
         case connection::WEBSOCKET_MODE:
