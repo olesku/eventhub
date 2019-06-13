@@ -27,7 +27,6 @@ string publish_message_raw(const string& topic, const string& data) {
   s << topic << "\r\n";
   s << "$" << data.length() << "\r\n";
   s << data << "\r\n";
-  s << "\r\n";
 
   return s.str();
 }
