@@ -15,6 +15,8 @@ namespace eventhub {
 
   redis_subscriber::redis_subscriber() {
     DLOG(INFO) << "redis_subscriber destructor.";
+    set_state(READ_COMMAND);
+    _expected_bulk_len = 0;
     _connected = false;
   }
 
@@ -102,63 +104,115 @@ namespace eventhub {
 
       buf[bytes_read] == '\0';
 
-      parse(buf, bytes_read);
+      parse(buf);
     }
   }
 
-  void redis_subscriber::parse(const char* data, ssize_t len) {
-    static char rest_data[BUFSIZE*2];
-    std::string stmt;
-    const char *datap;
-    static ssize_t rest_data_len = 0;
-    ssize_t bytes_processed = 0, stmt_len = 0;
+  void redis_subscriber::parse(const char* data) {
+    std::string cmd;
 
-    // TODO: Handle if rest_data + data is more than size of buffer.
-    if (rest_data_len > 0) {
-      len += rest_data_len;
-      memcpy(rest_data+rest_data_len, data, len);
-      rest_data[len] = '\0';
-      datap = rest_data;
-      rest_data_len = 0;
-    } else {
-      datap = data;
+    _parse_buffer.append(data);
+
+    switch(_state) {
+      case READ_COMMAND:
+        cmd = read_until_crlf();
+        if (cmd.empty()) {
+          return;
+        }
+
+        LOG(INFO) << "CMD: " << cmd;
+        switch(cmd.at(0)) {
+          // Simple string.
+          case '+':
+
+          break;
+
+          // Error.
+          case '-':
+
+          break;
+
+          // Integer.
+          case ':':
+
+          break;
+
+          // Bulk string.
+          case '$':
+            _expected_bulk_len = std::stoi(cmd.substr(1, std::string::npos));
+
+            if (_expected_bulk_len > 0) {
+              set_state(READ_BULK_STRING);
+              LOG(INFO) << "Expect bulk string len: " << _expected_bulk_len;
+            }
+          break;
+
+          // Array.
+          case '*':
+
+          break;
+
+          case '\n':
+            LOG(INFO) << "End of command";
+          break;
+
+        }
+      break;
+
+      case READ_BULK_STRING:
+        auto bulk_str = read_bytes(_expected_bulk_len);
+        if (!bulk_str.empty()) {
+          LOG(INFO) << "Bulk str: " << bulk_str;
+
+          if (!_parse_buffer.empty()) {
+            parse("");
+          }
+        }
+      break;
     }
+  }
 
-    for (auto i = 0, stmt_len = 1; i < len; i++, stmt_len++) {
-      if (datap[i] == '\r' && i+1 < len && datap[i+1] == '\n') {
-        i++; // datap+i is now at '\n'.
-        stmt_len++;
+  const std::string redis_subscriber::read_bytes(size_t n_bytes) {
+    if (_parse_buffer.length() >= n_bytes) {
+      auto bulk = _parse_buffer.substr(0, n_bytes);
 
-        //if (bytes_processed > 0) {
-          stmt.insert(0, datap+bytes_processed, stmt_len);
-          //memcpy(stmt, datap+bytes_processed, stmt_len);       
-        //} else {
-          //stmt.insert(0, datap, stmt_len);
-          //memcpy(stmt, datap, stmt_len);          
-       // }
+      _parse_buffer.replace(0, n_bytes, "");
 
-        //stmt[stmt_len] = '\0';
-
-        process_statement(stmt);
-        LOG(INFO) << "stmt_len: " << stmt_len;
-        bytes_processed += stmt_len;
-        stmt_len = 0;
+      if (_parse_buffer.substr(0, 2).compare("\r\n") == 0) {
+        _parse_buffer.replace(0, 2, "");
+        set_state(READ_COMMAND);
+        return bulk;
+      } else {
+        // TODO: Handle error if we don't have a \r\n here.
+        LOG(INFO) << "Error: bulk string does not end with \r\n";
+        set_state(READ_COMMAND);
+        _parse_buffer.clear();
       }
     }
 
-    //LOG(INFO) << "bytes_processed: " << bytes_processed << " len: " << len;
-
-    if (bytes_processed < len) {
-      rest_data_len = len-bytes_processed;
-      memcpy(rest_data, datap+bytes_processed, rest_data_len);
-      rest_data[rest_data_len] = '\0';
-      //LOG(INFO) << "We have rest data len: " << rest_data_len << " content: '" << rest_data << "'" ;
-    }
+    return "";
   }
 
-  void redis_subscriber::process_statement(const std::string stmt) {
-    LOG(INFO) << "process_statement: " << stmt;
+  const std::string redis_subscriber::read_until_crlf() {
+    LOG(INFO) << "parse_buffer: " << "'" << _parse_buffer << "'";
+    for (auto i = 0, cmd_len = 1; i < _parse_buffer.length(); i++, cmd_len++) {
+      if (_parse_buffer.at(i) == '\r' && i+1 < _parse_buffer.length() && _parse_buffer.at(i+1) == '\n') {
 
+        // \r\n - End of command.
+        if (i == 0) {
+          _parse_buffer.replace(0, 2, "");
+          return "\n";
+        }
 
-  } 
+        i++; // datap+i is now at '\n'.
+        cmd_len--; // remove the '\r' from the command.
+
+        auto cmd = _parse_buffer.substr(0, cmd_len);
+        _parse_buffer.replace(0, cmd_len+2, ""); // +2 because of \r\n.
+        return cmd;
+      }
+    }
+
+    return "";
+  }
 }

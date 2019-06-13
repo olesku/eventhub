@@ -40,7 +40,7 @@ void subscription_callback(const std::string& topic, const std::string& data) {
       if (elm.expected_data.compare(data) == 0) {
         elm.expected_data_matched++;
       }
-    } 
+    }
   }
 }
 
@@ -59,7 +59,7 @@ TEST_CASE("parser", "[redis_subscriber") {
 
       for (unsigned int i = 0; i < data.length(); i+=5) {
         auto str = data.substr(i, 5);
-        rs.parse(str.c_str(), str.length());
+        rs.parse(str.c_str());
       }
 
       REQUIRE(elm.callback_hit == 1);
