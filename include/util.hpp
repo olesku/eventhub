@@ -4,14 +4,14 @@
 #include <string>
 
 namespace eventhub {
-  class util {
-    public:
-      static const std::string base64_encode(const unsigned char* buffer, size_t length);
+class Util {
+public:
+  static const std::string base64Encode(const unsigned char* buffer, size_t length);
 
-    private:
-      util() {};
-      ~util() {};
-  };
-}
+private:
+  Util(){};
+  ~Util(){};
+};
+} // namespace eventhub
 
 #endif

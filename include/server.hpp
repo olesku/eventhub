@@ -1,31 +1,33 @@
 #ifndef EVENTHUB_SERVER_HPP
 #define EVENTHUB_SERVER_HPP
 
+#include "connection_worker.hpp"
+#include "redis_subscriber.hpp"
+#include "worker.hpp"
 #include <memory>
 #include <mutex>
-#include "worker.hpp"
-#include "connection_worker.hpp"
 
 using namespace std;
 
 namespace eventhub {
-    class server : public std::enable_shared_from_this<eventhub::server> {
-      public:
-        server();
-        ~server();
+class Server {
+public:
+  Server();
+  ~Server();
 
-        void start();
-        void stop();
-        const int get_server_socket();
-        io::worker* get_worker();
-        void publish(const std::string topic_name, const std::string data);
+  void start();
+  void stop();
+  const int get_server_socket();
+  Worker* getWorker();
+  void publish(const std::string topic_name, const std::string data);
 
-      private:
-        int _server_socket;
-        worker_group<io::worker> _connection_workers;
-        worker_group<io::worker>::iterator _cur_worker;
-        std::mutex _publish_lock;
-    };
-}
+private:
+  int _server_socket;
+  WorkerGroup<Worker> _connection_workers;
+  WorkerGroup<Worker>::iterator _cur_worker;
+  std::mutex _publish_lock;
+  RedisSubscriber _redis_subscriber;
+};
+} // namespace eventhub
 
 #endif

@@ -1,3 +1,5 @@
 build/*
 .vscode
 eventhub.code-workspace
+tests/integration/clienttest/clienttest
+tests/integration/clienttest/vendor/*

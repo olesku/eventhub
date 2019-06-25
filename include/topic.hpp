@@ -1,27 +1,27 @@
 #ifndef EVENTHUB_TOPIC_HPP
 #define EVENTHUB_TOPIC_HPP
 
-#include <memory>
-#include <deque>
-#include <mutex>
 #include "connection.hpp"
+#include <deque>
+#include <memory>
+#include <mutex>
 
 namespace eventhub {
-  class topic { 
-    public:
-      topic(const std::string& topic_filter) { _id = topic_filter; };
-      ~topic() {};
+class Topic {
+public:
+  Topic(const std::string& topic_filter) { _id = topic_filter; };
+  ~Topic(){};
 
-      void add_subscriber(std::shared_ptr<io::connection>& conn);
-      void publish(const string& data);
-      size_t garbage_collect();
+  void addSubscriber(std::shared_ptr<Connection>& conn);
+  void publish(const string& data);
+  size_t garbageCollect();
 
-    private:
-      std::string _id;
-      uint64_t _n_messages_sent;
-      std::deque<std::weak_ptr<io::connection>> _subscriber_list;
-      std::mutex  _subscriber_lock;
-  };
+private:
+  std::string _id;
+  uint64_t _n_messages_sent;
+  std::deque<std::weak_ptr<Connection>> _subscriber_list;
+  std::mutex _subscriber_lock;
 };
+}; // namespace eventhub
 
 #endif

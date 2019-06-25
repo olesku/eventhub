@@ -4,18 +4,16 @@
 #include <string>
 
 namespace eventhub {
-  namespace websocket {
-    class response {
-      public:
-        response(const std::string& data, uint8_t opcode = 0x1, uint8_t fin=1);
-        ~response();
+class WebsocketResponse {
+public:
+  WebsocketResponse(const std::string& data, uint8_t opcode = 0x1, uint8_t fin = 1);
+  ~WebsocketResponse();
 
-        const char* ws_format();
+  const std::string& ws_format();
 
-        private:
-          char* _buf;
-    };
-  }
-}
+private:
+  std::string _sbuf;
+};
+} // namespace eventhub
 
 #endif

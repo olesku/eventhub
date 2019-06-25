@@ -1,72 +1,80 @@
-#include <string.h>
-#include <thread>
-#include <sys/epoll.h>
-#include <vector>
+#ifndef EVENTHUB_REDIS_SUBSCRIBER_HPP
+#define EVENTHUB_REDIS_SUBSCRIBER_HPP
+
 #include <functional>
+#include <map>
+#include <mutex>
+#include <string.h>
+#include <sys/epoll.h>
+#include <thread>
+#include <vector>
 
 namespace eventhub {
-  using redis_subscriber_callback = std::function<void(const std::string& channel, const std::string& data)>;
-  class redis_subscriber {
+using redis_pmessage_callback_t = std::function<void(const std::string& pattern, const std::string& channel, const std::string& data)>;
+class RedisSubscriber {
+  typedef enum {
+    READ_RESP        = 0,
+    READ_BULK_STRING = 1
+  } REDIS_PARSER_STATE;
 
-    typedef enum {
-      READ_RESP,
-      READ_BULK_STRING
-    } PARSER_STATE;
+  typedef enum {
+    REDIS_SIMPLE_STRING = '+',
+    REDIS_ERROR         = '-',
+    REDIS_INTEGER       = ':',
+    REDIS_BULK_STRING   = '$',
+    REDIS_ARRAY         = '*'
+  } REDIS_DATA_TYPE;
 
-    typedef enum {
-      REDIS_SIMPLE_STRING = '+',
-      REDIS_ERROR         = '-',
-      REDIS_INTEGER       = ':',
-      REDIS_BULK_STRING   = '$',
-      REDIS_ARRAY         = '*'
-    } REDIS_DATA_TYPE;
+  typedef struct {
+    REDIS_DATA_TYPE type;
+    std::string data;
+    size_t len;
+  } redis_obj_t;
 
-    typedef struct {
-      REDIS_DATA_TYPE type;
-      std::string data;
-      size_t len;
-    } redis_obj_t;
+  typedef std::vector<redis_obj_t> redis_array_t;
 
-    typedef std::vector<redis_obj_t> redis_array_t;
+private:
+  std::thread _thread;
+  std::mutex _mtx;
+  int _fd, _epoll_fd;
 
-    private:
-      std::thread _thread;
-      int _fd, _epoll_fd;
+  std::string _host;
+  std::string _port;
+  bool _connected, _stop;
 
-      std::string _host;
-      unsigned int _port;
-      bool _connected;
+  REDIS_PARSER_STATE _state;
 
-      redis_subscriber_callback _callback;
-      PARSER_STATE _state;
+  size_t _expected_bulk_len;
+  size_t _expected_array_len;
 
-      size_t _expected_bulk_len;
-      size_t _expected_array_len;
+  std::string _parse_buffer;
+  std::string _bulk_buffer;
 
-      std::string _parse_buffer;
-      std::string _bulk_buffer;
+  redis_array_t _result_array;
 
-      redis_array_t _result_array;
+  std::map<std::string, redis_pmessage_callback_t> _pmessage_callbacks;
 
-      void thread_main();
-      void set_state(PARSER_STATE state) { _state = state; }
+  void _clearParserState();
+  void _threadMain();
+  void _handleResp(const std::string& data);
+  void _handlePmessage();
+  void _handleMessage();
+  void _reconnect();
+  const std::string _readUntilCRLF();
+  const std::string _readBytes(size_t bulk_size);
+  inline void _set_parser_state(REDIS_PARSER_STATE state) { _state = state; }
+  inline REDIS_PARSER_STATE _get_parser_state() { return _state; }
+  void _parse(const char* data);
 
-    public:
-      redis_subscriber();
-      ~redis_subscriber();
+public:
+  RedisSubscriber();
+  ~RedisSubscriber();
 
-      bool connect(const std::string& host, const std::string& port);
-      void disconnect();
-      void set_callback(redis_subscriber_callback callback);
-      void psubscribe(const std::string& pattern);
-      void parse(const char* data);
+  bool connect(const std::string& host, const std::string& port);
+  void disconnect();
+  inline bool isConnected() { return _connected; }
+  void psubscribe(const std::string& pattern, redis_pmessage_callback_t callback);
+};
+} // namespace eventhub
 
-      const std::string read_until_crlf();
-      const std::string read_bytes(size_t bulk_size);
-      void handle_resp(const std::string& data);
-      void result_array_push(REDIS_DATA_TYPE type, const std::string& data);
-      void handle_pmessage(redis_array_t& data);
-      void clear_parser_state();
-
-  };
-}
+#endif

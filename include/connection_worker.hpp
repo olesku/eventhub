@@ -1,45 +1,43 @@
 #ifndef EVENTHUB_CONNECTION_WORKER_HPP
 #define EVENTHUB_CONNECTION_WORKER_HPP
 
-#include <memory>
-#include <vector>
-#include <mutex>
-#include "worker.hpp"
 #include "connection.hpp"
 #include "event_loop.hpp"
 #include "topic_manager.hpp"
+#include "worker.hpp"
+#include <memory>
+#include <mutex>
+#include <vector>
 
 namespace eventhub {
-  class server; // Forward declaration.
+class Server; // Forward declaration.
 
-  namespace io {
-    typedef std::unordered_map<unsigned int, std::shared_ptr<connection> > connection_list_t;
+typedef std::unordered_map<unsigned int, std::shared_ptr<Connection>> connection_list_t;
 
-    class worker : public worker_base {
-      public:
-        worker(server* srv);
-        ~worker();
+class Worker : public WorkerBase {
+public:
+  Worker(Server* srv);
+  ~Worker();
 
-        server* get_server() { return _server; };
-        void subscribe_connection(std::shared_ptr<connection>& conn, const string& topic_filter_name);
-        void publish(const string& topic_name, const string& data);
+  Server* getServer() { return _server; };
+  void subscribeConnection(std::shared_ptr<Connection>& conn, const string& topic_filter_name);
+  void publish(const string& topic_name, const string& data);
 
-      private:
-        server* _server;
-        int        _epoll_fd;
-        event_loop _ev;
-        connection_list_t _connection_list;
-        std::mutex _connection_list_mutex;
-        topic_manager _topic_manager;
-        
-        void _accept_connection();
-        void _add_connection(int fd, struct sockaddr_in* csin);
-        void _remove_connection(const connection_list_t::iterator& it);
-        void _read(std::shared_ptr<connection>& conn);
+private:
+  Server* _server;
+  int _epoll_fd;
+  EventLoop _ev;
+  connection_list_t _connection_list;
+  std::mutex _connection_list_mutex;
+  TopicManager _topic_manager;
 
-        void worker_main();
-    };
-  }
-}
+  void _acceptConnection();
+  void _addConnection(int fd, struct sockaddr_in* csin);
+  void _removeConnection(const connection_list_t::iterator& it);
+  void _read(std::shared_ptr<Connection>& conn);
+
+  void workerMain();
+};
+} // namespace eventhub
 
 #endif

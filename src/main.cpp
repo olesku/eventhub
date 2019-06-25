@@ -1,12 +1,11 @@
+#include "common.hpp"
+#include "redis_subscriber.hpp"
+#include "server.hpp"
 #include <iostream>
 #include <memory>
 #include <signal.h>
 #include <stdio.h>
 #include <time.h>
-#include "common.hpp"
-#include "server.hpp"
-#include "redis_subscriber.hpp"
-
 
 using namespace std;
 
@@ -17,11 +16,11 @@ void shutdown(int sigid) {
   stop_eventhub = 1;
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   struct sigaction sa;
   time_t rawtime;
-   struct tm *info;
-   char buffer[80];
+  struct tm* info;
+  char buffer[80];
 
   FLAGS_logtostderr = 1;
   google::InitGoogleLogging(argv[0]);
@@ -34,28 +33,15 @@ int main(int argc, char **argv) {
   sigaction(SIGQUIT, &sa, NULL);
   sigaction(SIGHUP, &sa, NULL);
 
-  eventhub::server server_inst;
-  eventhub::redis_subscriber redis_inst;
+  eventhub::Server server;
 
-  redis_inst.connect("localhost", "6379");
+  server.start();
 
-  return 0;
-
-  server_inst.start();
-
-  while(!stop_eventhub) {
-   time( &rawtime );
-   info = localtime( &rawtime );
-
-   strftime(buffer,80,"%x - %H:%M:%S", info);
-    server_inst.publish("system/clock", buffer);
-    server_inst.publish("ole/fredrik", "Er kul");
-    server_inst.publish("boring/channel", "This is boring");
-    server_inst.publish("eventhub", "rocks!");
+  while (!stop_eventhub) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   }
 
-  server_inst.stop();
+  server.stop();
 
   return 0;
 }

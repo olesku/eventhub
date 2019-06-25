@@ -23,3 +23,14 @@ include_directories(${OPENSSL_INCLUDE_DIR})
 
 add_subdirectory(src)
 add_subdirectory(tests)
+
+
+file(GLOB_RECURSE ALL_SOURCE_FILES *.cpp *.hpp *.h)
+
+add_custom_target(
+        clangformat
+        COMMAND /usr/bin/clang-format
+        -style=file
+        -i
+        ${ALL_SOURCE_FILES}
+)
