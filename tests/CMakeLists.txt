@@ -5,6 +5,7 @@ add_executable(eventhub_tests
   src/topic_test.cpp
   src/eventloop_test.cpp
   src/redis_subscriber_test.cpp
+  src/message_test.cpp
   src/main.cpp
 )
 

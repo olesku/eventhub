@@ -120,7 +120,7 @@ void Worker::_read(std::shared_ptr<Connection>& client) {
       break;
 
     case Connection::WEBSOCKET_MODE:
-      WebsocketHandler::parse(client, r_buf, bytes_read);
+      WebsocketHandler::parse(client, this, r_buf, bytes_read);
       break;
 
     default:

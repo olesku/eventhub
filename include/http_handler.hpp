@@ -11,13 +11,13 @@ namespace eventhub {
 
 class HTTPHandler {
 public:
-  static void parse(std::shared_ptr<Connection>& conn, Worker* worker, const char* buf, size_t n_bytes);
+  static void parse(std::shared_ptr<Connection>& conn, Worker* wrk, const char* buf, size_t n_bytes);
 
 private:
   HTTPHandler(){};
   ~HTTPHandler(){};
 
-  static void _handlePath(std::shared_ptr<Connection>& conn, Worker* worker, HTTPRequest& req);
+  static void _handlePath(std::shared_ptr<Connection>& conn, Worker* wrk, HTTPRequest& req);
   static bool _websocketHandshake(std::shared_ptr<Connection>& conn, HTTPRequest& req);
   static void _badRequest(std::shared_ptr<Connection>& conn, const std::string reason);
 };

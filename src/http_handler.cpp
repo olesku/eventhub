@@ -11,7 +11,7 @@
 using namespace std;
 
 namespace eventhub {
-void HTTPHandler::parse(std::shared_ptr<Connection>& conn, Worker* Worker, const char* buf, size_t n_bytes) {
+void HTTPHandler::parse(std::shared_ptr<Connection>& conn, Worker* wrk, const char* buf, size_t n_bytes) {
   auto& req = conn->get_http_request();
 
   switch (req.parse(buf, n_bytes)) {
@@ -20,7 +20,7 @@ void HTTPHandler::parse(std::shared_ptr<Connection>& conn, Worker* Worker, const
       break;
 
     case HTTPRequest::HTTP_REQ_OK:
-      _handlePath(conn, Worker, req);
+      _handlePath(conn, wrk, req);
       break;
 
     default:
@@ -28,7 +28,7 @@ void HTTPHandler::parse(std::shared_ptr<Connection>& conn, Worker* Worker, const
   }
 }
 
-void HTTPHandler::_handlePath(std::shared_ptr<Connection>& conn, Worker* Worker, HTTPRequest& req) {
+void HTTPHandler::_handlePath(std::shared_ptr<Connection>& conn, Worker* wrk, HTTPRequest& req) {
   const string& path = req.get_path();
 
   if (path.empty() || path.compare("/") == 0 || path.at(0) != '/') {
@@ -51,7 +51,7 @@ void HTTPHandler::_handlePath(std::shared_ptr<Connection>& conn, Worker* Worker,
 
   if (_websocketHandshake(conn, req)) {
     // Subscribe client to topic.
-    Worker->subscribeConnection(conn, topic_filter_name);
+    wrk->subscribeConnection(conn, topic_filter_name);
   }
 }
 
