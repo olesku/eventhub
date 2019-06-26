@@ -2,6 +2,7 @@
 add_library( libeventhub
   picohttpparser.c
   ws_parser.cpp
+  hashids.c
   util.cpp
   http_request.cpp
   http_response.cpp
