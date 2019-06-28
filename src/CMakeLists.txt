@@ -16,6 +16,7 @@ add_library( libeventhub
   connection.cpp
   connection_worker.cpp
   redis_subscriber.cpp
+  access_controller.cpp
 )
 
 add_executable(eventhub main.cpp)
