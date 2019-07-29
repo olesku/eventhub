@@ -1,20 +1,29 @@
+#ifndef EVENTHUB_ACCESSCONTROLLER_HPP
+#define EVENTHUB_ACCESSCONTROLLER_HPP
+
 #include <string>
 #include <memory>
+#include <vector>
+#include "jwt/jwt.hpp"
 #include "connection.hpp"
 
 namespace eventhub {
   class AccessController {
-    typedef enum {
-      PUBLISH_ACCESS,
-      SUBSCRIBE_ACCESS
-    } ACCESS_TYPE;
-
     private:
+      bool _token_loaded;
+      jwt::jwt_object _token;
+      std::vector<std::string> _publish_acl;
+      std::vector<std::string> _subscribe_acl;
 
     public:
       AccessController();
       ~AccessController();
 
-      static bool hasAccess(std::shared_ptr<Connection>& conn, ACCESS_TYPE type, const std::string& topic);
+      bool loadToken(const std::string& jwt_token, const std::string& secret);
+      bool allowPublish(const std::string& topic);
+      bool allowSubscribe(const std::string& topic);
+      bool allowCreateToken(const std::string& path);
   };
 }
+
+#endif
