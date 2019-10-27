@@ -1,6 +1,5 @@
-#include "common.hpp"
-#include "redis_subscriber.hpp"
-#include "server.hpp"
+#include "Common.hpp"
+#include "Server.hpp"
 #include <iostream>
 #include <memory>
 #include <signal.h>
@@ -9,11 +8,11 @@
 
 using namespace std;
 
-int stop_eventhub = 0;
+int stopEventhub = 0;
 
 void shutdown(int sigid) {
   LOG(INFO) << "Exiting.";
-  stop_eventhub = 1;
+  stopEventhub = 1;
 }
 
 int main(int argc, char** argv) {

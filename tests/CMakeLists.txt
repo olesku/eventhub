@@ -2,10 +2,10 @@
 include_directories ("${PROJECT_SOURCE_DIR}/tests/include" "${PROJECT_SOURCE_DIR}/include")
 
 add_executable(eventhub_tests
-  src/topic_test.cpp
-  src/eventloop_test.cpp
-  src/redis_test.cpp
-  src/access_controller_test.cpp
+  src/TopicTest.cpp
+  src/EventLoopTest.cpp
+  src/RedisTest.cpp
+  src/AccessControllerTest.cpp
   src/main.cpp
 )
 

@@ -1,8 +1,8 @@
 #ifndef EVENTHUB_WEBSOCKET_HANDLER_HPP
 #define EVENTHUB_WEBSOCKET_HANDLER_HPP
 
-#include "connection.hpp"
-#include "connection_worker.hpp"
+#include "Connection.hpp"
+#include "ConnectionWorker.hpp"
 #include "websocket/StateMachine.hpp"
 #include <memory>
 
@@ -11,7 +11,7 @@ namespace websocket {
 
 class Handler {
 public:
-  static void process(std::shared_ptr<Connection>& conn, Worker* wrk, char* buf, size_t n_bytes);
+  static void process(std::shared_ptr<Connection>& conn, Worker* wrk, char* buf, size_t nBytes);
 
 private:
   Handler(){};

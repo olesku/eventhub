@@ -3,8 +3,8 @@
 
 #include <string>
 
-#include "http_request.hpp"
-#include "http_response.hpp"
+#include "HTTPRequest.hpp"
+#include "HTTPResponse.hpp"
 #include "websocket/ws_parser.h"
 
 namespace eventhub {
@@ -21,8 +21,8 @@ public:
   StateMachine();
   ~StateMachine() {};
 
-  const state get_state();
-  state set_state(state new_state);
+  const state getState();
+  state setState(state newState);
 
   state process(char* buf, ssize_t len);
 
@@ -30,11 +30,11 @@ public:
   void clearControlPayload();
   void appendPayload(const char* data);
   void appendControlPayload(const char* data);
-  void set_control_frame_type(uint8_t frame_type);
+  void setControlFrameType(uint8_t frameType);
 
-  const std::string& get_payload();
-  const std::string& get_control_payload();
-  uint8_t get_control_frame_type();
+  const std::string& getPayload();
+  const std::string& getControlPayload();
+  uint8_t getControlFrameType();
 
 private:
   state _state;

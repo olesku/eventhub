@@ -1,22 +1,22 @@
 #include "websocket/Handler.hpp"
 #include "websocket/StateMachine.hpp"
 #include "websocket/Response.hpp"
-#include "common.hpp"
-#include "config.hpp"
-#include "connection.hpp"
-#include "topic_manager.hpp"
+#include "Common.hpp"
+#include "Config.hpp"
+#include "Connection.hpp"
+#include "TopicManager.hpp"
 #include "jwt/json/json.hpp"
-#include "server.hpp"
-#include "redis.hpp"
+#include "Server.hpp"
+#include "Redis.hpp"
 
 namespace eventhub {
 namespace websocket {
 
-void Handler::process(std::shared_ptr<Connection>& conn, Worker* wrk, char* buf, size_t n_bytes) {
-  auto& fsm = conn->get_ws_fsm();
-  fsm.process(buf, n_bytes);
+void Handler::process(std::shared_ptr<Connection>& conn, Worker* wrk, char* buf, size_t nBytes) {
+  auto& fsm = conn->getWsFsm();
+  fsm.process(buf, nBytes);
 
-  switch (fsm.get_state()) {
+  switch (fsm.getState()) {
     case StateMachine::state::WS_CONTROL_READY:
       _handleControlFrame(conn, wrk, fsm);
       fsm.clearControlPayload();
@@ -30,7 +30,7 @@ void Handler::process(std::shared_ptr<Connection>& conn, Worker* wrk, char* buf,
 }
 
 void Handler::_handleDataFrame(std::shared_ptr<Connection>& conn, Worker* wrk, StateMachine& fsm) {
-  auto& payload = fsm.get_payload();
+  auto& payload = fsm.getPayload();
 
   LOG(INFO) << "Data: " << payload;
 
@@ -53,20 +53,19 @@ void Handler::_handleDataFrame(std::shared_ptr<Connection>& conn, Worker* wrk, S
 }
 
 void Handler::_handleControlFrame(std::shared_ptr<Connection>& conn, Worker* wrk, StateMachine& fsm) {
-  DLOG(INFO) << "Control Type: " << fsm.get_control_frame_type() << " payload: " << fsm.get_control_payload();
+  DLOG(INFO) << "Control Type: " << fsm.getControlFrameType() << " payload: " << fsm.getControlPayload();
 
-  switch (fsm.get_control_frame_type()) {
-    case response::opcodes::CLOSE_FRAME: // Close
-      DLOG(INFO) << "Recv close frame: " << fsm.get_payload() << " " << fsm.get_control_payload();
+  switch (fsm.getControlFrameType()) {
+    case response::Opcodes::CLOSE_FRAME: // Close
       conn->shutdown();
     break;
 
-    case response::opcodes::PING_FRAME: // Ping
+    case response::Opcodes::PING_FRAME: // Ping
       DLOG(INFO) << "Sent PONG to " << conn->getIP();
-      response::sendData(conn, fsm.get_control_payload(), response::opcodes::PONG_FRAME, 1);
+      response::sendData(conn, fsm.getControlPayload(), response::Opcodes::PONG_FRAME, 1);
     break;
 
-    case response::opcodes::PONG_FRAME: // Pong
+    case response::Opcodes::PONG_FRAME: // Pong
       DLOG(INFO) << "Got PONG from" << conn->getIP();
     break;
   }
@@ -81,7 +80,7 @@ void sendErrorMsg(std::shared_ptr<Connection>& conn, const std::string& errMsg, 
   } catch(...) {}
 
   if (disconnect) {
-    response::sendData(conn, "", response::opcodes::CLOSE_FRAME, 1);
+    response::sendData(conn, "", response::Opcodes::CLOSE_FRAME, 1);
     conn->shutdown();
   }
 
@@ -91,7 +90,7 @@ void Handler::_handleClientCommand(std::shared_ptr<Connection>& conn, Worker* wr
   LOG(INFO) << "Command: '" << command << "'";
   LOG(INFO) << "Arg: '" << arg << "'";
 
-  auto& accessController = conn->get_access_controller();
+  auto& accessController = conn->getAccessController();
 
   if (command.compare("AUTH") == 0) {
     auto authSuccess = accessController.authenticate(arg, Config.getJWTSecret());
@@ -156,14 +155,14 @@ void Handler::_handleClientCommand(std::shared_ptr<Connection>& conn, Worker* wr
 
 
     try {
-      auto cacheId = wrk->getServer()->getRedis().CacheMessage(topicName, payload);
+      auto cacheId = wrk->getServer()->getRedis().cacheMessage(topicName, payload);
       if (cacheId.length() == 0) {
         LOG(ERROR) << "Failed to cache message to Redis.";
         sendErrorMsg(conn, "Failed to cache message to Redis. Discarding.", false);
         return;
       }
 
-      wrk->getServer()->getRedis().PublishMessage(topicName, cacheId, payload);
+      wrk->getServer()->getRedis().publishMessage(topicName, cacheId, payload);
     } catch(std::exception &e) {
       LOG(ERROR) << "Redis error while publishing message: " << e.what();
       sendErrorMsg(conn, "Redis error while publishing message.", false);

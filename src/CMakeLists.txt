@@ -1,21 +1,21 @@
 
 add_library( libeventhub
   picohttpparser.c
-  redis.cpp
-  util.cpp
-  http_request.cpp
-  http_response.cpp
-  http_handler.cpp
+  Redis.cpp
+  Util.cpp
+  HTTPRequest.cpp
+  HTTPResponse.cpp
+  HTTPHandler.cpp
   websocket/ws_parser.cpp
   websocket/StateMachine.cpp
   websocket/Handler.cpp
   websocket/Response.cpp
-  topic.cpp
-  topic_manager.cpp
-  server.cpp
-  connection.cpp
-  connection_worker.cpp
-  access_controller.cpp
+  Topic.cpp
+  TopicManager.cpp
+  Server.cpp
+  Connection.cpp
+  ConnectionWorker.cpp
+  AccessController.cpp
 )
 
 add_executable(eventhub main.cpp)
