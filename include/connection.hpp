@@ -1,8 +1,9 @@
 #ifndef EVENTHUB_CONNECTION_HPP
 #define EVENTHUB_CONNECTION_HPP
 
+#include "access_controller.hpp"
 #include "http_request.hpp"
-#include "websocket_request.hpp"
+#include "websocket/StateMachine.hpp"
 #include <ctime>
 #include <memory>
 #include <mutex>
@@ -37,7 +38,8 @@ public:
   inline state set_state(state new_state) { return _state = new_state; };
   inline const state get_state() { return _state; };
   inline HTTPRequest& get_http_request() { return _http_request; }
-  inline WebsocketRequest& get_ws_request() { return _ws_request; }
+  inline websocket::StateMachine& get_ws_fsm() { return _ws_fsm; }
+  inline AccessController& get_access_controller() { return _access_controller; }
 
   inline void shutdown() {
     !_is_shutdown && ::shutdown(_fd, SHUT_RDWR);
@@ -53,7 +55,8 @@ private:
   string _write_buffer;
   std::mutex _write_lock;
   HTTPRequest _http_request;
-  WebsocketRequest _ws_request;
+  websocket::StateMachine _ws_fsm;
+  AccessController _access_controller;
   state _state;
   bool _is_shutdown;
 

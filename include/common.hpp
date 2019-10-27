@@ -7,7 +7,7 @@
 #include <glog/logging.h>
 #include <string>
 
-#define EPOLL_MAX_TIMEOUT 1000
+#define EPOLL_MAX_TIMEOUT 100
 #define MAXEVENTS 1024
 
 inline std::string& str_tolower(std::string& s) {

@@ -1,0 +1,2 @@
+* Implement authorization as header or query string.
+* Should we Base64 encode the payload ?

@@ -1,7 +1,7 @@
 #include "topic.hpp"
 #include "common.hpp"
 #include "connection.hpp"
-#include "websocket_response.hpp"
+#include "websocket/Response.hpp"
 #include <memory>
 #include <string>
 
@@ -24,8 +24,7 @@ void Topic::publish(const string& data) {
     }
 
     DLOG(INFO) << "Publish " << data;
-    WebsocketResponse ws_frame(data);
-    subscriber->write(ws_frame.ws_format());
+    websocket::response::sendData(subscriber, data);
   }
 }
 

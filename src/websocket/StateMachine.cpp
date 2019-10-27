@@ -1,13 +1,14 @@
-#include <string>
+#include "websocket/StateMachine.hpp"
 
+#include <string>
 #include "common.hpp"
-#include "websocket_request.hpp"
-#include "ws_parser.h"
+#include "websocket/ws_parser.h"
 
 namespace eventhub {
+namespace websocket {
 static int parser_on_data_begin(void* user_data, uint8_t frame_type) {
   //DLOG(INFO) << "on_data_begin";
-  auto obj = static_cast<WebsocketRequest*>(user_data);
+  auto obj = static_cast<StateMachine*>(user_data);
 
   obj->clearPayload();
   return 0;
@@ -15,20 +16,20 @@ static int parser_on_data_begin(void* user_data, uint8_t frame_type) {
 
 static int parser_on_data_payload(void* user_data, const char* buff, size_t len) {
   //DLOG(INFO) << "on_data_payload: " << buff;
-  auto obj = static_cast<WebsocketRequest*>(user_data);
+  auto obj = static_cast<StateMachine*>(user_data);
   obj->appendPayload(buff);
   return 0;
 }
 
 static int parser_on_data_end(void* user_data) {
   //DLOG(INFO) << "on_data_end";
-  auto obj = static_cast<WebsocketRequest*>(user_data);
-  obj->set_state(WebsocketRequest::WS_DATA_READY);
+  auto obj = static_cast<StateMachine*>(user_data);
+  obj->set_state(StateMachine::WS_DATA_READY);
   return 0;
 }
 
 static int parser_on_control_begin(void* user_data, uint8_t frame_type) {
-  auto obj = static_cast<WebsocketRequest*>(user_data);
+  auto obj = static_cast<StateMachine*>(user_data);
   //DLOG(INFO) << "on_control_begin";
   obj->clearControlPayload();
   obj->set_control_frame_type(frame_type);
@@ -37,19 +38,19 @@ static int parser_on_control_begin(void* user_data, uint8_t frame_type) {
 
 static int parser_on_control_payload(void* user_data, const char* buff, size_t len) {
   //DLOG(INFO) << "on_control_payload";
-  auto obj = static_cast<WebsocketRequest*>(user_data);
+  auto obj = static_cast<StateMachine*>(user_data);
   obj->appendControlPayload(buff);
   return 0;
 }
 
 static int parser_on_control_end(void* user_data) {
-  auto obj = static_cast<WebsocketRequest*>(user_data);
-  obj->set_state(WebsocketRequest::state::WS_CONTROL_READY);
+  auto obj = static_cast<StateMachine*>(user_data);
+  obj->set_state(StateMachine::state::WS_CONTROL_READY);
   //DLOG(INFO) << "on_control_end";
   return 0;
 }
 
-WebsocketRequest::WebsocketRequest() {
+StateMachine::StateMachine() {
   ws_parser_init(&_ws_parser);
 
   _ws_parser_callbacks = {
@@ -64,50 +65,52 @@ WebsocketRequest::WebsocketRequest() {
   set_state(state::WS_PARSE);
 }
 
-const WebsocketRequest::state WebsocketRequest::get_state() {
+const StateMachine::state StateMachine::get_state() {
   return _state;
 }
 
-WebsocketRequest::state WebsocketRequest::set_state(state new_state) {
+StateMachine::state StateMachine::set_state(state new_state) {
   return _state = new_state;
 }
 
-void WebsocketRequest::clearPayload() {
+void StateMachine::clearPayload() {
   _payload_buf.clear();
   set_state(state::WS_PARSE);
 }
 
-void WebsocketRequest::clearControlPayload() {
+void StateMachine::clearControlPayload() {
   _control_payload_buf.clear();
   set_state(state::WS_PARSE);
 }
 
-void WebsocketRequest::appendPayload(const char* data) {
+void StateMachine::appendPayload(const char* data) {
   _payload_buf.append(data);
 }
 
-void WebsocketRequest::appendControlPayload(const char* data) {
+void StateMachine::appendControlPayload(const char* data) {
   _control_payload_buf.append(data);
 }
 
-void WebsocketRequest::set_control_frame_type(uint8_t frame_type) {
+void StateMachine::set_control_frame_type(uint8_t frame_type) {
   _control_frame_type = frame_type;
 }
 
-const std::string& WebsocketRequest::get_payload() {
+const std::string& StateMachine::get_payload() {
   return _payload_buf;
 }
 
-const std::string& WebsocketRequest::get_control_payload() {
+const std::string& StateMachine::get_control_payload() {
   return _control_payload_buf;
 }
 
-uint8_t WebsocketRequest::get_control_frame_type() {
+uint8_t StateMachine::get_control_frame_type() {
   return _control_frame_type;
 }
 
-WebsocketRequest::state WebsocketRequest::parse(char* buf, ssize_t len) {
+StateMachine::state StateMachine::process(char* buf, ssize_t len) {
   ws_parser_execute(&_ws_parser, &_ws_parser_callbacks, this, buf, len);
   return _state;
+}
+
 }
 } // namespace eventhub

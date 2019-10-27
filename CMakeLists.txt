@@ -21,6 +21,14 @@ include_directories(${Threads_INCLUDE_DIR})
 find_package(OpenSSL REQUIRED)
 include_directories(${OPENSSL_INCLUDE_DIR})
 
+# Hiredis
+find_path(HIREDIS_HEADER hiredis)
+include_directories(${HIREDIS_HEADER})
+
+# Redis++ https://github.com/sewenew/redis-plus-plus
+find_path(REDIS_PLUS_PLUS_HEADER sw)
+include_directories(${REDIS_PLUS_PLUS_HEADER})
+
 add_subdirectory(src)
 add_subdirectory(tests)
 

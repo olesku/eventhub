@@ -33,15 +33,8 @@ int main(int argc, char** argv) {
   sigaction(SIGQUIT, &sa, NULL);
   sigaction(SIGHUP, &sa, NULL);
 
-  eventhub::Server server;
-
+  eventhub::Server server("127.0.0.1", 6379);
   server.start();
-
-  while (!stop_eventhub) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-  }
-
-  server.stop();
 
   return 0;
 }

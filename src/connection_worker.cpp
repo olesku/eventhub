@@ -14,8 +14,7 @@
 #include "event_loop.hpp"
 #include "http_handler.hpp"
 #include "server.hpp"
-#include "websocket_handler.hpp"
-#include "websocket_response.hpp"
+#include "websocket/Handler.hpp"
 #include "worker.hpp"
 
 using namespace std;
@@ -120,7 +119,7 @@ void Worker::_read(std::shared_ptr<Connection>& client) {
       break;
 
     case Connection::WEBSOCKET_MODE:
-      WebsocketHandler::parse(client, this, r_buf, bytes_read);
+      websocket::Handler::process(client, this, r_buf, bytes_read);
       break;
 
     default:

@@ -2,7 +2,7 @@
 #include <stdio.h>
 #endif
 
-#include "ws_parser.h"
+#include "websocket/ws_parser.h"
 
 namespace eventhub {
 enum {

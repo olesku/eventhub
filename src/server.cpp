@@ -7,10 +7,13 @@
 #include <string.h>
 #include <sys/socket.h>
 
+extern int stop_eventhub;
+
 namespace eventhub {
 
-Server::Server() {
+Server::Server(const string redisHost, int redisPort) : redis(redisHost, redisPort) {
 }
+
 
 Server::~Server() {
   DLOG(INFO) << "Server destructor.";
@@ -43,23 +46,46 @@ void Server::start() {
   LOG(INFO) << "Listening on port 8080.";
 
   // Start the connection workers.
-  for (unsigned i = 0; i < std::thread::hardware_concurrency(); i++) {
+  for (unsigned i = 0; i < 1; i++) {//std::thread::hardware_concurrency(); i++) {
     DLOG(INFO) << "Added worker " << i;
     _connection_workers.addWorker(new Worker(this));
   }
 
   _cur_worker = _connection_workers.begin();
 
+  redis.SetPrefix("eventhub");
+
+  RedisMsgCallback cb = [&](std::string pattern, std::string topic, std::string msg) {
+    LOG(INFO) << "Redis callback: " << pattern << " " << topic << " " << msg;
+    publish(topic, msg);
+  };
+
   // Connect to redis.
-  _redis_subscriber.connect("127.0.0.1", "6379");
-  LOG_IF(FATAL, !_redis_subscriber.isConnected()) << "Could not connect to Redis.";
+  redis.Psubscribe("*", cb);
 
-  _redis_subscriber.psubscribe("eventhub.*", [&](const std::string& pattern, const std::string& channel, const std::string& data) {
-    auto ch = channel.substr(9, std::string::npos);
+  bool reconnect = false;
+  while(!stop_eventhub) {
+    try {
+      if (reconnect) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+        reconnect = false;
+        redis.ResetSubscribers();
+        redis.Psubscribe("*", cb);
+        LOG(INFO) << "Connection to Redis regained.";
+      }
 
-    DLOG(INFO) << "Publishing event to channel '" << ch << "'";
-    publish(ch, data);
-  });
+      redis.Consume();
+    }
+
+    catch(sw::redis::TimeoutError) {
+      continue;
+    }
+
+    catch(sw::redis::Error &e) {
+      reconnect = true;
+      LOG(ERROR) << "Failed to read from redis: " << e.what() << ". Waiting 5 seconds before reconnect.";
+    }
+  }
 }
 
 Worker* Server::getWorker() {
@@ -78,7 +104,6 @@ void Server::publish(const string topic_name, const string data) {
 }
 
 void Server::stop() {
-  _redis_subscriber.disconnect();
   close(_server_socket);
   _connection_workers.killAndDeleteAll();
 }

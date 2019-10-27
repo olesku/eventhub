@@ -1,14 +1,16 @@
-#ifndef EVENTHUB_WEBSOCKET_REQUEST_HPP
-#define EVENTHUB_WEBSOCKET_REQUEST_HPP
+#ifndef EVENTHUB_WEBSOCKET_STATEMACHINE_HPP
+#define EVENTHUB_WEBSOCKET_STATEMACHINE_HPP
 
 #include <string>
 
 #include "http_request.hpp"
 #include "http_response.hpp"
-#include "ws_parser.h"
+#include "websocket/ws_parser.h"
 
 namespace eventhub {
-class WebsocketRequest {
+namespace websocket {
+
+class StateMachine {
 public:
   typedef enum {
     WS_PARSE,
@@ -16,13 +18,13 @@ public:
     WS_DATA_READY
   } state;
 
-  WebsocketRequest();
-  ~WebsocketRequest() {}
+  StateMachine();
+  ~StateMachine() {};
 
   const state get_state();
   state set_state(state new_state);
 
-  state parse(char* buf, ssize_t len);
+  state process(char* buf, ssize_t len);
 
   void clearPayload();
   void clearControlPayload();
@@ -42,6 +44,8 @@ private:
   ws_parser_callbacks_t _ws_parser_callbacks;
   uint8_t _control_frame_type;
 };
+
+} // namespace websocket
 } // namespace eventhub
 
 #endif

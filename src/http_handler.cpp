@@ -29,30 +29,13 @@ void HTTPHandler::parse(std::shared_ptr<Connection>& conn, Worker* wrk, const ch
 }
 
 void HTTPHandler::_handlePath(std::shared_ptr<Connection>& conn, Worker* wrk, HTTPRequest& req) {
-  const string& path = req.get_path();
-
-  if (path.empty() || path.compare("/") == 0 || path.at(0) != '/') {
-    _badRequest(conn, "Nothing here!\r\n");
+  if (req.get_path().compare("/status") == 0) {
+    // TODO: implement status endpoint.
+    conn->shutdown();
     return;
   }
 
-  DLOG(INFO) << "Path: " << path;
-
-  if (path.compare("/status") == 0) {
-    // handle status;
-    return;
-  }
-
-  const string topic_filter_name = TopicManager::uriDecode(path.substr(1, string::npos));
-  if (!TopicManager::isValidTopicFilter(topic_filter_name)) {
-    _badRequest(conn, topic_filter_name + ": Topic name has invalid format.\r\n");
-    return;
-  }
-
-  if (_websocketHandshake(conn, req)) {
-    // Subscribe client to topic.
-    wrk->subscribeConnection(conn, topic_filter_name);
-  }
+  _websocketHandshake(conn, req);
 }
 
 bool HTTPHandler::_websocketHandshake(std::shared_ptr<Connection>& conn, HTTPRequest& req) {
