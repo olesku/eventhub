@@ -2,8 +2,8 @@
 #define EVENTHUB_SERVER_HPP
 
 #include "ConnectionWorker.hpp"
-#include "Worker.hpp"
 #include "Redis.hpp"
+#include "Worker.hpp"
 #include <memory>
 #include <mutex>
 
@@ -21,7 +21,7 @@ public:
   Worker* getWorker();
   void publish(const std::string topicName, const std::string data);
   inline Redis& getRedis() { return _redis; }
-  
+
 private:
   int _server_socket;
   WorkerGroup<Worker> _connection_workers;

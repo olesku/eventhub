@@ -1,10 +1,10 @@
 #include "Redis.hpp"
-#include "jwt/json/json.hpp"
 #include "TopicManager.hpp"
+#include "jwt/json/json.hpp"
 #include <chrono>
-#include <string>
-#include <mutex>
 #include <memory>
+#include <mutex>
+#include <string>
 
 namespace eventhub {
 
@@ -17,9 +17,9 @@ Redis::Redis(const string host, int port, const string password, int poolSize) {
   sw::redis::ConnectionOptions connOpts;
   sw::redis::ConnectionPoolOptions poolOpts;
 
-  connOpts.keep_alive = true;
-  connOpts.host       = host;
-  connOpts.port       = port;
+  connOpts.keep_alive     = true;
+  connOpts.host           = host;
+  connOpts.port           = port;
   connOpts.socket_timeout = std::chrono::seconds(5);
 
   if (password.length() > 0) {
@@ -30,8 +30,7 @@ Redis::Redis(const string host, int port, const string password, int poolSize) {
   poolOpts.size                = poolSize;
   poolOpts.wait_timeout        = std::chrono::seconds(5);
 
-
-  _redisInstance = std::make_unique<sw::redis::Redis>(connOpts, poolOpts);
+  _redisInstance   = std::make_unique<sw::redis::Redis>(connOpts, poolOpts);
   _redisSubscriber = nullptr;
 }
 
@@ -89,7 +88,6 @@ void Redis::getCache(const string topicPattern, const string since, long limit) 
           auto& payloadID  = msgID.first;
           auto& topicName  = keyVals.first;
           auto& payload    = keyVals.second;
-
         }
       }
     }
@@ -111,7 +109,6 @@ void Redis::resetSubscribers() {
 
 // Register a subscriber callback.
 void Redis::psubscribe(const std::string pattern, RedisMsgCallback callback) {
-
   if (_redisSubscriber == nullptr) {
     _redisSubscriber = std::make_unique<sw::redis::Subscriber>(_redisInstance->subscriber());
   }
@@ -120,7 +117,7 @@ void Redis::psubscribe(const std::string pattern, RedisMsgCallback callback) {
     string actualTopic;
 
     if (_prefix.length() > 0) {
-      actualTopic = topic.substr(_prefix.length()+1, string::npos);
+      actualTopic = topic.substr(_prefix.length() + 1, string::npos);
     } else {
       actualTopic = topic;
     }

@@ -1,8 +1,8 @@
 #include "AccessController.hpp"
 #include "TopicManager.hpp"
-#include <vector>
-#include <string>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 /*
 {

@@ -1,7 +1,7 @@
-#include <future>
-#include "catch.hpp"
 #include "Common.hpp"
+#include "catch.hpp"
 #include "jwt/json/json.hpp"
+#include <future>
 
 #define private public
 #include "Redis.hpp"
@@ -83,7 +83,7 @@ TEST_CASE("Test redis", "[Redis") {
       msgRcvd++;
     });
 
-    auto t = std::async(std::launch::async, [](){
+    auto t = std::async(std::launch::async, []() {
       std::this_thread::sleep_for(std::chrono::milliseconds(500));
       redis.publishMessage("test/topic1", "31337", "Test");
       redis.publishMessage("test/topic2", "31337", "{}");

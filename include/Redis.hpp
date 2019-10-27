@@ -1,23 +1,23 @@
 #ifndef EVENTHUB_REDIS_HPP
 #define EVENTHUB_REDIS_HPP
 
-#include <memory>
-#include <string>
 #include <map>
+#include <memory>
 #include <mutex>
+#include <string>
 #include <sw/redis++/redis++.h>
 
 namespace eventhub {
 using namespace std;
 
-using RedisMsgCallback = std::function<void (std::string pattern,
-                                                  std::string channel,
-                                                  std::string msg)>;
+using RedisMsgCallback = std::function<void(std::string pattern,
+                                            std::string channel,
+                                            std::string msg)>;
 
 class Redis {
 #define REDIS_PREFIX(key) (_prefix.length() > 0) ? _prefix + "." + key : key
 public:
-  Redis(const string host, int port=6379, const string password="", int poolSize=5);
+  Redis(const string host, int port = 6379, const string password = "", int poolSize = 5);
   ~Redis(){};
 
   bool publishMessage(const string topic, const string id, const string payload);

@@ -1,8 +1,8 @@
 #include <chrono>
 #include <thread>
 
-#include "catch.hpp"
 #include "EventLoop.hpp"
+#include "catch.hpp"
 
 using namespace std;
 using namespace eventhub;

@@ -14,7 +14,6 @@ namespace eventhub {
 Server::Server(const string redisHost, int redisPort) : _redis(redisHost, redisPort) {
 }
 
-
 Server::~Server() {
   DLOG(INFO) << "Server destructor.";
   stop();
@@ -46,7 +45,7 @@ void Server::start() {
   LOG(INFO) << "Listening on port 8080.";
 
   // Start the connection workers.
-  for (unsigned i = 0; i < 1; i++) {//std::thread::hardware_concurrency(); i++) {
+  for (unsigned i = 0; i < 1; i++) { //std::thread::hardware_concurrency(); i++) {
     DLOG(INFO) << "Added worker " << i;
     _connection_workers.addWorker(new Worker(this));
   }
@@ -64,7 +63,7 @@ void Server::start() {
   _redis.psubscribe("*", cb);
 
   bool reconnect = false;
-  while(!stopEventhub) {
+  while (!stopEventhub) {
     try {
       if (reconnect) {
         std::this_thread::sleep_for(std::chrono::milliseconds(5000));
@@ -77,11 +76,11 @@ void Server::start() {
       _redis.consume();
     }
 
-    catch(sw::redis::TimeoutError) {
+    catch (sw::redis::TimeoutError) {
       continue;
     }
 
-    catch(sw::redis::Error &e) {
+    catch (sw::redis::Error& e) {
       reconnect = true;
       LOG(ERROR) << "Failed to read from redis: " << e.what() << ". Waiting 5 seconds before reconnect.";
     }

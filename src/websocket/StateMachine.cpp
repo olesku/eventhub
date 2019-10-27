@@ -1,8 +1,8 @@
 #include "websocket/StateMachine.hpp"
 
-#include <string>
 #include "Common.hpp"
 #include "websocket/ws_parser.h"
+#include <string>
 
 namespace eventhub {
 namespace websocket {
@@ -112,5 +112,5 @@ StateMachine::state StateMachine::process(char* buf, ssize_t len) {
   return _state;
 }
 
-}
+} // namespace websocket
 } // namespace eventhub

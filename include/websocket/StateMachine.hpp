@@ -19,7 +19,7 @@ public:
   } state;
 
   StateMachine();
-  ~StateMachine() {};
+  ~StateMachine(){};
 
   const state getState();
   state setState(state newState);

@@ -1,13 +1,13 @@
 #include "websocket/Handler.hpp"
-#include "websocket/StateMachine.hpp"
-#include "websocket/Response.hpp"
 #include "Common.hpp"
 #include "Config.hpp"
 #include "Connection.hpp"
+#include "Redis.hpp"
+#include "Server.hpp"
 #include "TopicManager.hpp"
 #include "jwt/json/json.hpp"
-#include "Server.hpp"
-#include "Redis.hpp"
+#include "websocket/Response.hpp"
+#include "websocket/StateMachine.hpp"
 
 namespace eventhub {
 namespace websocket {
@@ -58,16 +58,16 @@ void Handler::_handleControlFrame(std::shared_ptr<Connection>& conn, Worker* wrk
   switch (fsm.getControlFrameType()) {
     case response::Opcodes::CLOSE_FRAME: // Close
       conn->shutdown();
-    break;
+      break;
 
     case response::Opcodes::PING_FRAME: // Ping
       DLOG(INFO) << "Sent PONG to " << conn->getIP();
       response::sendData(conn, fsm.getControlPayload(), response::Opcodes::PONG_FRAME, 1);
-    break;
+      break;
 
     case response::Opcodes::PONG_FRAME: // Pong
       DLOG(INFO) << "Got PONG from" << conn->getIP();
-    break;
+      break;
   }
 }
 
@@ -77,13 +77,12 @@ void sendErrorMsg(std::shared_ptr<Connection>& conn, const std::string& errMsg, 
 
   try {
     response::sendData(conn, j.dump(0));
-  } catch(...) {}
+  } catch (...) {}
 
   if (disconnect) {
     response::sendData(conn, "", response::Opcodes::CLOSE_FRAME, 1);
     conn->shutdown();
   }
-
 }
 
 void Handler::_handleClientCommand(std::shared_ptr<Connection>& conn, Worker* wrk, const std::string& command, const std::string& arg) {
@@ -124,7 +123,6 @@ void Handler::_handleClientCommand(std::shared_ptr<Connection>& conn, Worker* wr
 
   // Unsubscribe from a channel.
   else if (command.compare("UNSUB") == 0) {
-
   }
 
   // Unsubscribe from all channels.
@@ -135,13 +133,13 @@ void Handler::_handleClientCommand(std::shared_ptr<Connection>& conn, Worker* wr
   else if (command.compare("PUB") == 0) {
     auto p = arg.find_first_of(' ');
 
-    if (p == string::npos || p == arg.length()-1) {
+    if (p == string::npos || p == arg.length() - 1) {
       sendErrorMsg(conn, "Payload cannot be blank", false);
       return;
     }
 
     auto topicName = arg.substr(0, p);
-    auto payload = arg.substr(p+1, string::npos);
+    auto payload   = arg.substr(p + 1, string::npos);
 
     if (!accessController.allowPublish(topicName)) {
       sendErrorMsg(conn, "Insufficient access to '" + topicName + "'", false);
@@ -153,7 +151,6 @@ void Handler::_handleClientCommand(std::shared_ptr<Connection>& conn, Worker* wr
       return;
     }
 
-
     try {
       auto cacheId = wrk->getServer()->getRedis().cacheMessage(topicName, payload);
       if (cacheId.length() == 0) {
@@ -163,7 +160,7 @@ void Handler::_handleClientCommand(std::shared_ptr<Connection>& conn, Worker* wr
       }
 
       wrk->getServer()->getRedis().publishMessage(topicName, cacheId, payload);
-    } catch(std::exception &e) {
+    } catch (std::exception& e) {
       LOG(ERROR) << "Redis error while publishing message: " << e.what();
       sendErrorMsg(conn, "Redis error while publishing message.", false);
       return;
@@ -177,5 +174,5 @@ void Handler::_handleClientCommand(std::shared_ptr<Connection>& conn, Worker* wr
   }
 }
 
-}
+} // namespace websocket
 } // namespace eventhub

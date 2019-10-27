@@ -1,5 +1,5 @@
-#include "catch.hpp"
 #include "TopicManager.hpp"
+#include "catch.hpp"
 #include <utility>
 #include <vector>
 

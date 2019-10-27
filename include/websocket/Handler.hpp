@@ -22,7 +22,7 @@ private:
   static void _handleClientCommand(std::shared_ptr<Connection>& conn, Worker* wrk, const std::string& command, const std::string& args);
 };
 
-}
+} // namespace websocket
 } // namespace eventhub
 
 #endif

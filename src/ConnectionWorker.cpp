@@ -14,8 +14,8 @@
 #include "EventLoop.hpp"
 #include "HTTPHandler.hpp"
 #include "Server.hpp"
-#include "websocket/Handler.hpp"
 #include "Worker.hpp"
+#include "websocket/Handler.hpp"
 
 using namespace std;
 
