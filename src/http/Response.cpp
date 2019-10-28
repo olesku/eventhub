@@ -1,41 +1,44 @@
-#include "HTTPResponse.hpp"
+#include "http/Response.hpp"
 #include "Common.hpp"
 #include <boost/foreach.hpp>
 #include <boost/lexical_cast.hpp>
 #include <sstream>
 
+namespace eventhub {
+namespace http {
+
 #define CRLF "\r\n"
 
-HTTPResponse::HTTPResponse(int statusCode, const std::string body) {
+Response::Response(int statusCode, const std::string body) {
   _statusCode = statusCode;
   _statusMsg  = getStatusMsg(statusCode);
   _body       = body;
 }
 
-void HTTPResponse::setStatus(int status, std::string statusMsg) {
+void Response::setStatus(int status, std::string statusMsg) {
   _statusCode = status;
   _statusMsg  = statusMsg;
 }
 
-void HTTPResponse::setStatus(int status) {
+void Response::setStatus(int status) {
   _statusCode = status;
   _statusMsg  = getStatusMsg(status);
   ;
 }
 
-void HTTPResponse::setHeader(const std::string& name, const std::string& value) {
+void Response::setHeader(const std::string& name, const std::string& value) {
   _headers[name] = value;
 }
 
-void HTTPResponse::setBody(const std::string& data) {
+void Response::setBody(const std::string& data) {
   _body = data;
 }
 
-void HTTPResponse::appendBody(const std::string& data) {
+void Response::appendBody(const std::string& data) {
   _body.append(data);
 }
 
-const std::string HTTPResponse::get() {
+const std::string Response::get() {
   std::stringstream ss;
 
   try {
@@ -69,7 +72,7 @@ const std::string HTTPResponse::get() {
  Translate a HTTP statuscode into a explanatory string.
  @param statusCode statuscode to translate.
 **/
-const std::string HTTPResponse::getStatusMsg(int statusCode) {
+const std::string Response::getStatusMsg(int statusCode) {
   switch (statusCode) {
     case 200:
       return "OK";
@@ -92,4 +95,7 @@ const std::string HTTPResponse::getStatusMsg(int statusCode) {
   }
 
   return "OK";
+}
+
+}
 }

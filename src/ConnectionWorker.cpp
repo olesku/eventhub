@@ -10,12 +10,14 @@
 #include <unistd.h>
 
 #include "Common.hpp"
+#include "Config.hpp"
 #include "Connection.hpp"
 #include "EventLoop.hpp"
-#include "HTTPHandler.hpp"
+#include "http/Handler.hpp"
 #include "Server.hpp"
 #include "Worker.hpp"
 #include "websocket/Handler.hpp"
+#include "websocket/Response.hpp"
 
 using namespace std;
 
@@ -33,6 +35,12 @@ Worker::~Worker() {
   if (_epoll_fd != -1) {
     close(_epoll_fd);
   }
+
+  DLOG(INFO) << "Connection worker " << threadId() << " destroyed.";
+}
+
+void Worker::addTimer(int64_t delay, std::function<void(TimerCtx* ctx)> callback, bool repeat) {
+  _ev.addTimer(delay, callback, repeat);
 }
 
 void Worker::_acceptConnection() {
@@ -70,7 +78,7 @@ do_accept:
 }
 
 void Worker::_addConnection(int fd, struct sockaddr_in* csin) {
-  auto client = make_shared<Connection>(fd, csin);
+  auto client = make_shared<Connection>(fd, csin, this);
 
   LOG(INFO) << "Add connection fd: " << fd << " thread_id: " << threadId();
 
@@ -88,18 +96,37 @@ void Worker::_addConnection(int fd, struct sockaddr_in* csin) {
 
   LOG(INFO) << "Client " << fd << " accepted in worker " << threadId();
 
+  // Disconnect client if successful websocket handshake hasn't occurred in 10 seconds.
   std::weak_ptr<Connection> wptrConnection(client);
-  _ev.addTimer(10000, [this, wptrConnection](EventLoop::TimerCtxT* ctx) {
+  addTimer(10000, [this, wptrConnection](TimerCtx* ctx) {
     auto c = wptrConnection.lock();
 
-    if (c && c->getState() != Connection::WEBSOCKET_MODE) {
+    if (c && c->getState() != ConnectionState::WEBSOCKET) {
       LOG(INFO) << "Client " << c->getIP() << " failed to handshake in 10 seconds. Removing.";
       c->shutdown();
     }
   });
+
+  // Send a websocket PING frame to the client every Config.getPingInterval() second.
+  addTimer(Config.getPingInterval() * 1000, [wptrConnection](TimerCtx* ctx) {
+    auto c = wptrConnection.lock();
+
+    if (!c || c->isShutdown()) {
+      ctx->repeat = false;
+      return;
+    }
+
+    DLOG(INFO) << "WSPING Client " << c->getIP();
+
+    if (c->getState() == ConnectionState::WEBSOCKET) {
+      websocket::response::sendData(c, "", websocket::response::PING_FRAME, 1);
+    }
+
+    // TODO: Disconnect client if lastPong was Config.getPingInterval() * 1000 * 3 ago.
+  }, true);
 }
 
-void Worker::_read(std::shared_ptr<Connection>& client) {
+void Worker::_read(ConnectionPtr client) {
   char rBuf[1024];
   ssize_t bytesRead = client->read(rBuf, 1024);
 
@@ -108,18 +135,20 @@ void Worker::_read(std::shared_ptr<Connection>& client) {
     return;
   }
 
-  if (client->getState() != Connection::WEBSOCKET_MODE) {
+/*
+  if (client->getState() != ConnectionState::WEBSOCKET) {
     DLOG(INFO) << "Read: " << rBuf;
   }
+*/
 
   // Parse request if in parse state.
   switch (client->getState()) {
-    case Connection::HTTP_MODE:
-      HTTPHandler::parse(client, this, rBuf, bytesRead);
+    case ConnectionState::HTTP:
+      http::Handler::process(client, rBuf, bytesRead);
       break;
 
-    case Connection::WEBSOCKET_MODE:
-      websocket::Handler::process(client, this, rBuf, bytesRead);
+    case ConnectionState::WEBSOCKET :
+      websocket::Handler::process(client, rBuf, bytesRead);
       break;
 
     default:
@@ -132,7 +161,7 @@ void Worker::_removeConnection(const connection_list_t::iterator& it) {
   _connection_list.erase(it);
 }
 
-void Worker::subscribeConnection(std::shared_ptr<Connection>& conn, const string& topicFilterName) {
+void Worker::subscribeConnection(ConnectionPtr conn, const string& topicFilterName) {
   _topic_manager.subscribeConnection(conn, topicFilterName);
 }
 
@@ -142,11 +171,11 @@ void Worker::publish(const string& topicName, const string& data) {
   });
 }
 
-void Worker::workerMain() {
+void Worker::_workerMain() {
   std::shared_ptr<struct epoll_event[]> eventConnectionList(new struct epoll_event[MAXEVENTS]);
   struct epoll_event serverSocketEvent;
 
-  DLOG(INFO) << "Worker thread " << threadId() << " started.";
+  LOG(INFO) << "Worker thread " << threadId() << " started.";
 
   if (_epoll_fd == -1) {
     LOG(FATAL) << "epoll_create1() failed in worker " << threadId() << ": " << strerror(errno);
@@ -161,8 +190,8 @@ void Worker::workerMain() {
       << "Failed to add serversocket to epoll in AcceptWorker " << threadId();
 
   // Run garbage collection of topics with no more connections.
-  _ev.addTimer(
-      20000, [this](EventLoop::TimerCtxT* ctx) {
+  addTimer(
+      20000, [this](TimerCtx* ctx) {
         _topic_manager.garbageCollect();
       },
       true);
@@ -229,7 +258,5 @@ void Worker::workerMain() {
 
     _ev.process();
   }
-
-  DLOG(INFO) << "Connection worker " << threadId() << " destroyed.";
 }
 } // namespace eventhub

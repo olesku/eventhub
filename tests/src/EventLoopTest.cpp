@@ -42,7 +42,7 @@ TEST_CASE("timers", "[eventloop]") {
   }
 
   ev.addTimer(
-      100, [&timerHasRun](EventLoop::TimerCtxT* ctx) {
+      100, [&timerHasRun](TimerCtx* ctx) {
         timerHasRun = true;
       },
       false);

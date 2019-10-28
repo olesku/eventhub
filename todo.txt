@@ -1,6 +1,6 @@
-* Implement authorization as header or query string.
+* Don't allow double subscription.
 * Support deflate compression extension.
-* Implement client pings and timeouts.
+* Implement pong timeouts.
 * Should we Base64 encode the payload ?
 * Check out https://github.com/bsergean/autobahn-testsuite
 * Remove uneccesarry logging.

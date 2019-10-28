@@ -28,4 +28,37 @@ const std::string Util::base64Encode(const unsigned char* buffer, size_t length)
 
   return s;
 }
+
+const std::string Util::uriDecode(const std::string& str) {
+  std::ostringstream unescaped;
+  for (std::string::const_iterator i = str.begin(), n = str.end(); i != n; ++i) {
+    std::string::value_type c = (*i);
+    if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~' || c == '*' || c == '/' || c == '+') {
+      unescaped << c;
+    } else if (c == '%') {
+      // throw error if string is invalid and doesn't have 2 char after,
+      // or if it has non-hex chars here (courtesy GitHub @scinart)
+      if (i + 2 >= n || !isxdigit(*(i + 1)) || !isxdigit(*(i + 2))) {
+        DLOG(INFO) << "urlDecode: Invalid percent-encoding";
+        return "";
+      }
+
+      // decode a URL-encoded ASCII character, e.g. %40 => &
+      char ch1        = *(i + 1);
+      char ch2        = *(i + 2);
+      int hex1        = (isdigit(ch1) ? (ch1 - '0') : (toupper(ch1) - 'A' + 10));
+      int hex2        = (isdigit(ch2) ? (ch2 - '0') : (toupper(ch2) - 'A' + 10));
+      int decodedChar = (hex1 << 4) + hex2;
+      unescaped << (char)decodedChar;
+      i += 2;
+    } else {
+      std::ostringstream msg;
+      DLOG(INFO) << "urlDecode: Unexpected character in string: "
+                 << (int)c << " (" << c << ")";
+      return "";
+    }
+  }
+
+  return unescaped.str();
+}
 } // namespace eventhub

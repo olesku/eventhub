@@ -12,7 +12,7 @@ public:
   Topic(const std::string& topicFilter) { _id = topicFilter; };
   ~Topic(){};
 
-  void addSubscriber(std::shared_ptr<Connection>& conn);
+  void addSubscriber(ConnectionPtr conn);
   void publish(const string& data);
   size_t garbageCollect();
 

@@ -16,7 +16,7 @@ enum Opcodes {
   PONG_FRAME        = 0xA
 };
 
-void sendData(std::shared_ptr<Connection>& conn, const std::string& data, uint8_t opcode = Opcodes::TEXT_FRAME, uint8_t fin = 1);
+void sendData(ConnectionPtr conn, const std::string& data, uint8_t opcode = Opcodes::TEXT_FRAME, uint8_t fin = 1);
 
 } // namespace response
 } // namespace websocket

@@ -20,8 +20,9 @@ public:
   ~Worker();
 
   Server* getServer() { return _server; };
-  void subscribeConnection(std::shared_ptr<Connection>& conn, const string& topicFilterName);
+  void subscribeConnection(ConnectionPtr conn, const string& topicFilterName);
   void publish(const string& topicName, const string& data);
+  void addTimer(int64_t delay, std::function<void(TimerCtx* ctx)> callback, bool repeat = false);
 
 private:
   Server* _server;
@@ -34,9 +35,9 @@ private:
   void _acceptConnection();
   void _addConnection(int fd, struct sockaddr_in* csin);
   void _removeConnection(const connection_list_t::iterator& it);
-  void _read(std::shared_ptr<Connection>& conn);
+  void _read(ConnectionPtr conn);
 
-  void workerMain();
+  void _workerMain();
 };
 } // namespace eventhub
 

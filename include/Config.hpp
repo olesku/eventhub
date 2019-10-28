@@ -14,6 +14,10 @@ public:
   std::string getJWTSecret() {
     return "eventhub_secret";
   }
+
+  unsigned int getPingInterval() {
+    return 10;
+  }
 };
 } // namespace eventhub
 

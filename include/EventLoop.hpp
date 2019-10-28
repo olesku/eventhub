@@ -9,20 +9,18 @@
 #include <mutex>
 
 namespace eventhub {
+struct TimerCtx {
+  std::chrono::milliseconds fire_time;
+  std::chrono::milliseconds repeat_delay;
+  std::function<void(TimerCtx* ctx)> callback;
+  bool repeat;
+};
+
+using timer_queue_t = std::deque<TimerCtx>;
+using job_queue_t = std::deque<std::function<void()>>;
+
 class EventLoop {
 public:
-  typedef struct time_ctx_t time_ctx_t;
-
-  struct TimerCtxT {
-    std::chrono::milliseconds fire_time;
-    std::chrono::milliseconds repeat_delay;
-    std::function<void(TimerCtxT* ctx)> callback;
-    bool repeat;
-  };
-
-  typedef std::deque<TimerCtxT> timer_queue_t;
-  typedef std::deque<std::function<void()>> job_queue_t;
-
   EventLoop() {
     _next_timer_fire_time = std::chrono::milliseconds::zero();
   }
@@ -78,10 +76,10 @@ public:
     }
   }
 
-  inline void addTimer(int64_t delay, std::function<void(TimerCtxT* ctx)> callback, bool repeat = false) {
+  inline void addTimer(int64_t delay, std::function<void(TimerCtx* ctx)> callback, bool repeat = false) {
     std::lock_guard<std::mutex> lock(_timer_queue_lock);
     const auto fireTime = _now() + std::chrono::milliseconds(delay);
-    TimerCtxT ctx{fireTime, std::chrono::milliseconds(delay), callback, repeat};
+    TimerCtx ctx{fireTime, std::chrono::milliseconds(delay), callback, repeat};
     _decreaseNextFiretimeIfLess(fireTime);
     _timer_queue.push_back(ctx);
   }

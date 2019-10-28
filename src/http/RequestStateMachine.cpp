@@ -1,15 +1,16 @@
-#include "HTTPRequest.hpp"
+#include "http/RequestStateMachine.hpp"
 #include "Common.hpp"
-#include "picohttpparser.h"
+#include "http/picohttpparser.h"
 #include <iostream>
 #include <string.h>
 
 namespace eventhub {
+namespace http {
 
 /**
-    Constructor.
-  **/
-HTTPRequest::HTTPRequest() {
+  Constructor.
+**/
+RequestStateMachine::RequestStateMachine() {
   _bytes_read         = 0;
   _bytes_read_prev    = 0;
   _post_expected_size = 0;
@@ -21,46 +22,46 @@ HTTPRequest::HTTPRequest() {
 }
 
 /**
-    Destructor.
-  **/
-HTTPRequest::~HTTPRequest() {}
+  Destructor.
+**/
+RequestStateMachine::~RequestStateMachine() {}
 
 /**
     Parse the request.
     @param data Raw http request data.
     @param len Length of data.
   **/
-HTTPRequest::RequestState HTTPRequest::parse(const char* data, int len) {
+State RequestStateMachine::process(const char* data, int len) {
   int pret;
 
   if (_is_post) {
     _post_bytes_read += len;
 
     if (_post_bytes_read > HTTP_POST_MAX) {
-      DLOG(ERROR) << "HTTP_REQ_POST_TOO_LARGE "
+      DLOG(ERROR) << "REQ_POST_TOO_LARGE "
                   << "POST data is bigger than " << HTTP_POST_MAX;
-      _error_message = "HTTP_REQ_POST_TOO_LARGE: POST data is to large.";
+      _error_message = "REQ_POST_TOO_LARGE: POST data is to large.";
       _post_data.clear();
-      return _set_state(HTTP_REQ_POST_TOO_LARGE);
+      return _set_state(State::REQ_POST_TOO_LARGE);
     }
 
     _post_data.append(data);
 
     if (_post_bytes_read < _post_expected_size) {
-      return _set_state(HTTP_REQ_POST_INCOMPLETE);
+      return _set_state(State::REQ_POST_INCOMPLETE);
     }
 
-    return _set_state(HTTP_REQ_POST_OK);
+    return _set_state(State::REQ_POST_OK);
   }
 
   if (_is_complete)
-    return _set_state(HTTP_REQ_OK);
+    return _set_state(State::REQ_OK);
   _bytes_read_prev = _bytes_read;
 
   // Request is to large.
-  if ((_bytes_read + len) > BUFSIZ) {
-    _error_message = "HTTP_REQ_TO_BIG: Request to large.";
-    return _set_state(HTTP_REQ_TO_BIG);
+  if ((_bytes_read + len) > HTTP_BUFSIZ) {
+    _error_message = "REQ_TO_BIG: Request to large.";
+    return _set_state(State::REQ_TO_BIG);
   }
 
   _bytes_read += len;
@@ -73,15 +74,15 @@ HTTPRequest::RequestState HTTPRequest::parse(const char* data, int len) {
 
   // Parse error.
   if (pret == -1) {
-    DLOG(ERROR) << "HTTP_REQ_FAILED";
-    _error_message = "HTTP_REQ_FAILED: Parse failed.";
-    return _set_state(HTTP_REQ_FAILED);
+    DLOG(ERROR) << "REQ_FAILED";
+    _error_message = "REQ_FAILED: Parse failed.";
+    return _set_state(State::REQ_FAILED);
   }
 
   // Request incomplete.
   if (pret == -2) {
-    DLOG(INFO) << "HTTP_REQ_INCOMPLETE";
-    return _set_state(HTTP_REQ_INCOMPLETE);
+    DLOG(INFO) << "REQ_INCOMPLETE";
+    return _set_state(State::REQ_INCOMPLETE);
   }
 
   if (_phr_method_len > 0)
@@ -112,52 +113,52 @@ HTTPRequest::RequestState HTTPRequest::parse(const char* data, int len) {
 
   if (getMethod().compare("POST") == 0) {
     if (getHeader("Content-Length").empty()) {
-      _error_message = "HTTP_REQ_POST_INVALID_LENGTH: No Content-Length header set.";
-      return _set_state(HTTP_REQ_POST_INVALID_LENGTH);
+      _error_message = "REQ_POST_INVALID_LENGTH: No Content-Length header set.";
+      return _set_state(State::REQ_POST_INVALID_LENGTH);
     } else {
       try {
         _post_expected_size = std::stoi(getHeader("Content-Length"));
       } catch (...) {
-        _error_message = "HTTP_REQ_POST_INVALID_LENGTH: Invalid format.";
-        return _set_state(HTTP_REQ_POST_INVALID_LENGTH);
+        _error_message = "REQ_POST_INVALID_LENGTH: Invalid format.";
+        return _set_state(State::REQ_POST_INVALID_LENGTH);
       }
     }
 
     if (_post_expected_size < 1) {
-      _error_message = "HTTP_REQ_POST_INVAID_LENGTH: Cannot be zero.";
-      return _set_state(HTTP_REQ_POST_INVALID_LENGTH);
+      _error_message = "REQ_POST_INVAID_LENGTH: Cannot be zero.";
+      return _set_state(State::REQ_POST_INVALID_LENGTH);
     }
 
     _is_post = true;
 
-    // If we have post data in the initial request run Parse on it to take correct action.
+    // If we have post data in the initial request run process on it to take correct action.
     if (len > pret) {
       string tmp;
       tmp.insert(0, data, pret, len - pret);
-      return parse(tmp.c_str(), tmp.length());
+      return process(tmp.c_str(), tmp.length());
     }
 
-    return _set_state(HTTP_REQ_POST_START);
+    return _set_state(State::REQ_POST_START);
   }
 
   _is_complete      = true;
   _buf[_bytes_read] = '\0';
-  DLOG(INFO) << "HTTP_REQ_OK";
+  DLOG(INFO) << "REQ_OK";
 
-  return _set_state(HTTP_REQ_OK);
+  return _set_state(State::REQ_OK);
 }
 
 /**
     Get the HTTP request path.
   **/
-const string& HTTPRequest::getPath() {
+const string& RequestStateMachine::getPath() {
   return _path;
 }
 
 /**
     Get the HTTP request method.
   **/
-const string& HTTPRequest::getMethod() {
+const string& RequestStateMachine::getMethod() {
   return _method;
 }
 
@@ -165,7 +166,7 @@ const string& HTTPRequest::getMethod() {
     Get a spesific header.
     @param header Header to get.
   **/
-const string HTTPRequest::getHeader(string header) {
+const string RequestStateMachine::getHeader(string header) {
   strTolower(header);
 
   if (_headers.find(header) != _headers.end()) {
@@ -175,7 +176,7 @@ const string HTTPRequest::getHeader(string header) {
   return "";
 }
 
-const map<string, string>& HTTPRequest::getHeaders() {
+const map<string, string>& RequestStateMachine::getHeaders() {
   return _headers;
 }
 
@@ -183,7 +184,7 @@ const map<string, string>& HTTPRequest::getHeaders() {
     Extracts query parameters from a string if they exist.
     @param buf The string to parse.
   **/
-size_t HTTPRequest::_parse_query_string(const std::string& buf) {
+size_t RequestStateMachine::_parse_query_string(const std::string& buf) {
   size_t prevpos = 0, eqlpos = 0;
 
   while ((eqlpos = buf.find("=", prevpos)) != string::npos) {
@@ -216,7 +217,7 @@ size_t HTTPRequest::_parse_query_string(const std::string& buf) {
     Get a spesific query string parameter.
     @param param Parameter to get.
   **/
-const string HTTPRequest::getQueryString(string param) {
+const string RequestStateMachine::getQueryString(string param) {
   strTolower(param);
 
   if (_qsmap.find(param) != _qsmap.end()) {
@@ -229,16 +230,17 @@ const string HTTPRequest::getQueryString(string param) {
 /**
     Returns number of query strings in the request.
   **/
-size_t HTTPRequest::numQueryString() {
+size_t RequestStateMachine::numQueryString() {
   return _qsmap.size();
 }
 
-const string& HTTPRequest::getPostData() {
+const string& RequestStateMachine::getPostData() {
   return _post_data;
 }
 
-const string& HTTPRequest::getErrorMessage() {
+const string& RequestStateMachine::getErrorMessage() {
   return _error_message;
 }
 
+}
 } // namespace eventhub

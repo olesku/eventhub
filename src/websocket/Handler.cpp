@@ -12,24 +12,25 @@
 namespace eventhub {
 namespace websocket {
 
-void Handler::process(std::shared_ptr<Connection>& conn, Worker* wrk, char* buf, size_t nBytes) {
+void Handler::process(ConnectionPtr conn, char* buf, size_t nBytes) {
   auto& fsm = conn->getWsFsm();
   fsm.process(buf, nBytes);
 
   switch (fsm.getState()) {
-    case StateMachine::state::WS_CONTROL_READY:
-      _handleControlFrame(conn, wrk, fsm);
+    case State::CONTROL_FRAME_READY:
+      _handleControlFrame(conn);
       fsm.clearControlPayload();
       break;
 
-    case StateMachine::state::WS_DATA_READY:
-      _handleDataFrame(conn, wrk, fsm);
+    case State::DATA_FRAME_READY:
+      _handleDataFrame(conn);
       fsm.clearPayload();
       break;
   }
 }
 
-void Handler::_handleDataFrame(std::shared_ptr<Connection>& conn, Worker* wrk, StateMachine& fsm) {
+void Handler::_handleDataFrame(ConnectionPtr conn) {
+  auto& fsm = conn->getWsFsm();
   auto& payload = fsm.getPayload();
 
   LOG(INFO) << "Data: " << payload;
@@ -48,30 +49,32 @@ void Handler::_handleDataFrame(std::shared_ptr<Connection>& conn, Worker* wrk, S
       command = payload.substr(0, payload.length() - 1);
     }
 
-    _handleClientCommand(conn, wrk, command, arg);
+    _handleClientCommand(conn, command, arg);
   }
 }
 
-void Handler::_handleControlFrame(std::shared_ptr<Connection>& conn, Worker* wrk, StateMachine& fsm) {
+void Handler::_handleControlFrame(ConnectionPtr conn) {
+  auto& fsm = conn->getWsFsm();
+
   DLOG(INFO) << "Control Type: " << fsm.getControlFrameType() << " payload: " << fsm.getControlPayload();
 
   switch (fsm.getControlFrameType()) {
-    case response::Opcodes::CLOSE_FRAME: // Close
+    case response::Opcodes::CLOSE_FRAME:
       conn->shutdown();
       break;
 
-    case response::Opcodes::PING_FRAME: // Ping
+    case response::Opcodes::PING_FRAME:
       DLOG(INFO) << "Sent PONG to " << conn->getIP();
       response::sendData(conn, fsm.getControlPayload(), response::Opcodes::PONG_FRAME, 1);
       break;
 
-    case response::Opcodes::PONG_FRAME: // Pong
+    case response::Opcodes::PONG_FRAME:
       DLOG(INFO) << "Got PONG from" << conn->getIP();
       break;
   }
 }
 
-void sendErrorMsg(std::shared_ptr<Connection>& conn, const std::string& errMsg, bool disconnect) {
+void sendErrorMsg(ConnectionPtr conn, const std::string& errMsg, bool disconnect) {
   nlohmann::json j;
   j["error"] = errMsg;
 
@@ -85,30 +88,23 @@ void sendErrorMsg(std::shared_ptr<Connection>& conn, const std::string& errMsg, 
   }
 }
 
-void Handler::_handleClientCommand(std::shared_ptr<Connection>& conn, Worker* wrk, const std::string& command, const std::string& arg) {
+void Handler::_handleClientCommand(ConnectionPtr conn, const std::string& command, const std::string& arg) {
   LOG(INFO) << "Command: '" << command << "'";
   LOG(INFO) << "Arg: '" << arg << "'";
 
   auto& accessController = conn->getAccessController();
-
-  if (command.compare("AUTH") == 0) {
-    auto authSuccess = accessController.authenticate(arg, Config.getJWTSecret());
-    if (!authSuccess) {
-      sendErrorMsg(conn, "Authentication failed.", true);
-    }
-
-    return;
-  }
+  auto& redis = conn->getWorker()->getServer()->getRedis();
 
   if (!accessController.isAuthenticated()) {
-    sendErrorMsg(conn, "Authenticate first.", true);
+    LOG(ERROR) << "Disconnecting client websocket mode with invalid authentication. This should never happen.";
+    conn->shutdown();
     return;
   }
 
   // Subscribe to a topic.
-  if (command.compare("SUB") == 0) {
+  if (command == "SUB") {
     if (!TopicManager::isValidTopicFilter(arg)) {
-      sendErrorMsg(conn, arg + " is a invalid topic.", false);
+      sendErrorMsg(conn, arg + ": invalid topic.", false);
       return;
     }
 
@@ -118,19 +114,19 @@ void Handler::_handleClientCommand(std::shared_ptr<Connection>& conn, Worker* wr
       return;
     }
 
-    wrk->subscribeConnection(conn, arg);
+    conn->getWorker()->subscribeConnection(conn, arg);
   }
 
   // Unsubscribe from a channel.
-  else if (command.compare("UNSUB") == 0) {
+  else if (command == "UNSUB") {
   }
 
   // Unsubscribe from all channels.
-  else if (command.compare("UNSUBALL") == 0) {
+  else if (command == "UNSUBALL") {
   }
 
   // Publish to a channel.
-  else if (command.compare("PUB") == 0) {
+  else if (command == "PUB") {
     auto p = arg.find_first_of(' ');
 
     if (p == string::npos || p == arg.length() - 1) {
@@ -152,14 +148,14 @@ void Handler::_handleClientCommand(std::shared_ptr<Connection>& conn, Worker* wr
     }
 
     try {
-      auto cacheId = wrk->getServer()->getRedis().cacheMessage(topicName, payload);
+      auto cacheId = redis.cacheMessage(topicName, payload);
       if (cacheId.length() == 0) {
         LOG(ERROR) << "Failed to cache message to Redis.";
         sendErrorMsg(conn, "Failed to cache message to Redis. Discarding.", false);
         return;
       }
 
-      wrk->getServer()->getRedis().publishMessage(topicName, cacheId, payload);
+      redis.publishMessage(topicName, cacheId, payload);
     } catch (std::exception& e) {
       LOG(ERROR) << "Redis error while publishing message: " << e.what();
       sendErrorMsg(conn, "Redis error while publishing message.", false);
@@ -168,7 +164,7 @@ void Handler::_handleClientCommand(std::shared_ptr<Connection>& conn, Worker* wr
   }
 
   // List all subscribed channels.
-  else if (command.compare("LIST") == 0) {
+  else if (command == "LIST") {
   } else {
     sendErrorMsg(conn, "Unknown command", false);
   }

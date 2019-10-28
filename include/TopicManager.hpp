@@ -14,13 +14,12 @@ class TopicManager {
   typedef std::unordered_map<std::string, std::unique_ptr<Topic>> topic_list_t;
 
 public:
-  void subscribeConnection(std::shared_ptr<Connection>& conn, const std::string& topicFilter);
+  void subscribeConnection(ConnectionPtr conn, const std::string& topicFilter);
   void publish(const std::string& topicName, const std::string& data);
   void garbageCollect();
 
   static bool isValidTopicFilter(const std::string& filterName);
   static bool isFilterMatched(const std::string& filterName, const string& topicName);
-  static const std::string uriDecode(const std::string& str);
 
 private:
   topic_list_t _topic_list;

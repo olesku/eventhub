@@ -1,5 +1,5 @@
-#ifndef WS_PARSER_H
-#define WS_PARSER_H
+#ifndef PARSER_H
+#define PARSER_H
 
 #include <stddef.h>
 #include <stdint.h>
@@ -34,7 +34,7 @@ typedef struct {
   uint8_t state : 5;
 } ws_parser_t;
 
-#define WS_PARSER_ERROR_CODES(XX) \
+#define PARSER_ERROR_CODES(XX) \
   XX(WS_OK, 0)                    \
   XX(WS_RESERVED_BITS_SET, -1)    \
   XX(WS_INVALID_OPCODE, -2)       \
@@ -45,7 +45,7 @@ typedef struct {
 
 enum {
 #define XX(name, code) name = code,
-  WS_PARSER_ERROR_CODES(XX)
+  PARSER_ERROR_CODES(XX)
 #undef XX
 };
 

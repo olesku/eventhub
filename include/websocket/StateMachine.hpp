@@ -2,29 +2,26 @@
 #define EVENTHUB_WEBSOCKET_STATEMACHINE_HPP
 
 #include <string>
-
-#include "HTTPRequest.hpp"
-#include "HTTPResponse.hpp"
 #include "websocket/ws_parser.h"
 
 namespace eventhub {
 namespace websocket {
 
+enum class State {
+  PARSE,
+  CONTROL_FRAME_READY,
+  DATA_FRAME_READY
+};
+
 class StateMachine {
 public:
-  typedef enum {
-    WS_PARSE,
-    WS_CONTROL_READY,
-    WS_DATA_READY
-  } state;
-
   StateMachine();
   ~StateMachine(){};
 
-  const state getState();
-  state setState(state newState);
+  const State getState();
+  void setState(State neState);
 
-  state process(char* buf, ssize_t len);
+  State process(char* buf, ssize_t len);
 
   void clearPayload();
   void clearControlPayload();
@@ -37,7 +34,7 @@ public:
   uint8_t getControlFrameType();
 
 private:
-  state _state;
+  State _state;
   std::string _payload_buf;
   std::string _control_payload_buf;
   ws_parser_t _ws_parser;

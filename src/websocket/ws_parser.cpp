@@ -1,4 +1,4 @@
-#ifdef WS_PARSER_DUMP_STATE
+#ifdef PARSER_DUMP_STATE
 #include <stdio.h>
 #endif
 
@@ -50,7 +50,7 @@ int ws_parser_execute(
   while (len) {
     uint8_t cur_byte = *buff;
 
-#ifdef WS_PARSER_DUMP_STATE
+#ifdef PARSER_DUMP_STATE
     printf("cur_byte=%d bytes_remaining=%llu fragment=%d fin=%d "
            "control=%d mask_flag=%d mask_pos=%d state=%d len=%zu\n",
            (int)cur_byte,
@@ -309,7 +309,7 @@ ws_parser_error(int rc) {
 #define XX(name, code) \
   if (rc == code)      \
     return #name;
-  WS_PARSER_ERROR_CODES(XX)
+  PARSER_ERROR_CODES(XX)
 #undef XX
 
   return NULL;

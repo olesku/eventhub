@@ -11,8 +11,9 @@
 namespace eventhub {
 using namespace std;
 
-Connection::Connection(int fd, struct sockaddr_in* csin) {
-  _fd          = fd;
+Connection::Connection(int fd, struct sockaddr_in* csin, Worker* worker) :
+  _fd(fd), _worker(worker)
+{
   _epoll_fd    = -1;
   _is_shutdown = false;
 
@@ -36,8 +37,10 @@ Connection::Connection(int fd, struct sockaddr_in* csin) {
 
   DLOG(INFO) << "Initialized client with IP: " << getIP();
 
+  _http_request = std::make_shared<http::RequestStateMachine>();
+
   // Set initial state.
-  setState(HTTP_MODE);
+  setState(ConnectionState::HTTP);
 }
 
 Connection::~Connection() {
@@ -100,7 +103,7 @@ ssize_t Connection::write(const string& data) {
 
   ret = ::write(_fd, _write_buffer.c_str(), _write_buffer.length());
 
-  DLOG(INFO) << "write:" << data;
+  //DLOG(INFO) << "write:" << data;
 
   if (ret <= 0) {
     DLOG(INFO) << getIP() << ": write error: " << strerror(errno);
@@ -119,10 +122,6 @@ ssize_t Connection::write(const string& data) {
 
 ssize_t Connection::flushSendBuffer() {
   return write("");
-}
-
-int Connection::getFileDescriptor() {
-  return _fd;
 }
 
 const string Connection::getIP() {

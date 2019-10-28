@@ -24,7 +24,7 @@ static int parserOnDataPayload(void* userData, const char* buff, size_t len) {
 static int parserOnDataEnd(void* userData) {
   //DLOG(INFO) << "on_data_end";
   auto obj = static_cast<StateMachine*>(userData);
-  obj->setState(StateMachine::WS_DATA_READY);
+  obj->setState(State::DATA_FRAME_READY);
   return 0;
 }
 
@@ -45,7 +45,7 @@ static int parserOnControlPayload(void* userData, const char* buff, size_t len) 
 
 static int parserOnControlEnd(void* userData) {
   auto obj = static_cast<StateMachine*>(userData);
-  obj->setState(StateMachine::state::WS_CONTROL_READY);
+  obj->setState(State::CONTROL_FRAME_READY);
   //DLOG(INFO) << "on_control_end";
   return 0;
 }
@@ -62,25 +62,25 @@ StateMachine::StateMachine() {
       .on_control_end     = parserOnControlEnd,
   };
 
-  setState(state::WS_PARSE);
+  setState(State::PARSE);
 }
 
-const StateMachine::state StateMachine::getState() {
+const State StateMachine::getState() {
   return _state;
 }
 
-StateMachine::state StateMachine::setState(state newState) {
-  return _state = newState;
+void StateMachine::setState(State neState) {
+  _state = neState;
 }
 
 void StateMachine::clearPayload() {
   _payload_buf.clear();
-  setState(state::WS_PARSE);
+  setState(State::PARSE);
 }
 
 void StateMachine::clearControlPayload() {
   _control_payload_buf.clear();
-  setState(state::WS_PARSE);
+  setState(State::PARSE);
 }
 
 void StateMachine::appendPayload(const char* data) {
@@ -107,7 +107,7 @@ uint8_t StateMachine::getControlFrameType() {
   return _control_frame_type;
 }
 
-StateMachine::state StateMachine::process(char* buf, ssize_t len) {
+State StateMachine::process(char* buf, ssize_t len) {
   ws_parser_execute(&_ws_parser, &_ws_parser_callbacks, this, buf, len);
   return _state;
 }

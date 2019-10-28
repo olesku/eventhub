@@ -7,7 +7,7 @@ namespace eventhub {
 namespace websocket {
 namespace response {
 
-void sendData(std::shared_ptr<Connection>& conn, const std::string& data, uint8_t opcode, uint8_t fin) {
+void sendData(ConnectionPtr conn, const std::string& data, uint8_t opcode, uint8_t fin) {
   std::string sndBuf;
   char header[8];
   size_t headerSize = 0;

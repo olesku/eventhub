@@ -8,7 +8,7 @@
 using namespace std;
 
 namespace eventhub {
-void Topic::addSubscriber(std::shared_ptr<Connection>& conn) {
+void Topic::addSubscriber(ConnectionPtr conn) {
   std::lock_guard<std::mutex> lock(_subscriber_lock);
 
   _subscriber_list.push_back(weak_ptr<Connection>(conn));
