@@ -1,0 +1,3 @@
+https://github.com/pote/philote
+https://github.com/sewenew/redis-plus-plus
+https://github.com/bsergean/IXWebSocket/blob/master/ixwebsocket/IXWebSocketTransport.cpp

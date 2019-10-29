@@ -195,7 +195,7 @@ func ExecuteTest(test *TestDefinition) bool {
 func main() {
 	test1 := TestDefinition{
 		name:         "Test 1",
-		numClients:  	20000,
+		numClients:  	1,
 		payloadSize:  1000,
 		iterations:   10,
 		redisChannel: "eventhub.test1",

@@ -1,0 +1,8 @@
+* Don't allow double subscription.
+* Support deflate compression extension.
+* Implement pong timeouts.
+* Should we Base64 encode the payload ?
+* Check out https://github.com/bsergean/autobahn-testsuite
+* Remove uneccesarry logging.
+* UTF-8 validation.
+* Optimize get cache to not look up seen topics if we are given a topic name and not a pattern.
