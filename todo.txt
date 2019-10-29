@@ -1,11 +1,24 @@
+* Use JSON-RPC (https://github.com/badaix/jsonrpcpp)
+* Look into bazel build system and automated dependency management.
+* We are only parsing one line per read(), this must be fixed so we can issue more than one command per send().
+* Add jwt.sub into message header.
+* Add max size to websocket messages as DoS protection.
 * Look into why test1/foo matches test1/foobar (haven't been able to reproduce).
 * Remove uneccesarry logging.
 * Actually support history/cache requests.
-* Support fragmented messages.
 * Support deflate compression extension.
 * Implement pong timeouts.
-* Should we Base64 encode the payload ?
+* Support Base64 encoded payloads.
 * Check out https://github.com/bsergean/autobahn-testsuite
 * UTF-8 validation.
 * Optimize get cache to not look up seen topics if we are given a topic name and not a pattern.
 * Add CORS support.
+* Prometheus endpoint.
+* Dockerfile.
+
+* Intermittent segfaults when CTRL+C:
+I1029 15:48:07.914494 378943 main.cpp:14] Exiting.
+I1029 15:48:11.984525 378944 Response.cpp:40] sendFragment size: 0 fin: 1
+I1029 15:48:13.036229 378943 Server.cpp:19] Server destructor.
+I1029 15:48:13.996858 378943 ConnectionWorker.cpp:39] Connection worker 1 destroyed.
+Segmentation fault (core dumped)

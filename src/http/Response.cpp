@@ -97,5 +97,5 @@ const std::string Response::getStatusMsg(int statusCode) {
   return "OK";
 }
 
-}
-}
+} // namespace http
+} // namespace eventhub

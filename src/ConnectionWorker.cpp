@@ -13,9 +13,9 @@
 #include "Config.hpp"
 #include "Connection.hpp"
 #include "EventLoop.hpp"
-#include "http/Handler.hpp"
 #include "Server.hpp"
 #include "Worker.hpp"
+#include "http/Handler.hpp"
 #include "websocket/Handler.hpp"
 #include "websocket/Response.hpp"
 
@@ -106,25 +106,27 @@ void Worker::_addConnection(int fd, struct sockaddr_in* csin) {
   });
 
   // Send a websocket PING frame to the client every Config.getPingInterval() second.
-  addTimer(Config.getPingInterval() * 1000, [wptrConnection](TimerCtx* ctx) {
-    auto c = wptrConnection.lock();
+  addTimer(
+      Config.getPingInterval() * 1000, [wptrConnection](TimerCtx* ctx) {
+        auto c = wptrConnection.lock();
 
-    if (!c || c->isShutdown()) {
-      ctx->repeat = false;
-      return;
-    }
+        if (!c || c->isShutdown()) {
+          ctx->repeat = false;
+          return;
+        }
 
-    if (c->getState() == ConnectionState::WEBSOCKET) {
-      websocket::response::sendData(c, "", websocket::response::PING_FRAME, 1);
-    }
+        if (c->getState() == ConnectionState::WEBSOCKET) {
+          websocket::response::sendData(c, "", websocket::response::PING_FRAME);
+        }
 
-    // TODO: Disconnect client if lastPong was Config.getPingInterval() * 1000 * 3 ago.
-  }, true);
+        // TODO: Disconnect client if lastPong was Config.getPingInterval() * 1000 * 3 ago.
+      },
+      true);
 }
 
 void Worker::_read(ConnectionPtr client) {
-  char rBuf[8096];
-  ssize_t bytesRead = client->read(rBuf, 8096);
+  char rBuf[NET_BUF_SIZE];
+  ssize_t bytesRead = client->read(rBuf, NET_BUF_SIZE);
 
   if (bytesRead < 1) {
     client->shutdown();
@@ -137,7 +139,7 @@ void Worker::_read(ConnectionPtr client) {
       http::Handler::process(client, rBuf, bytesRead);
       break;
 
-    case ConnectionState::WEBSOCKET :
+    case ConnectionState::WEBSOCKET:
       websocket::Handler::process(client, rBuf, bytesRead);
       break;
 

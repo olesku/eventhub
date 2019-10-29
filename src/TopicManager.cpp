@@ -1,5 +1,5 @@
-#include "Common.hpp"
 #include "TopicManager.hpp"
+#include "Common.hpp"
 #include "Topic.hpp"
 #include <ctype.h>
 #include <memory>
@@ -15,7 +15,7 @@ std::pair<TopicPtr, TopicSubscriberList::iterator> TopicManager::subscribeConnec
     _topic_list.insert(std::make_pair(topicFilter, std::make_unique<Topic>(topicFilter)));
   }
 
-  auto it =  _topic_list[topicFilter]->addSubscriber(conn);
+  auto it = _topic_list[topicFilter]->addSubscriber(conn);
 
   return std::make_pair(_topic_list[topicFilter], it);
 }

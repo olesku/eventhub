@@ -1,14 +1,14 @@
 #include <openssl/sha.h>
 #include <string.h>
 
-#include "http/Handler.hpp"
-#include "Config.hpp"
 #include "Common.hpp"
+#include "Config.hpp"
 #include "ConnectionWorker.hpp"
-#include "http/RequestStateMachine.hpp"
-#include "http/Response.hpp"
 #include "TopicManager.hpp"
 #include "Util.hpp"
+#include "http/Handler.hpp"
+#include "http/RequestStateMachine.hpp"
+#include "http/Response.hpp"
 
 using namespace std;
 
@@ -61,7 +61,7 @@ void Handler::_handlePath(ConnectionPtr conn) {
 }
 
 bool Handler::_websocketHandshake(ConnectionPtr conn) {
-  auto& req = conn->getHttpRequest();
+  auto& req           = conn->getHttpRequest();
   const auto secWsKey = req->getHeader("sec-websocket-key");
 
   if (req->getHeader("upgrade").compare("websocket") != 0 || secWsKey.empty()) {
@@ -112,5 +112,5 @@ void Handler::_badRequest(ConnectionPtr conn, const std::string reason, int stat
   conn->shutdown();
 }
 
-}
+} // namespace http
 } // namespace eventhub

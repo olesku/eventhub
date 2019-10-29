@@ -242,5 +242,5 @@ const string& RequestStateMachine::getErrorMessage() {
   return _error_message;
 }
 
-}
+} // namespace http
 } // namespace eventhub

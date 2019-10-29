@@ -27,7 +27,7 @@ void Topic::publish(const string& data) {
       continue;
     }
 
-    websocket::response::sendData(c, data);
+    websocket::response::sendData(c, data, websocket::response::TEXT_FRAME);
   }
 }
 

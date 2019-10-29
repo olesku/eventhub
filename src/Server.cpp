@@ -48,8 +48,8 @@ void Server::start() {
   // Start the connection workers.
   _connection_workers_lock.lock();
 
-  for (unsigned i = 0; i < std::thread::hardware_concurrency()*10; i++) {
-    _connection_workers.addWorker(new Worker(this, i+1));
+  for (unsigned i = 0; i < std::thread::hardware_concurrency(); i++) {
+    _connection_workers.addWorker(new Worker(this, i + 1));
   }
 
   _cur_worker = _connection_workers.begin();

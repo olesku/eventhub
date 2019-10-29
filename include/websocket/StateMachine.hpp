@@ -1,8 +1,8 @@
 #ifndef EVENTHUB_WEBSOCKET_STATEMACHINE_HPP
 #define EVENTHUB_WEBSOCKET_STATEMACHINE_HPP
 
-#include <string>
 #include "websocket/ws_parser.h"
+#include <string>
 
 namespace eventhub {
 namespace websocket {

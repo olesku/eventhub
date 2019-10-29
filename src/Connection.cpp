@@ -1,6 +1,8 @@
 #include "Connection.hpp"
-#include "ConnectionWorker.hpp"
 #include "Common.hpp"
+#include "ConnectionWorker.hpp"
+#include "Topic.hpp"
+#include "TopicManager.hpp"
 #include <arpa/inet.h>
 #include <ctime>
 #include <fcntl.h>
@@ -8,15 +10,11 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include "Topic.hpp"
-#include "TopicManager.hpp"
 
 namespace eventhub {
 using namespace std;
 
-Connection::Connection(int fd, struct sockaddr_in* csin, Worker* worker) :
-  _fd(fd), _worker(worker)
-{
+Connection::Connection(int fd, struct sockaddr_in* csin, Worker* worker) : _fd(fd), _worker(worker) {
   _epoll_fd    = -1;
   _is_shutdown = false;
 
@@ -148,9 +146,8 @@ int Connection::addToEpoll(int epollFd, uint32_t events) {
   return ret;
 }
 
-void Connection::subscribe(const std::string &topicPattern) {
+void Connection::subscribe(const std::string& topicPattern) {
   std::lock_guard<std::mutex> lock(_subscription_list_lock);
-
   auto& tm = getWorker()->getTopicManager();
 
   if (_subscribedTopics.count(topicPattern)) {
@@ -162,17 +159,16 @@ void Connection::subscribe(const std::string &topicPattern) {
   _subscribedTopics.emplace(std::make_pair(topicPattern, topicSubscription));
 }
 
-void Connection::unsubscribe(const std::string &topicPattern) {
+void Connection::unsubscribe(const std::string& topicPattern) {
   std::lock_guard<std::mutex> lock(_subscription_list_lock);
-
   auto& tm = getWorker()->getTopicManager();
 
   if (_subscribedTopics.count(topicPattern) == 0) {
     return;
   }
 
-  auto it = _subscribedTopics.find(topicPattern);
-  auto topicObj = it->second.first;
+  auto it                   = _subscribedTopics.find(topicPattern);
+  auto topicObj             = it->second.first;
   auto topicObjConnIterator = it->second.second;
 
   topicObj->deleteSubscriberByIterator(topicObjConnIterator);
@@ -185,12 +181,11 @@ void Connection::unsubscribe(const std::string &topicPattern) {
 
 void Connection::unsubscribeAll() {
   std::lock_guard<std::mutex> lock(_subscription_list_lock);
-
   auto& tm = getWorker()->getTopicManager();
 
   // TODO: If erase fails here we might end up in a infinite loop.
   for (auto it = _subscribedTopics.begin(); it != _subscribedTopics.end();) {
-    auto topicObj = it->second.first;
+    auto topicObj             = it->second.first;
     auto topicObjConnIterator = it->second.second;
     topicObj->deleteSubscriberByIterator(topicObjConnIterator);
 
@@ -204,8 +199,8 @@ void Connection::unsubscribeAll() {
 
 std::vector<std::string> Connection::listSubscriptions() {
   std::lock_guard<std::mutex> lock(_subscription_list_lock);
-
   std::vector<std::string> subscriptionList;
+
   for (auto& topic : _subscribedTopics) {
     subscriptionList.push_back(topic.first);
   }

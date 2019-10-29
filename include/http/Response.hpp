@@ -26,7 +26,7 @@ private:
   HeaderList_t _headers;
 };
 
-}
-}
+} // namespace http
+} // namespace eventhub
 
 #endif

@@ -3,9 +3,9 @@
 
 #include <chrono>
 #include <future>
+#include <list>
 #include <memory>
 #include <thread>
-#include <list>
 
 template <class T>
 using worker_list_t = std::list<std::unique_ptr<T>>;

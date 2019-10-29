@@ -34,7 +34,7 @@ typedef struct {
   uint8_t state : 5;
 } ws_parser_t;
 
-#define PARSER_ERROR_CODES(XX) \
+#define PARSER_ERROR_CODES(XX)    \
   XX(WS_OK, 0)                    \
   XX(WS_RESERVED_BITS_SET, -1)    \
   XX(WS_INVALID_OPCODE, -2)       \

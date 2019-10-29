@@ -17,7 +17,7 @@ struct TimerCtx {
 };
 
 using timer_queue_t = std::deque<TimerCtx>;
-using job_queue_t = std::deque<std::function<void()>>;
+using job_queue_t   = std::deque<std::function<void()>>;
 
 class EventLoop {
 public:

@@ -3,8 +3,8 @@
 
 #include "Connection.hpp"
 #include "ConnectionWorker.hpp"
-#include "http/RequestStateMachine.hpp"
 #include "TopicManager.hpp"
+#include "http/RequestStateMachine.hpp"
 #include <memory>
 
 namespace eventhub {
@@ -21,10 +21,10 @@ private:
 
   static void _handlePath(ConnectionPtr conn);
   static bool _websocketHandshake(ConnectionPtr conn);
-  static void _badRequest(ConnectionPtr conn, const std::string reason, int statusCode=400);
+  static void _badRequest(ConnectionPtr conn, const std::string reason, int statusCode = 400);
 };
 
-}
-}
+} // namespace http
+} // namespace eventhub
 
 #endif

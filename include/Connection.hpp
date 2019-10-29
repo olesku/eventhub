@@ -2,10 +2,11 @@
 #define EVENTHUB_CONNECTION_HPP
 
 #include "AccessController.hpp"
+#include "Topic.hpp"
 #include "http/RequestStateMachine.hpp"
 #include "websocket/StateMachine.hpp"
-#include "Topic.hpp"
 #include <ctime>
+#include <list>
 #include <memory>
 #include <mutex>
 #include <netinet/in.h>
@@ -14,12 +15,13 @@
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unordered_map>
-#include <list>
 #include <vector>
 
 using namespace std;
 
 namespace eventhub {
+static constexpr size_t NET_BUF_SIZE = 1 << 7;
+
 class Worker;
 class Topic;
 
@@ -45,8 +47,8 @@ public:
   inline AccessController& getAccessController() { return _access_controller; }
   inline Worker* getWorker() { return _worker; }
   const string getIP();
-  void subscribe(const std::string &topicPattern);
-  void unsubscribe(const std::string &topicPattern);
+  void subscribe(const std::string& topicPattern);
+  void unsubscribe(const std::string& topicPattern);
   void unsubscribeAll();
   std::vector<std::string> listSubscriptions();
 
@@ -62,7 +64,7 @@ public:
 private:
   int _fd;
   struct sockaddr_in _csin;
-  Worker *_worker;
+  Worker* _worker;
   struct epoll_event _epoll_event;
   int _epoll_fd;
   string _write_buffer;
@@ -81,7 +83,7 @@ private:
   size_t _pruneWriteBuffer(size_t bytes);
 };
 
-using ConnectionPtr = std::shared_ptr<Connection>;
+using ConnectionPtr     = std::shared_ptr<Connection>;
 using ConnectionWeakPtr = std::weak_ptr<Connection>;
 } // namespace eventhub
 

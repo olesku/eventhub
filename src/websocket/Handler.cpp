@@ -8,7 +8,6 @@
 #include "jwt/json/json.hpp"
 #include "websocket/Response.hpp"
 #include "websocket/StateMachine.hpp"
-#include "jwt/json/json.hpp"
 
 namespace eventhub {
 namespace websocket {
@@ -31,7 +30,7 @@ void Handler::process(ConnectionPtr conn, char* buf, size_t nBytes) {
 }
 
 void Handler::_handleDataFrame(ConnectionPtr conn) {
-  auto& fsm = conn->getWsFsm();
+  auto& fsm     = conn->getWsFsm();
   auto& payload = fsm.getPayload();
 
   // Parse command and arguments.
@@ -61,7 +60,7 @@ void Handler::_handleControlFrame(ConnectionPtr conn) {
       break;
 
     case response::Opcodes::PING_FRAME:
-      response::sendData(conn, fsm.getControlPayload(), response::Opcodes::PONG_FRAME, 1);
+      response::sendData(conn, fsm.getControlPayload(), response::Opcodes::PONG_FRAME);
       break;
 
     case response::Opcodes::PONG_FRAME:
@@ -75,18 +74,18 @@ void sendErrorMsg(ConnectionPtr conn, const std::string& errMsg, bool disconnect
   j["error"] = errMsg;
 
   try {
-    response::sendData(conn, j.dump());
+    response::sendData(conn, j.dump(), response::Opcodes::TEXT_FRAME);
   } catch (...) {}
 
   if (disconnect) {
-    response::sendData(conn, "", response::Opcodes::CLOSE_FRAME, 1);
+    response::sendData(conn, "", response::Opcodes::CLOSE_FRAME);
     conn->shutdown();
   }
 }
 
 void Handler::_handleClientCommand(ConnectionPtr conn, const std::string& command, const std::string& arg) {
   auto& accessController = conn->getAccessController();
-  auto& redis = conn->getWorker()->getServer()->getRedis();
+  auto& redis            = conn->getWorker()->getServer()->getRedis();
 
   if (!accessController.isAuthenticated()) {
     LOG(ERROR) << "Disconnecting client in websocket mode with invalid authentication. This should never happen.";
@@ -171,9 +170,9 @@ void Handler::_handleClientCommand(ConnectionPtr conn, const std::string& comman
       j.push_back(subscription);
     }
 
-    websocket::response::sendData(conn, j.dump(), websocket::response::TEXT_FRAME, 1);
+    websocket::response::sendData(conn, j.dump(), websocket::response::TEXT_FRAME);
   } else if (command == "QUIT") {
-    response::sendData(conn, "", response::Opcodes::CLOSE_FRAME, 1);
+    response::sendData(conn, "", response::Opcodes::CLOSE_FRAME);
     conn->shutdown();
   } else {
     sendErrorMsg(conn, "Unknown command", false);
