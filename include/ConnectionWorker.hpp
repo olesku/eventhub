@@ -12,19 +12,23 @@
 namespace eventhub {
 class Server; // Forward declaration.
 
-typedef std::unordered_map<unsigned int, std::shared_ptr<Connection>> connection_list_t;
+typedef std::unordered_map<unsigned int, ConnectionPtr> connection_list_t;
 
 class Worker : public WorkerBase {
 public:
-  Worker(Server* srv);
+  Worker(Server* srv, unsigned int workerId);
   ~Worker();
 
-  Server* getServer() { return _server; };
+  inline Server* getServer() { return _server; };
+  inline TopicManager& getTopicManager() { return _topic_manager; }
+
   void subscribeConnection(ConnectionPtr conn, const string& topicFilterName);
   void publish(const string& topicName, const string& data);
   void addTimer(int64_t delay, std::function<void(TimerCtx* ctx)> callback, bool repeat = false);
+  unsigned int getWorkerId() { return _workerId; }
 
 private:
+  unsigned int _workerId;
   Server* _server;
   int _epoll_fd;
   EventLoop _ev;

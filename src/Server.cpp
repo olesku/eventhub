@@ -1,5 +1,6 @@
 #include "Server.hpp"
 #include "Common.hpp"
+#include "Config.hpp"
 #include <fcntl.h>
 #include <mutex>
 #include <netinet/in.h>
@@ -45,17 +46,18 @@ void Server::start() {
   LOG(INFO) << "Listening on port 8080.";
 
   // Start the connection workers.
-  for (unsigned i = 0; i < 1; i++) { //std::thread::hardware_concurrency(); i++) {
-    DLOG(INFO) << "Added worker " << i;
-    _connection_workers.addWorker(new Worker(this));
+  _connection_workers_lock.lock();
+
+  for (unsigned i = 0; i < std::thread::hardware_concurrency()*10; i++) {
+    _connection_workers.addWorker(new Worker(this, i+1));
   }
 
   _cur_worker = _connection_workers.begin();
+  _connection_workers_lock.unlock();
 
-  _redis.setPrefix("eventhub");
+  _redis.setPrefix(Config.getRedisPrefix());
 
   RedisMsgCallback cb = [&](std::string pattern, std::string topic, std::string msg) {
-    LOG(INFO) << "Redis callback: " << pattern << " " << topic << " " << msg;
     publish(topic, msg);
   };
 
@@ -88,6 +90,7 @@ void Server::start() {
 }
 
 Worker* Server::getWorker() {
+  std::lock_guard<std::mutex> lock(_connection_workers_lock);
   if (_cur_worker == _connection_workers.end()) {
     _cur_worker = _connection_workers.begin();
   }
@@ -96,7 +99,7 @@ Worker* Server::getWorker() {
 }
 
 void Server::publish(const string topicName, const string data) {
-  std::lock_guard<std::mutex> lock(_publish_lock);
+  std::lock_guard<std::mutex> lock(_connection_workers_lock);
   for (auto& worker : _connection_workers.getWorkerList()) {
     worker->publish(topicName, data);
   }

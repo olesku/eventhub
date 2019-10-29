@@ -74,14 +74,14 @@ State RequestStateMachine::process(const char* data, int len) {
 
   // Parse error.
   if (pret == -1) {
-    DLOG(ERROR) << "REQ_FAILED";
+    //DLOG(ERROR) << "REQ_FAILED";
     _error_message = "REQ_FAILED: Parse failed.";
     return _set_state(State::REQ_FAILED);
   }
 
   // Request incomplete.
   if (pret == -2) {
-    DLOG(INFO) << "REQ_INCOMPLETE";
+    //DLOG(INFO) << "REQ_INCOMPLETE";
     return _set_state(State::REQ_INCOMPLETE);
   }
 
@@ -143,7 +143,7 @@ State RequestStateMachine::process(const char* data, int len) {
 
   _is_complete      = true;
   _buf[_bytes_read] = '\0';
-  DLOG(INFO) << "REQ_OK";
+  //DLOG(INFO) << "REQ_OK";
 
   return _set_state(State::REQ_OK);
 }

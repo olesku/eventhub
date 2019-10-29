@@ -10,19 +10,19 @@
 #include <unordered_map>
 
 namespace eventhub {
-class TopicManager {
-  typedef std::unordered_map<std::string, std::unique_ptr<Topic>> topic_list_t;
+using TopicList = std::unordered_map<std::string, TopicPtr>;
 
+class TopicManager {
 public:
-  void subscribeConnection(ConnectionPtr conn, const std::string& topicFilter);
+  std::pair<TopicPtr, TopicSubscriberList::iterator> subscribeConnection(ConnectionPtr conn, const std::string& topicFilter);
   void publish(const std::string& topicName, const std::string& data);
-  void garbageCollect();
+  void deleteTopic(const std::string& topicFilter);
 
   static bool isValidTopicFilter(const std::string& filterName);
   static bool isFilterMatched(const std::string& filterName, const string& topicName);
 
 private:
-  topic_list_t _topic_list;
+  TopicList _topic_list;
   std::mutex _topic_list_lock;
 };
 } // namespace eventhub

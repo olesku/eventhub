@@ -8,37 +8,32 @@
 using namespace std;
 
 namespace eventhub {
-void Topic::addSubscriber(ConnectionPtr conn) {
-  std::lock_guard<std::mutex> lock(_subscriber_lock);
+Topic::~Topic() {
+  LOG(INFO) << "Topic: " << _id << " destructor.";
+}
 
-  _subscriber_list.push_back(weak_ptr<Connection>(conn));
-  DLOG(INFO) << "Connection " << conn->getIP() << " subscribed to " << _id;
+TopicSubscriberList::iterator Topic::addSubscriber(ConnectionPtr conn) {
+  std::lock_guard<std::mutex> lock(_subscriber_lock);
+  return _subscriber_list.emplace(_subscriber_list.begin(), ConnectionWeakPtr(conn));
 }
 
 void Topic::publish(const string& data) {
-  for (auto wptrSubscriber : _subscriber_list) {
-    auto subscriber = wptrSubscriber.lock();
+  std::lock_guard<std::mutex> lock(_subscriber_lock);
 
-    if (!subscriber) {
+  for (auto subscriber : _subscriber_list) {
+    auto c = subscriber.lock();
+
+    if (!c || c->isShutdown()) {
       continue;
     }
 
-    DLOG(INFO) << "Publish " << data;
-    websocket::response::sendData(subscriber, data);
+    websocket::response::sendData(c, data);
   }
 }
 
-size_t Topic::garbageCollect() {
+void Topic::deleteSubscriberByIterator(TopicSubscriberList::iterator it) {
   std::lock_guard<std::mutex> lock(_subscriber_lock);
-
-  for (auto it = _subscriber_list.begin(); it != _subscriber_list.end();) {
-    if (!it->lock()) {
-      it = _subscriber_list.erase(it);
-    } else {
-      it++;
-    }
-  }
-
-  return _subscriber_list.size();
+  _subscriber_list.erase(it);
 }
+
 } // namespace eventhub

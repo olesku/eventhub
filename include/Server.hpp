@@ -26,7 +26,7 @@ private:
   int _server_socket;
   WorkerGroup<Worker> _connection_workers;
   WorkerGroup<Worker>::iterator _cur_worker;
-  std::mutex _publish_lock;
+  std::mutex _connection_workers_lock;
   Redis _redis;
 };
 } // namespace eventhub

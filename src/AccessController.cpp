@@ -74,7 +74,6 @@ bool AccessController::allowPublish(const std::string& topic) {
 
   for (auto& filter : _publish_acl) {
     if (TopicManager::isFilterMatched(filter, topic)) {
-      LOG(INFO) << "allowPublish Filter: " << filter << " matches topic " << topic;
       return true;
     }
   }
@@ -88,7 +87,6 @@ bool AccessController::allowSubscribe(const std::string& topic) {
 
   for (auto& filter : _subscribe_acl) {
     if (TopicManager::isFilterMatched(filter, topic)) {
-      LOG(INFO) << "allowSubscribe Filter: " << filter << " matches topic " << topic;
       return true;
     }
   }

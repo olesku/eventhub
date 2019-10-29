@@ -8,6 +8,7 @@
 #include "jwt/json/json.hpp"
 #include "websocket/Response.hpp"
 #include "websocket/StateMachine.hpp"
+#include "jwt/json/json.hpp"
 
 namespace eventhub {
 namespace websocket {
@@ -33,8 +34,6 @@ void Handler::_handleDataFrame(ConnectionPtr conn) {
   auto& fsm = conn->getWsFsm();
   auto& payload = fsm.getPayload();
 
-  LOG(INFO) << "Data: " << payload;
-
   // Parse command and arguments.
   // Format is <COMMAND><SPACE><ARGUMENTS><NEWLINE>
   if (payload.length() > 1 && payload.substr(payload.length() - 1, payload.length()).compare("\n") == 0) {
@@ -56,20 +55,17 @@ void Handler::_handleDataFrame(ConnectionPtr conn) {
 void Handler::_handleControlFrame(ConnectionPtr conn) {
   auto& fsm = conn->getWsFsm();
 
-  DLOG(INFO) << "Control Type: " << fsm.getControlFrameType() << " payload: " << fsm.getControlPayload();
-
   switch (fsm.getControlFrameType()) {
     case response::Opcodes::CLOSE_FRAME:
       conn->shutdown();
       break;
 
     case response::Opcodes::PING_FRAME:
-      DLOG(INFO) << "Sent PONG to " << conn->getIP();
       response::sendData(conn, fsm.getControlPayload(), response::Opcodes::PONG_FRAME, 1);
       break;
 
     case response::Opcodes::PONG_FRAME:
-      DLOG(INFO) << "Got PONG from" << conn->getIP();
+      // TODO: Calculate latency.
       break;
   }
 }
@@ -79,7 +75,7 @@ void sendErrorMsg(ConnectionPtr conn, const std::string& errMsg, bool disconnect
   j["error"] = errMsg;
 
   try {
-    response::sendData(conn, j.dump(0));
+    response::sendData(conn, j.dump());
   } catch (...) {}
 
   if (disconnect) {
@@ -89,15 +85,12 @@ void sendErrorMsg(ConnectionPtr conn, const std::string& errMsg, bool disconnect
 }
 
 void Handler::_handleClientCommand(ConnectionPtr conn, const std::string& command, const std::string& arg) {
-  LOG(INFO) << "Command: '" << command << "'";
-  LOG(INFO) << "Arg: '" << arg << "'";
-
   auto& accessController = conn->getAccessController();
   auto& redis = conn->getWorker()->getServer()->getRedis();
 
   if (!accessController.isAuthenticated()) {
-    LOG(ERROR) << "Disconnecting client websocket mode with invalid authentication. This should never happen.";
-    conn->shutdown();
+    LOG(ERROR) << "Disconnecting client in websocket mode with invalid authentication. This should never happen.";
+    sendErrorMsg(conn, "Invalid authentication token.", true);
     return;
   }
 
@@ -114,15 +107,22 @@ void Handler::_handleClientCommand(ConnectionPtr conn, const std::string& comman
       return;
     }
 
-    conn->getWorker()->subscribeConnection(conn, arg);
+    conn->subscribe(arg);
   }
 
   // Unsubscribe from a channel.
   else if (command == "UNSUB") {
+    if (!TopicManager::isValidTopicFilter(arg)) {
+      sendErrorMsg(conn, arg + ": invalid topic.", false);
+      return;
+    }
+
+    conn->unsubscribe(arg);
   }
 
   // Unsubscribe from all channels.
   else if (command == "UNSUBALL") {
+    conn->unsubscribeAll();
   }
 
   // Publish to a channel.
@@ -165,6 +165,16 @@ void Handler::_handleClientCommand(ConnectionPtr conn, const std::string& comman
 
   // List all subscribed channels.
   else if (command == "LIST") {
+    nlohmann::json j = nlohmann::json::array();
+
+    for (auto subscription : conn->listSubscriptions()) {
+      j.push_back(subscription);
+    }
+
+    websocket::response::sendData(conn, j.dump(), websocket::response::TEXT_FRAME, 1);
+  } else if (command == "QUIT") {
+    response::sendData(conn, "", response::Opcodes::CLOSE_FRAME, 1);
+    conn->shutdown();
   } else {
     sendErrorMsg(conn, "Unknown command", false);
   }
