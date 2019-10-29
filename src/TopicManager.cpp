@@ -1,20 +1,23 @@
+#include "Common.hpp"
 #include "TopicManager.hpp"
 #include "Topic.hpp"
 #include <ctype.h>
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 namespace eventhub {
-void TopicManager::subscribeConnection(ConnectionPtr conn, const std::string& topicFilter) {
+std::pair<TopicPtr, TopicSubscriberList::iterator> TopicManager::subscribeConnection(ConnectionPtr conn, const std::string& topicFilter) {
   std::lock_guard<std::mutex> lock(_topic_list_lock);
 
   if (!_topic_list.count(topicFilter)) {
-    DLOG(INFO) << "Created topic " << topicFilter;
-    _topic_list.insert(std::make_pair(topicFilter, std::unique_ptr<Topic>(new Topic(topicFilter))));
+    _topic_list.insert(std::make_pair(topicFilter, std::make_unique<Topic>(topicFilter)));
   }
 
-  _topic_list[topicFilter]->addSubscriber(conn);
+  auto it =  _topic_list[topicFilter]->addSubscriber(conn);
+
+  return std::make_pair(_topic_list[topicFilter], it);
 }
 
 void TopicManager::publish(const std::string& topicName, const std::string& data) {
@@ -27,19 +30,21 @@ void TopicManager::publish(const std::string& topicName, const std::string& data
   }
 }
 
-void TopicManager::garbageCollect() {
+void TopicManager::deleteTopic(const std::string& topicFilter) {
   std::lock_guard<std::mutex> lock(_topic_list_lock);
 
-  for (auto it = _topic_list.begin(); it != _topic_list.end();) {
-    auto n = it->second->garbageCollect();
-
-    if (n == 0) {
-      DLOG(INFO) << it->first << " has no more connections, removing.";
-      it = _topic_list.erase(it);
-    } else {
-      it++;
-    }
+  if (!_topic_list.count(topicFilter)) {
+    LOG(ERROR) << "deleteTopic: Topic " << topicFilter << " does not exist.";
+    return;
   }
+
+  auto it = _topic_list.find(topicFilter);
+  if (it == _topic_list.end()) {
+    LOG(ERROR) << "deleteTopic: " << topicFilter << " does not exist.";
+    return;
+  }
+
+  _topic_list.erase(it);
 }
 
 bool TopicManager::isValidTopicFilter(const std::string& filterName) {

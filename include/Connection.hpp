@@ -4,6 +4,7 @@
 #include "AccessController.hpp"
 #include "http/RequestStateMachine.hpp"
 #include "websocket/StateMachine.hpp"
+#include "Topic.hpp"
 #include <ctime>
 #include <memory>
 #include <mutex>
@@ -13,18 +14,21 @@
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unordered_map>
+#include <list>
+#include <vector>
 
 using namespace std;
 
 namespace eventhub {
 class Worker;
+class Topic;
 
 enum class ConnectionState {
   HTTP,
   WEBSOCKET
 };
 
-class Connection {
+class Connection : public std::enable_shared_from_this<Connection> {
 public:
   Connection(int fd, struct sockaddr_in* csin, Worker* worker);
   ~Connection();
@@ -41,6 +45,10 @@ public:
   inline AccessController& getAccessController() { return _access_controller; }
   inline Worker* getWorker() { return _worker; }
   const string getIP();
+  void subscribe(const std::string &topicPattern);
+  void unsubscribe(const std::string &topicPattern);
+  void unsubscribeAll();
+  std::vector<std::string> listSubscriptions();
 
   inline ConnectionState setState(ConnectionState newState) { return _state = newState; };
 
@@ -59,11 +67,14 @@ private:
   int _epoll_fd;
   string _write_buffer;
   std::mutex _write_lock;
+  std::mutex _subscription_list_lock;
   http::RequestStateMachinePtr _http_request;
   websocket::StateMachine _ws_fsm;
   AccessController _access_controller;
   ConnectionState _state;
   bool _is_shutdown;
+
+  std::unordered_map<std::string, std::pair<TopicPtr, std::list<std::weak_ptr<Connection>>::iterator>> _subscribedTopics;
 
   void _enableEpollOut();
   void _disableEpollOut();
@@ -71,6 +82,7 @@ private:
 };
 
 using ConnectionPtr = std::shared_ptr<Connection>;
+using ConnectionWeakPtr = std::weak_ptr<Connection>;
 } // namespace eventhub
 
 #endif

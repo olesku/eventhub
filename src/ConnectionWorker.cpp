@@ -23,7 +23,7 @@ using namespace std;
 
 namespace eventhub {
 
-Worker::Worker(Server* srv) {
+Worker::Worker(Server* srv, unsigned int workerId) : _workerId(workerId) {
   _server   = srv;
   _epoll_fd = epoll_create1(0);
 
@@ -36,7 +36,7 @@ Worker::~Worker() {
     close(_epoll_fd);
   }
 
-  DLOG(INFO) << "Connection worker " << threadId() << " destroyed.";
+  DLOG(INFO) << "Connection worker " << getWorkerId() << " destroyed.";
 }
 
 void Worker::addTimer(int64_t delay, std::function<void(TimerCtx* ctx)> callback, bool repeat) {
@@ -62,7 +62,7 @@ do_accept:
         break;
 
       case EAGAIN:
-        LOG(INFO) << "Accept EAGAIN";
+        //DLOG(INFO) << "Accept EAGAIN";
         //goto do_accept;
         break;
 
@@ -80,8 +80,6 @@ do_accept:
 void Worker::_addConnection(int fd, struct sockaddr_in* csin) {
   auto client = make_shared<Connection>(fd, csin, this);
 
-  LOG(INFO) << "Add connection fd: " << fd << " thread_id: " << threadId();
-
   _connection_list_mutex.lock();
   int ret = client->addToEpoll(_epoll_fd, (EPOLLIN | EPOLLRDHUP | EPOLLHUP | EPOLLERR));
 
@@ -94,7 +92,7 @@ void Worker::_addConnection(int fd, struct sockaddr_in* csin) {
   _connection_list.emplace(make_pair(fd, client));
   _connection_list_mutex.unlock();
 
-  LOG(INFO) << "Client " << fd << " accepted in worker " << threadId();
+  //DLOG(INFO) << "Client " << fd << " accepted in worker " << getWorkerId();
 
   // Disconnect client if successful websocket handshake hasn't occurred in 10 seconds.
   std::weak_ptr<Connection> wptrConnection(client);
@@ -116,8 +114,6 @@ void Worker::_addConnection(int fd, struct sockaddr_in* csin) {
       return;
     }
 
-    DLOG(INFO) << "WSPING Client " << c->getIP();
-
     if (c->getState() == ConnectionState::WEBSOCKET) {
       websocket::response::sendData(c, "", websocket::response::PING_FRAME, 1);
     }
@@ -127,19 +123,13 @@ void Worker::_addConnection(int fd, struct sockaddr_in* csin) {
 }
 
 void Worker::_read(ConnectionPtr client) {
-  char rBuf[1024];
-  ssize_t bytesRead = client->read(rBuf, 1024);
+  char rBuf[8096];
+  ssize_t bytesRead = client->read(rBuf, 8096);
 
   if (bytesRead < 1) {
     client->shutdown();
     return;
   }
-
-/*
-  if (client->getState() != ConnectionState::WEBSOCKET) {
-    DLOG(INFO) << "Read: " << rBuf;
-  }
-*/
 
   // Parse request if in parse state.
   switch (client->getState()) {
@@ -161,10 +151,6 @@ void Worker::_removeConnection(const connection_list_t::iterator& it) {
   _connection_list.erase(it);
 }
 
-void Worker::subscribeConnection(ConnectionPtr conn, const string& topicFilterName) {
-  _topic_manager.subscribeConnection(conn, topicFilterName);
-}
-
 void Worker::publish(const string& topicName, const string& data) {
   _ev.addJob([this, topicName, data]() {
     _topic_manager.publish(topicName, data);
@@ -175,10 +161,10 @@ void Worker::_workerMain() {
   std::shared_ptr<struct epoll_event[]> eventConnectionList(new struct epoll_event[MAXEVENTS]);
   struct epoll_event serverSocketEvent;
 
-  LOG(INFO) << "Worker thread " << threadId() << " started.";
+  LOG(INFO) << "Worker " << getWorkerId() << " started.";
 
   if (_epoll_fd == -1) {
-    LOG(FATAL) << "epoll_create1() failed in worker " << threadId() << ": " << strerror(errno);
+    LOG(FATAL) << "epoll_create1() failed in worker " << getWorkerId() << ": " << strerror(errno);
     return;
   }
 
@@ -187,14 +173,7 @@ void Worker::_workerMain() {
   serverSocketEvent.data.fd = _server->getServerSocket();
 
   LOG_IF(FATAL, epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, _server->getServerSocket(), &serverSocketEvent) == -1)
-      << "Failed to add serversocket to epoll in AcceptWorker " << threadId();
-
-  // Run garbage collection of topics with no more connections.
-  addTimer(
-      20000, [this](TimerCtx* ctx) {
-        _topic_manager.garbageCollect();
-      },
-      true);
+      << "Failed to add serversocket to epoll in AcceptWorker " << getWorkerId();
 
   while (!stopRequested()) {
     unsigned int timeout = EPOLL_MAX_TIMEOUT;
@@ -218,7 +197,7 @@ void Worker::_workerMain() {
       _connection_list_mutex.lock();
       auto clientIt = _connection_list.find(eventConnectionList[i].data.fd);
       if (clientIt == _connection_list.end()) {
-        LOG(ERROR) << "ERROR: Received event on filedescriptor which is not present in client list fd: " << eventConnectionList[i].data.fd << " thread_id: " << threadId();
+        LOG(ERROR) << "ERROR: Received event on filedescriptor which is not present in client list fd: " << eventConnectionList[i].data.fd << " worker: " << getWorkerId();
         epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, eventConnectionList[i].data.fd, 0);
         close(eventConnectionList[i].data.fd);
         _connection_list_mutex.unlock();
@@ -230,13 +209,13 @@ void Worker::_workerMain() {
 
       // Close socket if an error occurs.
       if (eventConnectionList[i].events & EPOLLERR) {
-        DLOG(WARNING) << "Error occurred while reading data from client " << client->getIP() << ".";
+        //DLOG(WARNING) << "Error occurred while reading data from client " << client->getIP() << ".";
         _removeConnection(clientIt);
         continue;
       }
 
       if ((eventConnectionList[i].events & EPOLLHUP) || (eventConnectionList[i].events & EPOLLRDHUP)) {
-        DLOG(WARNING) << "Client " << client->getIP() << " disconnected.";
+        //DLOG(WARNING) << "Client " << client->getIP() << " disconnected.";
         _removeConnection(clientIt);
         continue;
       }

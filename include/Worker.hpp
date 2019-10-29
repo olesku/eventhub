@@ -5,10 +5,10 @@
 #include <future>
 #include <memory>
 #include <thread>
-#include <vector>
+#include <list>
 
 template <class T>
-using worker_list_t = std::vector<std::unique_ptr<T>>;
+using worker_list_t = std::list<std::unique_ptr<T>>;
 
 class WorkerBase {
 public:

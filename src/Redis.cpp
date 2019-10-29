@@ -45,7 +45,7 @@ bool Redis::publishMessage(const string topic, const string id, const string pay
   j["payload"] = payload;
 
   try {
-    auto jsonData = j.dump(0);
+    auto jsonData = j.dump();
     _redisInstance->publish(REDIS_PREFIX(topic), jsonData);
   } catch (std::exception& e) {
     return false;

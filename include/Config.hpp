@@ -11,12 +11,16 @@ public:
     return instance;
   }
 
-  std::string getJWTSecret() {
+  const std::string getJWTSecret() {
     return "eventhub_secret";
   }
 
   unsigned int getPingInterval() {
-    return 10;
+    return 30;
+  }
+
+  const std::string getRedisPrefix() {
+    return "eventhub";
   }
 };
 } // namespace eventhub

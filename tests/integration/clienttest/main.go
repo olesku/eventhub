@@ -25,8 +25,8 @@ type TestDefinition struct {
 
 // EventhubClient - Client
 type EventhubClient struct {
-	id     int
-	wsConn *websocket.Conn
+	id            int
+	wsConn        *websocket.Conn
 	responseTimes []time.Duration
 }
 
@@ -106,7 +106,6 @@ func ExecuteTest(test *TestDefinition) bool {
 
 	defer redisClient.Close()
 
-
 	// Wait for all clients to connect.
 	log.Printf("Waiting for all %d clients to connect.", test.numClients)
 
@@ -133,7 +132,7 @@ func ExecuteTest(test *TestDefinition) bool {
 	}
 
 	// Publish messages.
-	go func (){
+	go func() {
 		for i := 0; i < test.iterations; i++ {
 			// Generate payload string.
 			var payload string
@@ -170,7 +169,7 @@ func ExecuteTest(test *TestDefinition) bool {
 		case client := <-ch:
 			nFinished++
 
-			//log.Printf("Client %d: min: %s max: %s avg: %s", 
+			//log.Printf("Client %d: min: %s max: %s avg: %s",
 			//client.id, client.results.minResponseTime.String(), client.results.maxResponseTime.String(), client.results.calcAvgResponseTime().String())
 
 			for _, r := range client.responseTimes {
@@ -184,7 +183,7 @@ func ExecuteTest(test *TestDefinition) bool {
 
 				min, max, avg := calcResponseTimes(&responseTimes)
 
-				log.Printf("Min: %s Max: %s Avg: %s", 
+				log.Printf("Min: %s Max: %s Avg: %s",
 					min.String(), max.String(), avg.String())
 				return true
 			}
@@ -195,12 +194,12 @@ func ExecuteTest(test *TestDefinition) bool {
 func main() {
 	test1 := TestDefinition{
 		name:         "Test 1",
-		numClients:  	1,
+		numClients:   1,
 		payloadSize:  1000,
 		iterations:   10,
 		redisChannel: "eventhub.test1",
 		redisAddr:    "127.0.0.1:6379",
-		eventhubURL:  "ws://127.0.0.1:8080/test1",
+		eventhubURL:  "ws://127.0.0.1:8080/?auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjIyMTQ2OTQ5MjMsInN1YiI6Im9sZS5za3Vkc3Zpa0BnbWFpbC5jb20iLCJ3cml0ZSI6WyJ0ZXN0MS8jIiwidGVzdDIvIyIsInRlc3QzLyMiXSwicmVhZCI6WyJ0ZXN0MS8jIiwidGVzdDIvIyIsInRlc3QzLyMiXSwiY3JlYXRlVG9rZW4iOlsidGVzdDEiLCJ0ZXN0MiIsInRlc3QzIl19.FSSecEiStcElHu0AqpmcIvfyMElwKZQUkiO5X_r0_3g",
 	}
 
 	ExecuteTest(&test1)

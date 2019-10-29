@@ -1,27 +1,32 @@
 #ifndef EVENTHUB_TOPIC_HPP
 #define EVENTHUB_TOPIC_HPP
 
-#include "Connection.hpp"
-#include <deque>
+#include <list>
 #include <memory>
 #include <mutex>
+#include <string>
 
 namespace eventhub {
+class Connection;
+using TopicSubscriberList = std::list<std::weak_ptr<Connection>>;
+
 class Topic {
 public:
   Topic(const std::string& topicFilter) { _id = topicFilter; };
-  ~Topic(){};
+  ~Topic();
 
-  void addSubscriber(ConnectionPtr conn);
-  void publish(const string& data);
-  size_t garbageCollect();
+  TopicSubscriberList::iterator addSubscriber(std::shared_ptr<Connection> conn);
+  void deleteSubscriberByIterator(TopicSubscriberList::iterator it);
+  void publish(const std::string& data);
+  inline size_t getSubscriberCount() { return _subscriber_list.size(); }
 
 private:
   std::string _id;
   uint64_t _n_messages_sent;
-  std::deque<std::weak_ptr<Connection>> _subscriber_list;
+  TopicSubscriberList _subscriber_list;
   std::mutex _subscriber_lock;
 };
-}; // namespace eventhub
 
+using TopicPtr = std::shared_ptr<Topic>;
+}; // namespace eventhub
 #endif
