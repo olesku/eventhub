@@ -22,6 +22,14 @@ public:
   const std::string getRedisPrefix() {
     return "eventhub";
   }
+
+
+  /* Max number of items to cache for a given topic.
+   * Set to 0 for unlimited cache length.
+   */
+  long long getMaxCacheLength() {
+    return 1000;
+  }
 };
 } // namespace eventhub
 

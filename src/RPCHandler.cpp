@@ -158,11 +158,6 @@ void RPCHandler::_handleUnsubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr 
  * @param req RPC request.
  */
 void RPCHandler::_handleUnsubscribeAll(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
-  /*if (!req->params().is_null()) {
-    _sendInvalidParamsError(ctx.connection(), req, "unsubscribeAll takes no parameters.");
-    return;
-  }*/
-
   nlohmann::json result;
   result["unsubscribe_count"] = ctx.connection()->unsubscribeAll();
 
@@ -208,20 +203,20 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
 
   try {
     auto& redis  = ctx.server()->getRedis();
-    auto cacheId = redis.cacheMessage(topicName, message);
+    auto id = redis.cacheMessage(topicName, message);
 
-    if (cacheId.length() == 0) {
+    if (id.length() == 0) {
       msg << "Failed to cache message to Redis, discarding." ;
       _sendInvalidParamsError(ctx, req, msg.str());
       return;
     }
 
-    redis.publishMessage(topicName, cacheId, message);
+    redis.publishMessage(topicName, id, message);
 
     nlohmann::json result;
     result["action"] = "publish";
     result["topic"] = topicName;
-    result["cacheId"] = cacheId;
+    result["id"] = id;
     result["status"] = "ok";
 
     _sendSuccessResponse(ctx, req, result);

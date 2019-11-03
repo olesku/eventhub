@@ -51,9 +51,9 @@ public:
 
   int addToEpoll(std::list<ConnectionPtr>::iterator connectionIterator, uint32_t epollEvents);
 
+  ConnectionState setState(ConnectionState newState);
   ConnectionState getState();
   AccessController& getAccessController();
-  Worker* getWorker();
   ConnectionListIterator getConnectionListIterator();
   ConnectionPtr getSharedPtr();
   const std::string getIP();
@@ -62,8 +62,6 @@ public:
   bool unsubscribe(const std::string& topicPattern);
   unsigned int unsubscribeAll();
   std::vector<std::string> listSubscriptions();
-
-  ConnectionState setState(ConnectionState newState);
 
   void onHTTPRequest(http::ParserCallback callback);
   void onWebsocketRequest(websocket::ParserCallback callback);

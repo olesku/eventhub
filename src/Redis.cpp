@@ -1,4 +1,5 @@
 #include "Redis.hpp"
+#include "Config.hpp"
 #include "TopicManager.hpp"
 #include "jwt/json/json.hpp"
 #include <chrono>
@@ -40,7 +41,7 @@ void Redis::publishMessage(const string topic, const string id, const string pay
   nlohmann::json j;
 
   j["topic"]    = topic;
-  j["cacheId"]  = id;
+  j["id"]  = id;
   j["message"]  = payload;
 
   auto jsonData = j.dump();
@@ -53,6 +54,11 @@ const std::string Redis::cacheMessage(const string topic, const string payload) 
   XStreamAttrs attrs = {{topic, payload}};
   auto id            = _redisInstance->xadd(REDIS_PREFIX(topic), "*", attrs.begin(), attrs.end());
   _incrTopicPubCount(topic);
+
+  if (Config.getMaxCacheLength() > 0) {
+    _redisInstance->xtrim(REDIS_PREFIX(topic), Config.getMaxCacheLength(), false);
+  }
+
   return id;
 }
 
@@ -85,7 +91,7 @@ size_t Redis::getCache(const string topicPattern, const string since, size_t lim
           auto& payload    = keyVals.second;
           */
           nlohmann::json j;
-          j["cacheId"]  = msgID.first;
+          j["id"]  = msgID.first;
           j["topic"]    = keyVals.first;
           j["message"]  = keyVals.second;
 
