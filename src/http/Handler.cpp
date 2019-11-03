@@ -43,7 +43,7 @@ void Handler::_handlePath(HandlerContext &ctx, Parser* req) {
   std::string authToken;
 
   if (!req->getHeader("authorization").empty()) {
-    authToken = Util::uriDecode(req->getHeader("authorization"));
+    authToken = req->getHeader("authorization");
   } else if (!req->getQueryString("auth").empty()) {
     authToken = Util::uriDecode(req->getQueryString("auth"));
   } else {
