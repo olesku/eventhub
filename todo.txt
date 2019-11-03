@@ -1,11 +1,11 @@
+* Support range history requests.
+* Read configuration from file or environment variables.
 * Add subscription field to response containing actual subscribed pattern.
-* Limit Redis XSTREAM size.
 * Look into bazel build system and automated dependency management.
 * Dockerfile.
 * Add jwt.sub into message header.
 * Look into why test1/foo matches test1/foobar (haven't been able to reproduce).
 * Remove uneccesarry logging.
-* Actually support history/cache requests.
 * Support deflate compression extension.
 * Implement pong timeouts.
 * Check out https://github.com/bsergean/autobahn-testsuite
