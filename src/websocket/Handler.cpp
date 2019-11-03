@@ -21,8 +21,8 @@ namespace websocket {
  * @param data Request data.
  * @param ctx HandlerContext (server, worker, client).
  */
-void Handler::HandleRequest(ParserStatus parserStatus, FrameType frameType,
-                                   const std::string& data, HandlerContext& ctx)
+void Handler::HandleRequest(HandlerContext&& ctx, ParserStatus parserStatus, FrameType frameType,
+                                   const std::string& data)
 {
   switch(parserStatus) {
     case ParserStatus::PARSER_OK: break;

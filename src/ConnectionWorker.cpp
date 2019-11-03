@@ -107,23 +107,22 @@ void Worker::_addConnection(int fd, struct sockaddr_in* csin) {
   //DLOG(INFO) << "Client " << fd << " accepted in worker " << getWorkerId();
   std::weak_ptr<Connection> wptrConnection(client);
 
+  // Set up HTTP request callback.
+  client->onHTTPRequest([this, wptrConnection](http::Parser* req, http::RequestState reqState) {
+    auto c = wptrConnection.lock();
+    if (!c) return;
+    http::Handler::HandleRequest(HandlerContext(_server, this, c), req, reqState);
+  });
+
+  // Set up websocket request callback.
   client->onWebsocketRequest([this, wptrConnection](websocket::ParserStatus status,
                                                   websocket::FrameType frameType,
                                                   const std::string& data)
   {
     auto c = wptrConnection.lock();
     if (!c) return;
-
-    HandlerContext hCtx(getServer(), this, c);
-    websocket::Handler::HandleRequest(status, frameType, data, hCtx);
-  });
-
-  client->onHTTPRequest([this, wptrConnection](http::Parser* req, http::RequestState reqState) {
-    auto c = wptrConnection.lock();
-    if (!c) return;
-
-    HandlerContext hCtx(getServer(), this, c);
-    http::Handler::HandleRequest(hCtx, req, reqState);
+    websocket::Handler::HandleRequest(HandlerContext(_server, this, c),
+                                      status, frameType, data);
   });
 
 

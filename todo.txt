@@ -1,7 +1,7 @@
-* Send cache in correct order.
 * Add subscription field to response containing actual subscribed pattern.
 * Limit Redis XSTREAM size.
 * Look into bazel build system and automated dependency management.
+* Dockerfile.
 * Add jwt.sub into message header.
 * Look into why test1/foo matches test1/foobar (haven't been able to reproduce).
 * Remove uneccesarry logging.
@@ -13,4 +13,3 @@
 * Optimize get cache to not look up seen topics if we are given a topic name and not a pattern.
 * Add CORS support.
 * Prometheus endpoint.
-* Dockerfile.

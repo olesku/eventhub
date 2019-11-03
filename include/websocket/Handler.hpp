@@ -14,7 +14,7 @@ namespace websocket {
 
 class Handler {
 public:
-  static void HandleRequest(websocket::ParserStatus parserStatus, websocket::FrameType frameType, const std::string& data, HandlerContext& ctx);
+  static void HandleRequest(HandlerContext&& ctx, websocket::ParserStatus parserStatus, websocket::FrameType frameType, const std::string& data);
 
 private:
   Handler(){};

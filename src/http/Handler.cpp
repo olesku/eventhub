@@ -1,4 +1,3 @@
-#include <openssl/sha.h>
 #include <string.h>
 
 #include "Common.hpp"
@@ -15,7 +14,7 @@ using namespace std;
 
 namespace eventhub {
 namespace http {
-void Handler::HandleRequest(HandlerContext& ctx, Parser* req, RequestState reqState) {
+void Handler::HandleRequest(HandlerContext&& ctx, Parser* req, RequestState reqState) {
   switch (reqState) {
     case RequestState::REQ_INCOMPLETE: return;
 

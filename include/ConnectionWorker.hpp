@@ -19,7 +19,6 @@ public:
   Worker(Server* srv, unsigned int workerId);
   ~Worker();
 
-  inline Server* getServer() { return _server; };
   inline TopicManager& getTopicManager() { return _topic_manager; }
 
   void subscribeConnection(ConnectionPtr conn, const string& topicFilterName);

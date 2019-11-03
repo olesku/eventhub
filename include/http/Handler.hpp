@@ -14,7 +14,7 @@ namespace http {
 
 class Handler {
 public:
-  static void HandleRequest(HandlerContext& ctx, Parser* req, RequestState reqState);
+  static void HandleRequest(HandlerContext&& ctx, Parser* req, RequestState reqState);
 
 private:
   Handler(){};
