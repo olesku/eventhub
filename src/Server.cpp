@@ -8,7 +8,7 @@
 #include <string.h>
 #include <sys/socket.h>
 
-extern int stopEventhub;
+int stopEventhub = 0;
 
 namespace eventhub {
 

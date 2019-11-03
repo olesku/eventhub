@@ -46,3 +46,6 @@ websocket::StateMachine
 
 http::state::CONTROL_READY
 http::state::DATA_READY
+
+method: subscribe
+params: { "topic": "test/topic", "sinceEvent": "1572617385515-0" }

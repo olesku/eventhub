@@ -7,36 +7,36 @@
 #include "TopicManager.hpp"
 #include "Util.hpp"
 #include "http/Handler.hpp"
-#include "http/RequestStateMachine.hpp"
+#include "http/Parser.hpp"
 #include "http/Response.hpp"
+#include "HandlerContext.hpp"
 
 using namespace std;
 
 namespace eventhub {
 namespace http {
-void Handler::process(ConnectionPtr conn, const char* buf, size_t nBytes) {
-  auto& req = conn->getHttpRequest();
+void Handler::HandleRequest(HandlerContext& ctx, Parser* req, RequestState reqState) {
+  switch (reqState) {
+    case RequestState::REQ_INCOMPLETE: return;
 
-  switch (req->process(buf, nBytes)) {
-    case State::REQ_INCOMPLETE:
+    case RequestState::REQ_TO_BIG:
+      ctx.connection()->shutdown();
       return;
-      break;
+    break;
 
-    case State::REQ_OK:
-      _handlePath(conn);
-      break;
+    case RequestState::REQ_OK:
+      _handlePath(ctx, req);
+    break;
 
     default:
-      conn->shutdown();
+      ctx.connection()->shutdown();
   }
 }
 
-void Handler::_handlePath(ConnectionPtr conn) {
-  auto& req = conn->getHttpRequest();
-
+void Handler::_handlePath(HandlerContext &ctx, Parser* req) {
   if (req->getPath().compare("/status") == 0) {
     // TODO: implement status endpoint.
-    conn->shutdown();
+    ctx.connection()->shutdown();
     return;
   }
 
@@ -48,24 +48,22 @@ void Handler::_handlePath(ConnectionPtr conn) {
   } else if (!req->getQueryString("auth").empty()) {
     authToken = Util::uriDecode(req->getQueryString("auth"));
   } else {
-    _badRequest(conn, "No authentication token was given.", 401);
+    _badRequest(ctx, "No authentication token was given.", 401);
     return;
   }
 
-  if (!conn->getAccessController().authenticate(authToken, Config.getJWTSecret())) {
-    _badRequest(conn, "Authentication failed.", 401);
+  if (!ctx.connection()->getAccessController().authenticate(authToken, Config.getJWTSecret())) {
+    _badRequest(ctx, "Authentication failed.", 401);
     return;
   }
 
-  _websocketHandshake(conn);
+  _websocketHandshake(ctx, req);
 }
 
-bool Handler::_websocketHandshake(ConnectionPtr conn) {
-  auto& req           = conn->getHttpRequest();
+bool Handler::_websocketHandshake(HandlerContext& ctx, Parser* req) {
   const auto secWsKey = req->getHeader("sec-websocket-key");
-
   if (req->getHeader("upgrade").compare("websocket") != 0 || secWsKey.empty()) {
-    _badRequest(conn, "Invalid websocket request.");
+    _badRequest(ctx, "Invalid websocket request.");
     return false;
   }
 
@@ -89,16 +87,13 @@ bool Handler::_websocketHandshake(ConnectionPtr conn) {
     resp.setHeader("Sec-WebSocket-Protocol", req->getHeader("Sec-WebSocket-Protocol"));
   }
 
-  conn->write(resp.get());
-  conn->setState(ConnectionState::WEBSOCKET);
-
-  // We don't need the HTTP request object any more after transition to Websocket state.
-  conn->getHttpRequest().reset();
+  ctx.connection()->write(resp.get());
+  ctx.connection()->setState(ConnectionState::WEBSOCKET);
 
   return true;
 }
 
-void Handler::_badRequest(ConnectionPtr conn, const std::string reason, int statusCode) {
+void Handler::_badRequest(HandlerContext& ctx, const std::string reason, int statusCode) {
   Response resp;
   std::stringstream body;
 
@@ -108,8 +103,8 @@ void Handler::_badRequest(ConnectionPtr conn, const std::string reason, int stat
   resp.setStatus(statusCode);
   resp.setHeader("connection", "close");
   resp.setBody(body.str());
-  conn->write(resp.get());
-  conn->shutdown();
+  ctx.connection()->write(resp.get());
+  ctx.connection()->shutdown();
 }
 
 } // namespace http

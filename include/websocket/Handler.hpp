@@ -3,23 +3,24 @@
 
 #include "Connection.hpp"
 #include "ConnectionWorker.hpp"
-#include "websocket/StateMachine.hpp"
+#include "websocket/Types.hpp"
+#include "HandlerContext.hpp"
 #include <memory>
+#include <vector>
+#include <functional>
 
 namespace eventhub {
 namespace websocket {
 
 class Handler {
 public:
-  static void process(ConnectionPtr conn, char* buf, size_t nBytes);
+  static void HandleRequest(websocket::ParserStatus parserStatus, websocket::FrameType frameType, const std::string& data, HandlerContext& ctx);
 
 private:
   Handler(){};
   ~Handler(){};
 
-  static void _handleDataFrame(ConnectionPtr conn);
-  static void _handleControlFrame(ConnectionPtr conn);
-  static void _handleClientCommand(ConnectionPtr conn, const std::string& command, const std::string& args);
+  static void _handleTextFrame(HandlerContext& ctx, const std::string& data);
 };
 
 } // namespace websocket

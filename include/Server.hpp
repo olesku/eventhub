@@ -10,6 +10,7 @@
 using namespace std;
 
 namespace eventhub {
+
 class Server {
 public:
   Server(const string redisHost, int redisPort);

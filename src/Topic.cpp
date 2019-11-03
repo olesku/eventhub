@@ -1,6 +1,7 @@
 #include "Topic.hpp"
 #include "Common.hpp"
 #include "Connection.hpp"
+#include "websocket/Types.hpp"
 #include "websocket/Response.hpp"
 #include <memory>
 #include <string>
@@ -12,25 +13,51 @@ Topic::~Topic() {
   LOG(INFO) << "Topic: " << _id << " destructor.";
 }
 
-TopicSubscriberList::iterator Topic::addSubscriber(ConnectionPtr conn) {
+/**
+ * Add a subscriber to this Topic.
+ * @param conn Connection to add.
+ * @param subscriptionRequestId ID from JSONRPC call to publish().
+ */
+TopicSubscriberList::iterator Topic::addSubscriber(ConnectionPtr conn, const jsonrpcpp::Id subscriptionRequestId) {
   std::lock_guard<std::mutex> lock(_subscriber_lock);
-  return _subscriber_list.emplace(_subscriber_list.begin(), ConnectionWeakPtr(conn));
+  return _subscriber_list.insert(_subscriber_list.begin(), std::make_pair(ConnectionWeakPtr(conn), subscriptionRequestId));
 }
 
+/**
+ * Publish a message to this topic.
+ * @param data Message to publish.
+ */
 void Topic::publish(const string& data) {
   std::lock_guard<std::mutex> lock(_subscriber_lock);
+  nlohmann::json jsonData;
 
-  for (auto subscriber : _subscriber_list) {
-    auto c = subscriber.lock();
+  try {
+    jsonData = nlohmann::json::parse(data);
 
-    if (!c || c->isShutdown()) {
-      continue;
+    for (auto subscriber : _subscriber_list) {
+      auto c = subscriber.first.lock();
+
+      if (!c || c->isShutdown()) {
+        continue;
+      }
+
+      websocket::response::sendData(c,
+      jsonrpcpp::Response(subscriber.second, jsonData).to_json().dump(),
+      websocket::FrameType::TEXT_FRAME);
     }
+  }
 
-    websocket::response::sendData(c, data, websocket::response::TEXT_FRAME);
+  catch (std::exception& e) {
+    DLOG(INFO) << "Invalid publish to " << _id << ": " << e.what();
+    return;
   }
 }
 
+/**
+ * Delete a subscriber.
+ * @param it Iterator pointing to the subscriber to be deleted.
+ *           This is obtained by call to addSubscriber.
+ */
 void Topic::deleteSubscriberByIterator(TopicSubscriberList::iterator it) {
   std::lock_guard<std::mutex> lock(_subscriber_lock);
   _subscriber_list.erase(it);

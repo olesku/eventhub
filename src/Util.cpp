@@ -61,4 +61,10 @@ const std::string Util::uriDecode(const std::string& str) {
 
   return unescaped.str();
 }
+
+std::string& Util::strToLower(std::string& s) {
+  std::transform(s.begin(), s.end(), s.begin(),
+                 [](unsigned char c) { return std::tolower(c); });
+  return s;
+}
 } // namespace eventhub

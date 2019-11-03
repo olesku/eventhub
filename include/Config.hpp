@@ -16,7 +16,7 @@ public:
   }
 
   unsigned int getPingInterval() {
-    return 30;
+    return 10;
   }
 
   const std::string getRedisPrefix() {

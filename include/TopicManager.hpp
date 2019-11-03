@@ -2,7 +2,7 @@
 #define EVENTHUB_TOPIC_MANAGER_HPP
 
 #include "Common.hpp"
-#include "Connection.hpp"
+//#include "Connection.hpp"
 #include "Topic.hpp"
 #include <memory>
 #include <mutex>
@@ -14,7 +14,7 @@ using TopicList = std::unordered_map<std::string, TopicPtr>;
 
 class TopicManager {
 public:
-  std::pair<TopicPtr, TopicSubscriberList::iterator> subscribeConnection(ConnectionPtr conn, const std::string& topicFilter);
+  std::pair<TopicPtr, TopicSubscriberList::iterator> subscribeConnection(ConnectionPtr conn, const std::string& topicFilter, const jsonrpcpp::Id subscriptionRequestId);
   void publish(const std::string& topicName, const std::string& data);
   void deleteTopic(const std::string& topicFilter);
 

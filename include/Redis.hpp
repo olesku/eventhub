@@ -6,6 +6,7 @@
 #include <mutex>
 #include <string>
 #include <sw/redis++/redis++.h>
+#include "jwt/json/json.hpp"
 
 namespace eventhub {
 using namespace std;
@@ -20,10 +21,10 @@ public:
   Redis(const string host, int port = 6379, const string password = "", int poolSize = 5);
   ~Redis(){};
 
-  bool publishMessage(const string topic, const string id, const string payload);
+  void publishMessage(const string topic, const string id, const string payload);
   void psubscribe(const std::string pattern, RedisMsgCallback callback);
   const std::string cacheMessage(const string topic, const string payload);
-  void getCache(const string topicPattern, const string since, long limit);
+  size_t getCache(const string topicPattern, const string since, size_t limit, nlohmann::json& result);
   void consume();
   void resetSubscribers();
 

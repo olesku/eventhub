@@ -1,5 +1,8 @@
 #include "Connection.hpp"
 #include "Common.hpp"
+#include "Config.hpp"
+#include "http/Parser.hpp"
+#include "websocket/Parser.hpp"
 #include "ConnectionWorker.hpp"
 #include "Topic.hpp"
 #include "TopicManager.hpp"
@@ -15,7 +18,6 @@ namespace eventhub {
 using namespace std;
 
 Connection::Connection(int fd, struct sockaddr_in* csin, Worker* worker) : _fd(fd), _worker(worker) {
-  _epoll_fd    = -1;
   _is_shutdown = false;
 
   memcpy(&_csin, csin, sizeof(struct sockaddr_in));
@@ -36,37 +38,36 @@ Connection::Connection(int fd, struct sockaddr_in* csin, Worker* worker) : _fd(f
   // Set TCP_NODELAY on socket.
   setsockopt(_fd, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(int));
 
-  //DLOG(INFO) << "Initialized client with IP: " << getIP();
+  DLOG(INFO) << "Initialized client with IP: " << getIP();
 
-  _http_request = std::make_shared<http::RequestStateMachine>();
+  _http_parser = std::make_unique<http::Parser>();
 
   // Set initial state.
   setState(ConnectionState::HTTP);
 }
 
 Connection::~Connection() {
-  //DLOG(INFO) << "Destructor called for client with IP: " << getIP();
+  DLOG(INFO) << "Destructor called for client with IP: " << getIP();
 
-  if (_epoll_fd != -1) {
-    epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, _fd, 0);
+  if (_worker->getEpollFileDescriptor() != -1) {
+    epoll_ctl(_worker->getEpollFileDescriptor(), EPOLL_CTL_DEL, _fd, 0);
   }
 
   close(_fd);
-
   unsubscribeAll();
 }
 
 void Connection::_enableEpollOut() {
-  if (_epoll_fd != -1 && !(_epoll_event.events & EPOLLOUT)) {
+  if (_worker->getEpollFileDescriptor() != -1 && !(_epoll_event.events & EPOLLOUT)) {
     _epoll_event.events |= EPOLLOUT;
-    epoll_ctl(_epoll_fd, EPOLL_CTL_MOD, _fd, &_epoll_event);
+    epoll_ctl(_worker->getEpollFileDescriptor(), EPOLL_CTL_MOD, _fd, &_epoll_event);
   }
 }
 
 void Connection::_disableEpollOut() {
-  if (_epoll_fd != -1 && (_epoll_event.events & EPOLLOUT)) {
+  if (_worker->getEpollFileDescriptor() != -1 && (_epoll_event.events & EPOLLOUT)) {
     _epoll_event.events &= ~EPOLLOUT;
-    epoll_ctl(_epoll_fd, EPOLL_CTL_MOD, _fd, &_epoll_event);
+    epoll_ctl(_worker->getEpollFileDescriptor(), EPOLL_CTL_MOD, _fd, &_epoll_event);
   }
 }
 
@@ -84,8 +85,9 @@ size_t Connection::_pruneWriteBuffer(size_t bytes) {
   return _write_buffer.length();
 }
 
-ssize_t Connection::read(char* buf, size_t bytes) {
-  ssize_t bytesRead = ::read(_fd, buf, bytes);
+void Connection::read() {
+  char buf[NET_READ_BUFFER_SIZE];
+  ssize_t bytesRead = ::read(_fd, buf, NET_READ_BUFFER_SIZE);
 
   if (bytesRead > 0) {
     buf[bytesRead] = '\0';
@@ -93,7 +95,28 @@ ssize_t Connection::read(char* buf, size_t bytes) {
     buf[0] = '\0';
   }
 
-  return bytesRead;
+  if (bytesRead < 1) {
+    shutdown();
+    return;
+  }
+
+
+  // _parser.parse(buf, bytesRead);
+  // Redirect request to either HTTP handler or websocket handler
+  // based on which state the client is in.
+  switch (getState()) {
+    case ConnectionState::HTTP:
+      _http_parser->parse(buf, bytesRead);
+      break;
+
+    case ConnectionState::WEBSOCKET:
+      _websocket_parser.parse(buf, bytesRead);
+    break;
+
+    default:
+      DLOG(ERROR) << "Connection " << getIP() << " has invalid state, disconnecting.";
+      shutdown();
+  }
 }
 
 ssize_t Connection::write(const string& data) {
@@ -127,26 +150,35 @@ ssize_t Connection::flushSendBuffer() {
   return write("");
 }
 
-const string Connection::getIP() {
+const std::string Connection::getIP() {
   char ip[32];
   inet_ntop(AF_INET, &_csin.sin_addr, (char*)&ip, 32);
 
   return ip;
 }
 
-int Connection::addToEpoll(int epollFd, uint32_t events) {
-  _epoll_event.events  = events;
-  _epoll_event.data.fd = _fd;
-  int ret              = epoll_ctl(epollFd, EPOLL_CTL_ADD, _fd, &_epoll_event);
+int Connection::addToEpoll(ConnectionListIterator connectionIterator, uint32_t epollEvents) {
+  _connection_list_iterator = connectionIterator;
 
-  if (ret == 0) {
-    _epoll_fd = epollFd;
-  }
+  _epoll_event.events  = epollEvents;
+  _epoll_event.data.fd = _fd;
+  _epoll_event.data.ptr = (void*)this;
+
+  int ret = epoll_ctl(_worker->getEpollFileDescriptor(), EPOLL_CTL_ADD, _fd, &_epoll_event);
 
   return ret;
 }
 
-void Connection::subscribe(const std::string& topicPattern) {
+ConnectionState Connection::setState(ConnectionState newState) {
+  if (newState == ConnectionState::WEBSOCKET && _http_parser.get()) {
+    _http_parser.reset();
+  }
+
+  _state = newState;
+  return newState;
+}
+
+void Connection::subscribe(const std::string& topicPattern, const jsonrpcpp::Id subscriptionRequestId) {
   std::lock_guard<std::mutex> lock(_subscription_list_lock);
   auto& tm = getWorker()->getTopicManager();
 
@@ -154,47 +186,77 @@ void Connection::subscribe(const std::string& topicPattern) {
     return;
   }
 
-  auto topicSubscription = tm.subscribeConnection(shared_from_this(), topicPattern);
-
-  _subscribedTopics.emplace(std::make_pair(topicPattern, topicSubscription));
+  auto topicSubscription = tm.subscribeConnection(shared_from_this(), topicPattern, subscriptionRequestId);
+  _subscribedTopics.insert(std::make_pair(topicPattern, TopicSubscription{topicSubscription.first, topicSubscription.second, subscriptionRequestId}));
 }
 
-void Connection::unsubscribe(const std::string& topicPattern) {
+  ConnectionState Connection::getState() {
+    return _state;
+  };
+
+  void Connection::onWebsocketRequest(websocket::ParserCallback callback) {
+    _websocket_parser.setCallback(callback);
+  }
+
+  void Connection::onHTTPRequest(http::ParserCallback callback) {
+    _http_parser->setCallback(callback);
+  }
+
+  AccessController& Connection::getAccessController() {
+    return _access_controller;
+  }
+
+  Worker* Connection::getWorker() {
+    return _worker;
+  }
+
+  ConnectionListIterator Connection::getConnectionListIterator() {
+    return _connection_list_iterator;
+  }
+
+  ConnectionPtr Connection::getSharedPtr() {
+    return shared_from_this();
+  }
+
+bool Connection::unsubscribe(const std::string& topicPattern) {
   std::lock_guard<std::mutex> lock(_subscription_list_lock);
   auto& tm = getWorker()->getTopicManager();
 
   if (_subscribedTopics.count(topicPattern) == 0) {
-    return;
+    return false;
   }
 
-  auto it                   = _subscribedTopics.find(topicPattern);
-  auto topicObj             = it->second.first;
-  auto topicObjConnIterator = it->second.second;
+  auto it = _subscribedTopics.find(topicPattern);
+  auto& subscription = it->second;
 
-  topicObj->deleteSubscriberByIterator(topicObjConnIterator);
+  subscription.topic->deleteSubscriberByIterator(subscription.topicListIterator);
   _subscribedTopics.erase(it);
 
-  if (topicObj->getSubscriberCount() == 0) {
+  if (subscription.topic->getSubscriberCount() == 0) {
     tm.deleteTopic(topicPattern);
   }
+
+  return true;
 }
 
-void Connection::unsubscribeAll() {
+unsigned int Connection::unsubscribeAll() {
   std::lock_guard<std::mutex> lock(_subscription_list_lock);
   auto& tm = getWorker()->getTopicManager();
+  unsigned int count = _subscribedTopics.size();
 
   // TODO: If erase fails here we might end up in a infinite loop.
   for (auto it = _subscribedTopics.begin(); it != _subscribedTopics.end();) {
-    auto topicObj             = it->second.first;
-    auto topicObjConnIterator = it->second.second;
-    topicObj->deleteSubscriberByIterator(topicObjConnIterator);
+    auto& subscription = it->second;
+    subscription.topic->deleteSubscriberByIterator(subscription.topicListIterator);
 
-    if (topicObj->getSubscriberCount() == 0) {
+    if (subscription.topic->getSubscriberCount() == 0) {
       tm.deleteTopic(it->first);
     }
 
     it = _subscribedTopics.erase(it);
   }
+
+  return count;
 }
 
 std::vector<std::string> Connection::listSubscriptions() {

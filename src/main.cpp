@@ -7,8 +7,7 @@
 #include <time.h>
 
 using namespace std;
-
-int stopEventhub = 0;
+extern int stopEventhub;
 
 void shutdown(int sigid) {
   LOG(INFO) << "Exiting.";

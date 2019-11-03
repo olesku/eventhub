@@ -1,4 +1,5 @@
 #include "websocket/Response.hpp"
+#include "websocket/Types.hpp"
 #include "Common.hpp"
 #include <arpa/inet.h>
 #include <string.h>
@@ -8,14 +9,14 @@ namespace websocket {
 // TODO: This should be a static class instead of a namespace.
 namespace response {
 
-void sendFragment(ConnectionPtr conn, const std::string& fragment, uint8_t opcode, bool fin) {
+void sendFragment(ConnectionPtr conn, const std::string& fragment, uint8_t frameType, bool fin) {
   std::string sndBuf;
   char header[8];
   size_t headerSize = 0;
   size_t fragmentSize = fragment.size();
 
   header[0] = fin << 7;
-  header[0] = header[0] | (0xF & opcode);
+  header[0] = header[0] | (0xF & frameType);
   header[1] = 0x0 << 7; // No mask.
 
   if (fragmentSize < 126) {
@@ -38,22 +39,22 @@ void sendFragment(ConnectionPtr conn, const std::string& fragment, uint8_t opcod
   conn->write(sndBuf);
 }
 
-void sendData(ConnectionPtr conn, const std::string& data, uint8_t opcode) {
+void sendData(ConnectionPtr conn, const std::string& data, FrameType frameType) {
   size_t dataSize = data.size();
 
   if (dataSize < WS_MAX_CHUNK_SIZE) {
-    sendFragment(conn, data, opcode, true);
+    sendFragment(conn, data, (uint8_t)frameType, true);
   } else {
-    // First: fin = false, opcode = opcode
-    // Following: fin = false, opcode = CONTINUATION_FRAME
-    // Last: fin = true, opcode = CONTINUATION_FRAME
+    // First: fin = false, frameType = frameType
+    // Following: fin = false, frameType = CONTINUATION_FRAME
+    // Last: fin = true, frameType = CONTINUATION_FRAME
     size_t nChunks = dataSize / WS_MAX_CHUNK_SIZE;
     for (unsigned i = 0; i < nChunks; i++) {
-      uint8_t chunkOpcode = (i == 0) ? opcode : CONTINUATION_FRAME;
+      uint8_t chunkFrametype = uint8_t((i == 0) ? frameType : FrameType::CONTINUATION_FRAME);
       bool fin = (i < (nChunks-1)) ? false : true;
       size_t len = (i < (nChunks-1)) ? WS_MAX_CHUNK_SIZE : std::string::npos;
       auto const chunk = data.substr(i*WS_MAX_CHUNK_SIZE, len);
-      sendFragment(conn, chunk, chunkOpcode, fin);
+      sendFragment(conn, chunk, chunkFrametype, fin);
     }
   }
 }

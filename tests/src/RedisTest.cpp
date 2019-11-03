@@ -68,9 +68,11 @@ TEST_CASE("Test redis", "[Redis") {
     redis.cacheMessage("test/channel2", "Test 7");
     auto msgId = redis.cacheMessage("test/channel2", "Test 8");
 
-    THEN("Dump cache") {
-      redis.getCache("test/#", "0", 0);
-      REQUIRE(true);
+    THEN("Cache size should be larger than 0") {
+      nlohmann::json j;
+      size_t cacheSize = redis.getCache("test/#", "0", 0, j);
+      REQUIRE(cacheSize > 0);
+      REQUIRE(j.size() > 0);
     }
   }
 

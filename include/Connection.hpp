@@ -1,10 +1,11 @@
 #ifndef EVENTHUB_CONNECTION_HPP
 #define EVENTHUB_CONNECTION_HPP
 
+#include "Common.hpp"
 #include "AccessController.hpp"
-#include "Topic.hpp"
-#include "http/RequestStateMachine.hpp"
-#include "websocket/StateMachine.hpp"
+#include "http/Parser.hpp"
+#include "websocket/Parser.hpp"
+#include "jsonrpc/jsonrpcpp.hpp"
 #include <ctime>
 #include <list>
 #include <memory>
@@ -20,7 +21,10 @@
 using namespace std;
 
 namespace eventhub {
-static constexpr size_t NET_BUF_SIZE = 1 << 7;
+
+using ConnectionPtr     = std::shared_ptr<class Connection>;
+using ConnectionWeakPtr = std::weak_ptr<class Connection>;
+using ConnectionListIterator = std::list<ConnectionPtr>::iterator;
 
 class Worker;
 class Topic;
@@ -30,29 +34,39 @@ enum class ConnectionState {
   WEBSOCKET
 };
 
+struct TopicSubscription {
+  std::shared_ptr<Topic> topic;
+  std::list<std::pair<ConnectionWeakPtr, jsonrpcpp::Id>>::iterator topicListIterator;
+  jsonrpcpp::Id rpcSubscriptionRequestId;
+};
+
 class Connection : public std::enable_shared_from_this<Connection> {
 public:
   Connection(int fd, struct sockaddr_in* csin, Worker* worker);
   ~Connection();
 
   ssize_t write(const string& data);
-  ssize_t read(char* buf, size_t bytes);
+  void read();
   ssize_t flushSendBuffer();
 
-  int addToEpoll(int epollFd, uint32_t events);
+  int addToEpoll(std::list<ConnectionPtr>::iterator connectionIterator, uint32_t epollEvents);
 
-  inline ConnectionState getState() { return _state; };
-  inline http::RequestStateMachinePtr& getHttpRequest() { return _http_request; }
-  inline websocket::StateMachine& getWsFsm() { return _ws_fsm; }
-  inline AccessController& getAccessController() { return _access_controller; }
-  inline Worker* getWorker() { return _worker; }
-  const string getIP();
-  void subscribe(const std::string& topicPattern);
-  void unsubscribe(const std::string& topicPattern);
-  void unsubscribeAll();
+  ConnectionState getState();
+  AccessController& getAccessController();
+  Worker* getWorker();
+  ConnectionListIterator getConnectionListIterator();
+  ConnectionPtr getSharedPtr();
+  const std::string getIP();
+
+  void subscribe(const std::string& topicPattern, const jsonrpcpp::Id subscriptionRequestId);
+  bool unsubscribe(const std::string& topicPattern);
+  unsigned int unsubscribeAll();
   std::vector<std::string> listSubscriptions();
 
-  inline ConnectionState setState(ConnectionState newState) { return _state = newState; };
+  ConnectionState setState(ConnectionState newState);
+
+  void onHTTPRequest(http::ParserCallback callback);
+  void onWebsocketRequest(websocket::ParserCallback callback);
 
   inline void shutdown() {
     !_is_shutdown && ::shutdown(_fd, SHUT_RDWR);
@@ -66,25 +80,23 @@ private:
   struct sockaddr_in _csin;
   Worker* _worker;
   struct epoll_event _epoll_event;
-  int _epoll_fd;
   string _write_buffer;
   std::mutex _write_lock;
   std::mutex _subscription_list_lock;
-  http::RequestStateMachinePtr _http_request;
-  websocket::StateMachine _ws_fsm;
+  std::unique_ptr<http::Parser> _http_parser;
+  websocket::Parser _websocket_parser;
   AccessController _access_controller;
   ConnectionState _state;
   bool _is_shutdown;
+  std::list<std::shared_ptr<Connection>>::iterator _connection_list_iterator;
 
-  std::unordered_map<std::string, std::pair<TopicPtr, std::list<std::weak_ptr<Connection>>::iterator>> _subscribedTopics;
+  std::unordered_map<std::string, TopicSubscription> _subscribedTopics;
 
   void _enableEpollOut();
   void _disableEpollOut();
   size_t _pruneWriteBuffer(size_t bytes);
 };
 
-using ConnectionPtr     = std::shared_ptr<Connection>;
-using ConnectionWeakPtr = std::weak_ptr<Connection>;
 } // namespace eventhub
 
 #endif

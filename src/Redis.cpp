@@ -35,23 +35,16 @@ Redis::Redis(const string host, int port, const string password, int poolSize) {
 }
 
 // Publish a message.
-bool Redis::publishMessage(const string topic, const string id, const string payload) {
+void Redis::publishMessage(const string topic, const string id, const string payload) {
   std::lock_guard<std::mutex> lock(_publish_mtx);
-
   nlohmann::json j;
 
-  j["topic"]   = topic;
-  j["id"]      = id;
-  j["payload"] = payload;
+  j["topic"]    = topic;
+  j["cacheId"]  = id;
+  j["message"]  = payload;
 
-  try {
-    auto jsonData = j.dump();
-    _redisInstance->publish(REDIS_PREFIX(topic), jsonData);
-  } catch (std::exception& e) {
-    return false;
-  }
-
-  return true;
+  auto jsonData = j.dump();
+  _redisInstance->publish(REDIS_PREFIX(topic), jsonData);
 }
 
 // CacheMessage caches a message for topic and payload into
@@ -66,32 +59,43 @@ const std::string Redis::cacheMessage(const string topic, const string payload) 
 // GetCache returns all matching cached messages for topics matching topicPattern
 // @param since List all messages since Unix timestamp or message ID
 // @param limit Limit resultset to at most @limit elements.
-void Redis::getCache(const string topicPattern, const string since, long limit) {
+size_t Redis::getCache(const string topicPattern, const string since, size_t limit, nlohmann::json& result) {
   auto topicsSeen = _getTopicsSeen(topicPattern);
   std::unordered_map<std::string, std::string> keys;
+  result = nlohmann::json::array();
 
   for (auto& topic : topicsSeen) {
     keys.insert(pair<std::string, std::string>(REDIS_PREFIX(topic), since));
   }
 
-  std::unordered_map<std::string, XItemStream> result;
+  std::unordered_map<std::string, XItemStream> redisResult;
 
   if (keys.size() > 0) {
-    _redisInstance->xread(keys.begin(), keys.end(), limit, std::inserter(result, result.end()));
+    _redisInstance->xread(keys.begin(), keys.end(), limit, std::inserter(redisResult, redisResult.end()));
   }
 
-  if (result.size() > 0) {
-    for (auto& streamID : result) {
+  if (redisResult.size() > 0) {
+    for (auto& streamID : redisResult) {
       for (auto& msgID : streamID.second) {
         for (auto& keyVals : msgID.second) {
+          /*
           auto& streamName = streamID.first;
           auto& payloadID  = msgID.first;
           auto& topicName  = keyVals.first;
           auto& payload    = keyVals.second;
+          */
+          nlohmann::json j;
+          j["cacheId"]  = msgID.first;
+          j["topic"]    = keyVals.first;
+          j["message"]  = keyVals.second;
+
+          result.push_back(j);
         }
       }
     }
   }
+
+  return redisResult.size();
 }
 
 /*

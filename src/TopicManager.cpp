@@ -8,14 +8,14 @@
 #include <utility>
 
 namespace eventhub {
-std::pair<TopicPtr, TopicSubscriberList::iterator> TopicManager::subscribeConnection(ConnectionPtr conn, const std::string& topicFilter) {
+std::pair<TopicPtr, TopicSubscriberList::iterator> TopicManager::subscribeConnection(ConnectionPtr conn, const std::string& topicFilter, const jsonrpcpp::Id subscriptionRequestId) {
   std::lock_guard<std::mutex> lock(_topic_list_lock);
 
   if (!_topic_list.count(topicFilter)) {
     _topic_list.insert(std::make_pair(topicFilter, std::make_unique<Topic>(topicFilter)));
   }
 
-  auto it = _topic_list[topicFilter]->addSubscriber(conn);
+  auto it = _topic_list[topicFilter]->addSubscriber(conn, subscriptionRequestId);
 
   return std::make_pair(_topic_list[topicFilter], it);
 }
