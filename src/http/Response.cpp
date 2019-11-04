@@ -1,8 +1,7 @@
 #include "http/Response.hpp"
 #include "Common.hpp"
-#include <boost/foreach.hpp>
-#include <boost/lexical_cast.hpp>
 #include <sstream>
+#include <string>
 
 namespace eventhub {
 namespace http {
@@ -46,7 +45,7 @@ const std::string Response::get() {
     _headers.at("Content-Type");
 
     if ((_headers["Content-Type"].compare("text/event-stream") != 0) && (_headers["Connection"].compare("close") == 0) && _body.size() > 0) {
-      setHeader("Content-Length", boost::lexical_cast<std::string>(_body.size()));
+      setHeader("Content-Length", std::to_string(_body.size()));
     }
   } catch (...) {}
 
@@ -59,7 +58,7 @@ const std::string Response::get() {
 
   ss << "HTTP/1.1 " << _statusCode << " " << _statusMsg << CRLF;
 
-  BOOST_FOREACH (HeaderList_t::value_type& header, _headers) {
+  for (const auto& header : _headers) {
     ss << header.first << ": " << header.second << CRLF;
   }
 
