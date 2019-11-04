@@ -138,7 +138,7 @@ void Worker::_addConnection(int fd, struct sockaddr_in* csin) {
 
   // Send a websocket PING frame to the client every Config.getPingInterval() second.
   addTimer(
-      Config.getPingInterval() * 1000, [wptrConnection](TimerCtx* ctx) {
+      Config.get<int>("PING_INTERVAL") * 1000, [wptrConnection](TimerCtx* ctx) {
         auto c = wptrConnection.lock();
 
         if (!c || c->isShutdown()) {

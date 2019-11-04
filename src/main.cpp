@@ -1,10 +1,13 @@
 #include "Common.hpp"
+#include "Config.hpp"
 #include "Server.hpp"
 #include <iostream>
 #include <memory>
 #include <signal.h>
 #include <stdio.h>
 #include <time.h>
+#include <string>
+#include <stdexcept>
 
 using namespace std;
 extern int stopEventhub;
@@ -31,7 +34,24 @@ int main(int argc, char** argv) {
   sigaction(SIGQUIT, &sa, NULL);
   sigaction(SIGHUP, &sa, NULL);
 
-  eventhub::Server server("127.0.0.1", 6379);
+  try {
+    eventhub::Config.add<int>("LISTEN_PORT", 8080);
+    eventhub::Config.add<int>("WORKER_THREADS", 0);
+    eventhub::Config.add<string>("JWT_SECRET", "eventhub_secret");
+    eventhub::Config.add<string>("REDIS_HOST", "127.0.0.1");
+    eventhub::Config.add<int>("REDIS_PORT", 6379);
+    eventhub::Config.add<string>("REDIS_PASSWORD", "");
+    eventhub::Config.add<string>("REDIS_PREFIX", "eventhub");
+    eventhub::Config.add<int>("MAX_CACHE_LENGTH", 1000);
+    eventhub::Config.add<int>("PING_INTERVAL", 10);
+    eventhub::Config.add<bool>("DISABLE_AUTH", false);
+  } catch(std::exception &e) {
+    LOG(ERROR) << "Error reading configuration: " << e.what();
+    return 1;
+  }
+
+
+  eventhub::Server server(eventhub::Config.get<std::string>("REDIS_HOST"), eventhub::Config.get<int>("REDIS_PORT"));
   server.start();
 
   return 0;

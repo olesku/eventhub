@@ -1,3 +1,4 @@
+#include "Config.hpp"
 #include "AccessController.hpp"
 #include "TopicManager.hpp"
 #include <stdexcept>
@@ -20,6 +21,10 @@ namespace eventhub {
   if (!_token_loaded)           \
     return false;
 
+#define BYPASS_AUTH_IF_DISABLED(x) \
+  if (Config.get<bool>("DISABLE_AUTH")) \
+    return true;
+
 AccessController::AccessController() {
   _token_loaded = false;
 }
@@ -29,6 +34,8 @@ AccessController::~AccessController() {
 
 // authenticate loads a a JWT token and extracts ACL's for publish and subscribe.
 bool AccessController::authenticate(const std::string& jwtToken, const std::string& secret) {
+  BYPASS_AUTH_IF_DISABLED();
+
   try {
     _token = jwt::decode(jwtToken, jwt::params::algorithms({"hs256"}), jwt::params::secret(secret));
 
@@ -64,12 +71,14 @@ bool AccessController::authenticate(const std::string& jwtToken, const std::stri
 }
 
 bool AccessController::isAuthenticated() {
+  BYPASS_AUTH_IF_DISABLED();
   REQUIRE_TOKEN_LOADED();
   return true;
 }
 
 // allowPublish checks if the loaded token is allowed to publish to topic.
 bool AccessController::allowPublish(const std::string& topic) {
+  BYPASS_AUTH_IF_DISABLED();
   REQUIRE_TOKEN_LOADED();
 
   for (auto& filter : _publish_acl) {
@@ -83,6 +92,7 @@ bool AccessController::allowPublish(const std::string& topic) {
 
 // allowPublish checks if the loaded token is allowed to subscribe to topic.
 bool AccessController::allowSubscribe(const std::string& topic) {
+  BYPASS_AUTH_IF_DISABLED();
   REQUIRE_TOKEN_LOADED();
 
   for (auto& filter : _subscribe_acl) {
@@ -95,6 +105,7 @@ bool AccessController::allowSubscribe(const std::string& topic) {
 }
 
 bool AccessController::allowCreateToken(const std::string& path) {
+  BYPASS_AUTH_IF_DISABLED();
   REQUIRE_TOKEN_LOADED();
   // Not implemented yet.
   return true;

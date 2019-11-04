@@ -5,18 +5,21 @@
 #include <unordered_map>
 #include <memory>
 #include <utility>
+#include <mutex>
 
 using namespace std;
 
 namespace eventhub {
+namespace config {
 
 template<>
-void EventhubConfig::addOption<int>(std::string name, int defaultValue) {
+void EventhubConfig::add<int>(std::string name, int defaultValue) {
+  std::lock_guard<std::mutex> lock(_configMapLock);
   ConfigValue val;
   val.valueType = ValueType::INT;
 
   if (_configMap.find(name) != _configMap.end()) {
-    throw AlreadyExist();
+    throw AlreadyAdded(name);
   }
 
   auto envVal = getenv(name.c_str());
@@ -26,7 +29,7 @@ void EventhubConfig::addOption<int>(std::string name, int defaultValue) {
     try {
       val.intValue = std::stoi(envVal);
     } catch(...) {
-      throw InvalidValue();
+      throw InvalidValue(name, "integer");
     }
   }
 
@@ -34,12 +37,13 @@ void EventhubConfig::addOption<int>(std::string name, int defaultValue) {
 }
 
 template<>
-void EventhubConfig::addOption<std::string>(std::string name, std::string defaultValue) {
+void EventhubConfig::add<std::string>(std::string name, std::string defaultValue) {
+  std::lock_guard<std::mutex> lock(_configMapLock);
   ConfigValue val;
   val.valueType = ValueType::STRING;
 
   if (_configMap.find(name) != _configMap.end()) {
-    throw AlreadyExist();
+    throw AlreadyAdded(name);
   }
 
   auto envVal = getenv(name.c_str());
@@ -53,13 +57,14 @@ void EventhubConfig::addOption<std::string>(std::string name, std::string defaul
 }
 
 template<>
-void EventhubConfig::addOption<bool>(std::string name, bool defaultValue) {
+void EventhubConfig::add<bool>(std::string name, bool defaultValue) {
+  std::lock_guard<std::mutex> lock(_configMapLock);
   ConfigValue val;
   val.valueType = ValueType::BOOL;
   val.boolValue = false;
 
   if (_configMap.find(name) != _configMap.end()) {
-    throw AlreadyExist();
+    throw AlreadyAdded(name);
   }
 
   auto envVal = getenv(name.c_str());
@@ -69,11 +74,16 @@ void EventhubConfig::addOption<bool>(std::string name, bool defaultValue) {
     size_t envLen = strlen(envVal);
     if (memcmp(envVal, "true", envLen) == 0 ||
         memcmp(envVal, "TRUE", envLen) == 0 ||
-        memcmp(envVal, "1", envLen) == 0) 
+        memcmp(envVal, "1", envLen) == 0)
     {
       val.boolValue = true;
+    } else if (memcmp(envVal, "false", envLen) == 0 ||
+        memcmp(envVal, "FALSE", envLen) == 0 ||
+        memcmp(envVal, "0", envLen) == 0)
+    {
+      val.boolValue = false;
     } else {
-      throw InvalidValue();
+      throw InvalidValue(name, "boolean");
     }
   }
 
@@ -82,25 +92,38 @@ void EventhubConfig::addOption<bool>(std::string name, bool defaultValue) {
 
 template<>
 const std::string EventhubConfig::get<std::string>(const std::string parameter) {
+  std::lock_guard<std::mutex> lock(_configMapLock);
   if (_configMap.find(parameter) == _configMap.end()) {
-    throw InvalidParameter();
+    throw InvalidParameter(parameter);
   }
 
   if (_configMap[parameter].valueType != ValueType::STRING) {
-    throw InvalidType();
+    throw InvalidTypeRequested("<string>", parameter);
   }
 
   return _configMap[parameter].strValue;
 }
 
+bool EventhubConfig::del(const std::string parameter) {
+  std::lock_guard<std::mutex> lock(_configMapLock);
+  auto it = _configMap.find(parameter);
+  if (it != _configMap.end()) {
+    _configMap.erase(it);
+    return true;
+  }
+
+  return false;
+}
+
 template<>
 const int EventhubConfig::get<int>(const std::string parameter) {
+  std::lock_guard<std::mutex> lock(_configMapLock);
   if (_configMap.find(parameter) == _configMap.end()) {
-    throw InvalidParameter();
+    throw InvalidParameter(parameter);
   }
 
   if (_configMap[parameter].valueType != ValueType::INT) {
-    throw InvalidType();
+    throw InvalidTypeRequested("<int>", parameter);
   }
 
   return _configMap[parameter].intValue;
@@ -108,15 +131,17 @@ const int EventhubConfig::get<int>(const std::string parameter) {
 
 template<>
 const bool EventhubConfig::get<bool>(const std::string parameter) {
+  std::lock_guard<std::mutex> lock(_configMapLock);
   if (_configMap.find(parameter) == _configMap.end()) {
-    throw InvalidParameter();
+    throw InvalidParameter(parameter);
   }
 
   if (_configMap[parameter].valueType != ValueType::BOOL) {
-    throw InvalidType();
+    throw InvalidTypeRequested("<bool>", parameter);
   }
 
   return _configMap[parameter].boolValue;
 }
 
-}
+} // namespace config
+} // namespace eventhub

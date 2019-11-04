@@ -1,4 +1,5 @@
 #include "Common.hpp"
+#include "Config.hpp"
 #include "catch.hpp"
 #include "jwt/json/json.hpp"
 #include <future>
@@ -58,6 +59,8 @@ TEST_CASE("Test redis", "[Redis") {
   }
 
   GIVEN("If we cache some items") {
+    Config.add<int>("MAX_CACHE_LENGTH", 1000);
+
     redis.cacheMessage("test/channel1", "Test 1");
     redis.cacheMessage("test/channel1", "Test 2");
     redis.cacheMessage("test/channel1", "Test 3");
