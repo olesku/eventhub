@@ -1,6 +1,0 @@
-/vglive/football/event/20
-
-
-
-/vglive/#
-/vglive/football/+/20

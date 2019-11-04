@@ -3,3 +3,5 @@ build/*
 eventhub.code-workspace
 tests/integration/clienttest/clienttest
 tests/integration/clienttest/vendor/*
+inspiration.txt
+designdoc.txt

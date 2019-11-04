@@ -17,6 +17,7 @@ add_library( libeventhub
   Connection.cpp
   ConnectionWorker.cpp
   AccessController.cpp
+  Config.cpp
 )
 
 add_executable(eventhub main.cpp)
@@ -24,7 +25,7 @@ add_executable(eventhub main.cpp)
 target_link_libraries(eventhub libeventhub)
 target_link_libraries(eventhub ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(eventhub ${Glog_LIBRARIES})
-target_link_libraries(eventhub ${OPENSSL_LIBRARIES})
+target_link_libraries(eventhub ${OPENSSL_CRYPTO_LIBRARIES})
 
 # Hiredis
 find_library(HIREDIS_LIB hiredis)

@@ -6,6 +6,7 @@ add_executable(eventhub_tests
   src/EventLoopTest.cpp
   src/RedisTest.cpp
   src/AccessControllerTest.cpp
+  src/ConfigTest.cpp
   src/main.cpp
 )
 
