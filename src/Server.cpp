@@ -12,8 +12,9 @@ int stopEventhub = 0;
 
 namespace eventhub {
 
-Server::Server(const string redisHost, int redisPort) : _redis(redisHost, redisPort) {
-}
+Server::Server(const string redisHost, int redisPort, const std::string redisPassword, int redisPoolSize)
+  : _redis(redisHost, redisPort, redisPassword, redisPoolSize)
+{}
 
 Server::~Server() {
   DLOG(INFO) << "Server destructor.";

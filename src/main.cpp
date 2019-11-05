@@ -42,6 +42,7 @@ int main(int argc, char** argv) {
     eventhub::Config.add<int>("REDIS_PORT", 6379);
     eventhub::Config.add<string>("REDIS_PASSWORD", "");
     eventhub::Config.add<string>("REDIS_PREFIX", "eventhub");
+    eventhub::Config.add<int>("REDIS_POOL_SIZE", 5);
     eventhub::Config.add<int>("MAX_CACHE_LENGTH", 1000);
     eventhub::Config.add<int>("PING_INTERVAL", 30);
     eventhub::Config.add<int>("WEBSOCKET_HANDSHAKE_TIMEOUT", 15);
@@ -52,7 +53,13 @@ int main(int argc, char** argv) {
   }
 
 
-  eventhub::Server server(eventhub::Config.get<std::string>("REDIS_HOST"), eventhub::Config.get<int>("REDIS_PORT"));
+  eventhub::Server server(
+    eventhub::Config.get<std::string>("REDIS_HOST"),
+    eventhub::Config.get<int>("REDIS_PORT"),
+    eventhub::Config.get<std::string>("REDIS_PASSWORD"),
+    eventhub::Config.get<int>("REDIS_POOL_SIZE")
+  );
+
   server.start();
 
   return 0;
