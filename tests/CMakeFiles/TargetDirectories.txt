@@ -1,3 +1,0 @@
-/home/oles/code/eventhub/tests/CMakeFiles/rebuild_cache.dir
-/home/oles/code/eventhub/tests/CMakeFiles/eventhub_tests.dir
-/home/oles/code/eventhub/tests/CMakeFiles/edit_cache.dir
