@@ -50,16 +50,16 @@ void Handler::HandleRequest(HandlerContext&& ctx, ParserStatus parserStatus, Fra
 
     case FrameType::BINARY_FRAME:
       // Not supported yet.
-      DLOG(INFO) << "Client " << ctx.connection()->getIP() << " received a binary frame.";
+      //DLOG(INFO) << "Client " << ctx.connection()->getIP() << " received a binary frame.";
     break;
 
     case FrameType::PING_FRAME:
-      LOG(INFO) << "Got PING request from " << ctx.connection()->getIP();
+      //LOG(INFO) << "Got PING request from " << ctx.connection()->getIP();
       response::sendData(ctx.connection(), data, FrameType::PONG_FRAME);
     break;
 
     case FrameType::PONG_FRAME:
-      LOG(INFO) << "Got PONG request from " << ctx.connection()->getIP();
+      //LOG(INFO) << "Got PONG request from " << ctx.connection()->getIP();
     break;
 
     case FrameType::CLOSE_FRAME:
@@ -93,8 +93,8 @@ void Handler::_handleTextFrame(HandlerContext& ctx, const std::string& data) {
     auto req = dynamic_pointer_cast<jsonrpcpp::Request>(entity);
     try {
       auto handler = RPCHandler::getHandler(req->method());
-      DLOG(INFO) << ctx.connection()->getIP() << ":";
-      DLOG(INFO) << req->to_json().dump(2);
+      //DLOG(INFO) << ctx.connection()->getIP() << ":";
+      //DLOG(INFO) << req->to_json().dump(2);
       handler(ctx, req);
     } catch(std::exception &e) {
       DLOG(ERROR) << "Invalid RPC method called by " << ctx.connection()->getIP() << ": " << e.what();

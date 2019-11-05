@@ -83,10 +83,16 @@ bool TopicManager::isValidTopicFilter(const std::string& filterName) {
 
 // This method assumes topic filter is validated through is_valid_topic_filter.
 bool TopicManager::isFilterMatched(const std::string& filterName, const string& topicName) {
+
   for (auto fnIt = filterName.begin(), tnIt = topicName.begin();
        tnIt != topicName.end(); fnIt++, tnIt++) {
-    if (fnIt == filterName.end())
+    if (fnIt == filterName.end()) {
       return false;
+    }
+
+    if (tnIt+1 == topicName.end() && fnIt+1 != filterName.end()) {
+      return false;
+    }
 
     if (*fnIt == *tnIt) {
       continue;

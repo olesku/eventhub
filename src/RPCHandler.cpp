@@ -99,13 +99,13 @@ void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr re
   result["topic"] = topicName;
   result["status"] = "ok";
 
-  LOG(INFO) << "Client " << ctx.connection()->getIP() << " subscribed to " << topicName << " request id: " << req->id();
+  //DLOG(INFO) << "Client " << ctx.connection()->getIP() << " subscribed to " << topicName << " request id: " << req->id();
   _sendSuccessResponse(ctx, req, result);
 
   // Send cached events if sinceEvent is set.
   if (!sinceEvent.empty()) {
     try {
-      LOG(INFO) << "Sending cache since '" << sinceEvent << "' to client " << ctx.connection()->getIP() << " topic: " << topicName << " request id: " << req->id();
+      //DLOG(INFO) << "Sending cache since '" << sinceEvent << "' to client " << ctx.connection()->getIP() << " topic: " << topicName << " request id: " << req->id();
       nlohmann::json result;
       auto& redis  = ctx.server()->getRedis();
       size_t cacheSize = redis.getCache(topicName, sinceEvent, 0, result);

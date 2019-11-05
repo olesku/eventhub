@@ -38,7 +38,7 @@ Connection::Connection(int fd, struct sockaddr_in* csin, Worker* worker) : _fd(f
   // Set TCP_NODELAY on socket.
   setsockopt(_fd, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(int));
 
-  DLOG(INFO) << "Initialized client with IP: " << getIP();
+  //DLOG(INFO) << "Initialized client with IP: " << getIP();
 
   _http_parser = std::make_unique<http::Parser>();
 
@@ -47,7 +47,7 @@ Connection::Connection(int fd, struct sockaddr_in* csin, Worker* worker) : _fd(f
 }
 
 Connection::~Connection() {
-  DLOG(INFO) << "Destructor called for client with IP: " << getIP();
+  //DLOG(INFO) << "Destructor called for client with IP: " << getIP();
 
   if (_worker->getEpollFileDescriptor() != -1) {
     epoll_ctl(_worker->getEpollFileDescriptor(), EPOLL_CTL_DEL, _fd, 0);
@@ -132,10 +132,10 @@ ssize_t Connection::write(const string& data) {
   //DLOG(INFO) << "write:" << data;
 
   if (ret <= 0) {
-    DLOG(INFO) << getIP() << ": write error: " << strerror(errno);
+    //DLOG(INFO) << getIP() << ": write error: " << strerror(errno);
     _enableEpollOut();
   } else if ((unsigned int)ret < _write_buffer.length()) {
-    DLOG(INFO) << getIP() << ": Could not write() entire buffer, wrote " << ret << " of " << _write_buffer.length() << " bytes.";
+    //DLOG(INFO) << getIP() << ": Could not write() entire buffer, wrote " << ret << " of " << _write_buffer.length() << " bytes.";
     _pruneWriteBuffer(ret);
     _enableEpollOut();
   } else {

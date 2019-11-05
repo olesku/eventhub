@@ -227,7 +227,7 @@ void Worker::_workerMain() {
       }
 
       if (eventConnectionList[i].events & EPOLLOUT) {
-        DLOG(INFO) << client->getIP() << ": EPOLLOUT, flushing send buffer.";
+        //DLOG(INFO) << client->getIP() << ": EPOLLOUT, flushing send buffer.";
         client->flushSendBuffer();
         continue;
       }
