@@ -127,11 +127,11 @@ void Worker::_addConnection(int fd, struct sockaddr_in* csin) {
 
 
   // Disconnect client if successful websocket handshake hasn't occurred in 10 seconds.
-  addTimer(10000, [this, wptrConnection](TimerCtx* ctx) {
+  addTimer(Config.get<int>("WEBSOCKET_HANDSHAKE_TIMEOUT") * 1000, [this, wptrConnection](TimerCtx* ctx) {
     auto c = wptrConnection.lock();
 
     if (c && c->getState() != ConnectionState::WEBSOCKET) {
-      LOG(INFO) << "Client " << c->getIP() << " failed to handshake in 10 seconds. Removing.";
+      DLOG(INFO) << "Client " << c->getIP() << " failed to handshake in " << Config.get<int>("WEBSOCKET_HANDSHAKE_TIMEOUT") <<  " seconds. Removing.";
       c->shutdown();
     }
   });

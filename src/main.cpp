@@ -43,7 +43,8 @@ int main(int argc, char** argv) {
     eventhub::Config.add<string>("REDIS_PASSWORD", "");
     eventhub::Config.add<string>("REDIS_PREFIX", "eventhub");
     eventhub::Config.add<int>("MAX_CACHE_LENGTH", 1000);
-    eventhub::Config.add<int>("PING_INTERVAL", 10);
+    eventhub::Config.add<int>("PING_INTERVAL", 30);
+    eventhub::Config.add<int>("WEBSOCKET_HANDSHAKE_TIMEOUT", 15);
     eventhub::Config.add<bool>("DISABLE_AUTH", false);
   } catch(std::exception &e) {
     LOG(ERROR) << "Error reading configuration: " << e.what();
