@@ -49,7 +49,7 @@ TEST_CASE("Integer type configuration option test" "[config]") {
 // Strings
 TEST_CASE("Test string configuration options" "[config]") {
   GIVEN("That we set a default value") {
-    Config.add<std::string>("MY_STRING_PARAM_1", "Test string 1");
+    Config.addString("MY_STRING_PARAM_1", "Test string 1");
     THEN("We should get that value back if the env is unset.") {
       REQUIRE(Config.getString("MY_STRING_PARAM_1") == "Test string 1");
     }
@@ -57,7 +57,7 @@ TEST_CASE("Test string configuration options" "[config]") {
 
   GIVEN("That the environment has a variable set") {
     setenv("MY_STRING_PARAM_2", "Test string 2", 1);
-    Config.add<std::string>("MY_STRING_PARAM_2", "Foobar");
+    Config.addString("MY_STRING_PARAM_2", "Foobar");
     THEN("We should get the value of that env and not the default value") {
       REQUIRE(Config.getString("MY_STRING_PARAM_2") == "Test string 2");
     }
@@ -65,14 +65,14 @@ TEST_CASE("Test string configuration options" "[config]") {
 
   GIVEN("That we add the same config option twice") {
     THEN("We should get an exception on the second call") {
-      Config.add<std::string>("MY_STRING_PARAM_3", "Test string 3");
-      CHECK_THROWS_AS(Config.add<std::string>("MY_STRING_PARAM_3", "Test string 3"), AlreadyAdded);
+      Config.addString("MY_STRING_PARAM_3", "Test string 3");
+      CHECK_THROWS_AS(Config.addString("MY_STRING_PARAM_3", "Test string 3"), AlreadyAdded);
     }
   }
 
   GIVEN("That we request a wrong type for a config option") {
     THEN("We should fail with an exception") {
-      Config.add<std::string>("MY_STRING_PARAM_4", "Test string 4");
+      Config.addString("MY_STRING_PARAM_4", "Test string 4");
       CHECK_THROWS_AS(Config.getInt("MY_STRING_PARAM_4"), InvalidTypeRequested);
       CHECK_THROWS_AS(Config.getBool("MY_STRING_PARAM_4"), InvalidTypeRequested);
     }
