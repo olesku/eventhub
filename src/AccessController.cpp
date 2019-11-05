@@ -22,7 +22,7 @@ namespace eventhub {
     return false;
 
 #define BYPASS_AUTH_IF_DISABLED(x) \
-  if (Config.get<bool>("DISABLE_AUTH")) \
+  if (Config.getBool("DISABLE_AUTH")) \
     return true;
 
 AccessController::AccessController() {

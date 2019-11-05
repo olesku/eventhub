@@ -8,6 +8,7 @@ add_library( libeventhub
   websocket/Parser.cpp
   websocket/Handler.cpp
   websocket/Response.cpp
+  Config.cpp
   RPCHandler.cpp
   Redis.cpp
   Util.cpp
@@ -17,7 +18,6 @@ add_library( libeventhub
   Connection.cpp
   ConnectionWorker.cpp
   AccessController.cpp
-  Config.cpp
 )
 
 add_executable(eventhub main.cpp)

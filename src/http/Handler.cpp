@@ -56,12 +56,12 @@ void Handler::_handlePath(HandlerContext &ctx, Parser* req) {
     authToken = req->getHeader("authorization");
   } else if (!req->getQueryString("auth").empty()) {
     authToken = Util::uriDecode(req->getQueryString("auth"));
-  } else if (!Config.get<bool>("DISABLE_AUTH")) {
+  } else if (!Config.getBool("DISABLE_AUTH")) {
     _badRequest(ctx, "No authentication token was given.", 401);
     return;
   }
 
-  if (!ctx.connection()->getAccessController().authenticate(authToken, Config.get<std::string>("JWT_SECRET"))) {
+  if (!ctx.connection()->getAccessController().authenticate(authToken, Config.getString("JWT_SECRET"))) {
     _badRequest(ctx, "Authentication failed.", 401);
     return;
   }

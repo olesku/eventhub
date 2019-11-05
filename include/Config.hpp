@@ -65,13 +65,15 @@ public:
 
 class EventhubConfig {
 public:
-  template <typename T>
-  void add(std::string envName, T defaultValue);
+  void addInt(const std::string& envName, int defaultValue);
+  void addString(const std::string& envName, const std::string& defaultValue);
+  void addBool(const std::string& envName, bool defaultValue);
 
   bool del(const std::string parameter);
 
-  template <typename T>
-  const T get(const std::string parameter);
+  const std::string getString(const std::string& parameter);
+  const int getInt(const std::string& parameter);
+  const bool getBool(const std::string& parameter);
 
   static EventhubConfig& getInstance() {
     static EventhubConfig instance;

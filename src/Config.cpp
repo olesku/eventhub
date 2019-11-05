@@ -12,8 +12,7 @@ using namespace std;
 namespace eventhub {
 namespace config {
 
-template<>
-void EventhubConfig::add<int>(std::string name, int defaultValue) {
+void EventhubConfig::addInt(const std::string& name, int defaultValue) {
   std::lock_guard<std::mutex> lock(_configMapLock);
   ConfigValue val;
   val.valueType = ValueType::INT;
@@ -36,8 +35,7 @@ void EventhubConfig::add<int>(std::string name, int defaultValue) {
   _configMap.emplace(std::make_pair(name, val));
 }
 
-template<>
-void EventhubConfig::add<std::string>(std::string name, std::string defaultValue) {
+void EventhubConfig::addString(const std::string& name, const std::string& defaultValue) {
   std::lock_guard<std::mutex> lock(_configMapLock);
   ConfigValue val;
   val.valueType = ValueType::STRING;
@@ -56,8 +54,7 @@ void EventhubConfig::add<std::string>(std::string name, std::string defaultValue
   _configMap.emplace(std::make_pair(name, val));
 }
 
-template<>
-void EventhubConfig::add<bool>(std::string name, bool defaultValue) {
+void EventhubConfig::addBool(const std::string& name, bool defaultValue) {
   std::lock_guard<std::mutex> lock(_configMapLock);
   ConfigValue val;
   val.valueType = ValueType::BOOL;
@@ -90,8 +87,7 @@ void EventhubConfig::add<bool>(std::string name, bool defaultValue) {
   _configMap.emplace(std::make_pair(name, val));
 }
 
-template<>
-const std::string EventhubConfig::get<std::string>(const std::string parameter) {
+const std::string EventhubConfig::getString(const std::string& parameter) {
   std::lock_guard<std::mutex> lock(_configMapLock);
   if (_configMap.find(parameter) == _configMap.end()) {
     throw InvalidParameter(parameter);
@@ -115,8 +111,7 @@ bool EventhubConfig::del(const std::string parameter) {
   return false;
 }
 
-template<>
-const int EventhubConfig::get<int>(const std::string parameter) {
+const int EventhubConfig::getInt(const std::string& parameter) {
   std::lock_guard<std::mutex> lock(_configMapLock);
   if (_configMap.find(parameter) == _configMap.end()) {
     throw InvalidParameter(parameter);
@@ -129,8 +124,7 @@ const int EventhubConfig::get<int>(const std::string parameter) {
   return _configMap[parameter].intValue;
 }
 
-template<>
-const bool EventhubConfig::get<bool>(const std::string parameter) {
+const bool EventhubConfig::getBool(const std::string& parameter) {
   std::lock_guard<std::mutex> lock(_configMapLock);
   if (_configMap.find(parameter) == _configMap.end()) {
     throw InvalidParameter(parameter);

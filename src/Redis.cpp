@@ -55,8 +55,8 @@ const std::string Redis::cacheMessage(const string topic, const string payload) 
   auto id            = _redisInstance->xadd(REDIS_PREFIX(topic), "*", attrs.begin(), attrs.end());
   _incrTopicPubCount(topic);
 
-  if (Config.get<int>("MAX_CACHE_LENGTH") > 0) {
-    _redisInstance->xtrim(REDIS_PREFIX(topic), Config.get<int>("MAX_CACHE_LENGTH"), false);
+  if (Config.getInt("MAX_CACHE_LENGTH") > 0) {
+    _redisInstance->xtrim(REDIS_PREFIX(topic), Config.getInt("MAX_CACHE_LENGTH"), false);
   }
 
   return id;

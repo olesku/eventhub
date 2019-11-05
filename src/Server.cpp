@@ -37,24 +37,24 @@ void Server::start() {
   struct sockaddr_in sin;
   memset((char*)&sin, '\0', sizeof(sin));
   sin.sin_family = AF_INET;
-  sin.sin_port   = htons(Config.get<int>("LISTEN_PORT"));
+  sin.sin_port   = htons(Config.getInt("LISTEN_PORT"));
 
   LOG_IF(FATAL, (bind(_server_socket, (struct sockaddr*)&sin, sizeof(sin))) == -1) << "Could not bind server socket to port 8080";
 
   LOG_IF(FATAL, listen(_server_socket, 0) == -1) << "Call to listen() failed.";
   LOG_IF(FATAL, fcntl(_server_socket, F_SETFL, O_NONBLOCK) == -1) << "fcntl O_NONBLOCK on serversocket failed.";
 
-  LOG(INFO) << "Listening on port " << Config.get<int>("LISTEN_PORT") << ".";
+  LOG(INFO) << "Listening on port " << Config.getInt("LISTEN_PORT") << ".";
 
-  if (Config.get<bool>("DISABLE_AUTH")) {
+  if (Config.getBool("DISABLE_AUTH")) {
     LOG(INFO) << "WARNING: Server is running with DISABLE_AUTH=true. Everything is allowed by any client.";
   }
 
   // Start the connection workers.
   _connection_workers_lock.lock();
 
-  unsigned int numWorkerThreads = Config.get<int>("WORKER_THREADS") == 0 ?
-    std::thread::hardware_concurrency() : Config.get<int>("WORKER_THREADS");
+  unsigned int numWorkerThreads = Config.getInt("WORKER_THREADS") == 0 ?
+    std::thread::hardware_concurrency() : Config.getInt("WORKER_THREADS");
 
   for (unsigned i = 0; i < numWorkerThreads; i++) {
     _connection_workers.addWorker(new Worker(this, i + 1));
@@ -63,7 +63,7 @@ void Server::start() {
   _cur_worker = _connection_workers.begin();
   _connection_workers_lock.unlock();
 
-  _redis.setPrefix(Config.get<std::string>("REDIS_PREFIX"));
+  _redis.setPrefix(Config.getString("REDIS_PREFIX"));
 
   RedisMsgCallback cb = [&](std::string pattern, std::string topic, std::string msg) {
     publish(topic, msg);
