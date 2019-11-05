@@ -33,6 +33,16 @@ void Handler::HandleRequest(HandlerContext&& ctx, Parser* req, RequestState reqS
 }
 
 void Handler::_handlePath(HandlerContext &ctx, Parser* req) {
+  if (req->getPath().compare("/healthz") == 0) {
+    Response resp;
+    resp.setStatus(200);
+    resp.setHeader("Content-Type", "appliction/json");
+    resp.setBody("{ \"status\": \"ok\" }\r\n");
+    ctx.connection()->write(resp.get());
+    ctx.connection()->shutdown();
+    return;
+  }
+
   if (req->getPath().compare("/status") == 0) {
     // TODO: implement status endpoint.
     ctx.connection()->shutdown();
