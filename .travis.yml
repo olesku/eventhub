@@ -32,9 +32,10 @@ jobs:
     script: make
 
   - name: "Build and push docker image to quay.io"
-    script: |
-    docker login -u="olesku+travis" -p="${QUAY_PASSWORD}" quay.io && \
-    COMMIT_ID=$(git rev-parse --short HEAD) \
-    docker build -t quay.io/olesku/eventhub:$COMMIT_ID -t quay.io/olesku/eventhub:latest . && \
-    docker push quay.io/olesku/eventhub
+    script:
+      - |
+        docker login -u="$QUAY_USER" -p="${QUAY_PASSWORD}" quay.io && \
+        COMMIT_ID=$(git rev-parse --short HEAD) \
+        docker build -t quay.io/olesku/eventhub:$COMMIT_ID -t quay.io/olesku/eventhub:latest . && \
+        docker push quay.io/olesku/eventhub
 
