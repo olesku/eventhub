@@ -25,5 +25,6 @@ jobs:
         cd compile && \
         cmake -DCMAKE_BUILD_TYPE=Release .. && \
         make && \
-        sudo make install
+        sudo make install &&
+        cd ../..
     script: make
