@@ -16,8 +16,8 @@ service:
   - redis-server
 jobs:
   include:
-  - name: "Install redis-plus-plus dependency."
-    script:
+  - name: "Build and test"
+    before_script:
       - |
         git clone https://github.com/sewenew/redis-plus-plus.git && \
         cd redis-plus-plus && \
@@ -27,5 +27,4 @@ jobs:
         make && \
         sudo make install && \
         cd ../..
-  - name: "Build and test Eventhub"
     script: make
