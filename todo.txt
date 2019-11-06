@@ -1,4 +1,4 @@
-* Support range history requests.
+* Support history tange requests.
 * Add jwt.sub into message header.
 * Remove uneccesarry logging.
 * Support deflate compression extension.
