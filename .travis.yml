@@ -36,7 +36,5 @@ jobs:
     script:
       - |
         docker login -u="${QUAY_USER}" -p="${QUAY_PASSWORD}" quay.io && \
-        COMMIT_ID=$(git rev-parse --short HEAD) \
-        docker build -t quay.io/olesku/eventhub:$COMMIT_ID -t quay.io/olesku/eventhub:latest . && \
+        docker build -t "quay.io/olesku/eventhub:${TRAVIS_COMMIT}" -t "quay.io/olesku/eventhub:latest" . && \
         docker push quay.io/olesku/eventhub
-
