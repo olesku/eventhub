@@ -18,7 +18,7 @@ services:
   - docker
 jobs:
   include:
-  - name: "Build and test"
+  - stage: "Build and test"
     before_script:
       - |
         git clone https://github.com/sewenew/redis-plus-plus.git && \
@@ -31,10 +31,11 @@ jobs:
         cd ../..
     script: make
 
-  - name: "Build and push docker image to quay.io"
+  - stage: "Build and push docker image to quay.io"
+    if: branch = travis
     script:
       - |
-        docker login -u="$QUAY_USER" -p="${QUAY_PASSWORD}" quay.io && \
+        docker login -u="${QUAY_USER}" -p="${QUAY_PASSWORD}" quay.io && \
         COMMIT_ID=$(git rev-parse --short HEAD) \
         docker build -t quay.io/olesku/eventhub:$COMMIT_ID -t quay.io/olesku/eventhub:latest . && \
         docker push quay.io/olesku/eventhub
