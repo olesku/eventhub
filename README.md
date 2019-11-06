@@ -118,7 +118,7 @@ make
 
 ## Clustering
 Eventhub has clustering capabilities, and it's easy to run multiple instances with the same datasources.
-It is using Redis for intercommunication, so the only thing you have to do in is to configure each instance to use the same Redis server.
+It's using Redis for intercommunication, so the only thing you have to do is to configure each instance to use the same Redis server.
 
 # TLS/SSL
 Right now Eventhub doesn't support this natively. If you want to use this you have to front it with a loadbalancer that does the TLS-termination. It has been tested with ELB/NLB/ALB on AWS and HAProxy and NGINX on-premise.
