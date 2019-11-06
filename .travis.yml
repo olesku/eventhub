@@ -32,9 +32,9 @@ jobs:
     script: make
 
   - stage: "Build and push docker image to quay.io"
-    if: branch = travis
+    if: branch = master
     script:
       - |
         docker login -u="${QUAY_USER}" -p="${QUAY_PASSWORD}" quay.io && \
-        docker build -t "quay.io/olesku/eventhub:${TRAVIS_COMMIT}" -t "quay.io/olesku/eventhub:latest" . && \
+        docker build -t "quay.io/olesku/eventhub:${TRAVIS_BRANCH}" -t "quay.io/olesku/eventhub:latest" . && \
         docker push quay.io/olesku/eventhub
