@@ -1,4 +1,6 @@
 # Eventhub: Pub/sub over WebSockets server
+[![Build Status](https://travis-ci.com/olesku/eventhub.svg?branch=master)](https://travis-ci.com/olesku/eventhub)
+[![Docker Repository on Quay](https://quay.io/repository/olesku/eventhub/status "Docker Repository on Quay")](https://quay.io/repository/olesku/eventhub)
 
 Eventhub is a high performance websocket server written in modern C++. It implements the [Publish-subscribe pattern](https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern) and the concept of topics.
 

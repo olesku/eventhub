@@ -1,0 +1,40 @@
+language: cpp
+compiler: gcc
+dist: bionic
+sudo: true
+addons:
+  apt:
+    packages:
+      - git
+      - make
+      - cmake
+      - cmake-data
+      - libhiredis-dev
+      - libssl-dev
+      - libgoogle-glog-dev
+      - redis-server
+services:
+  - redis-server
+  - docker
+jobs:
+  include:
+  - stage: "Build and test"
+    before_script:
+      - |
+        git clone https://github.com/sewenew/redis-plus-plus.git && \
+        cd redis-plus-plus && \
+        mkdir compile && \
+        cd compile && \
+        cmake -DCMAKE_BUILD_TYPE=Release .. && \
+        make && \
+        sudo make install && \
+        cd ../..
+    script: make
+
+  - stage: "Build and push docker image to quay.io"
+    if: branch = master
+    script:
+      - |
+        docker login -u="${QUAY_USER}" -p="${QUAY_PASSWORD}" quay.io && \
+        docker build -t "quay.io/olesku/eventhub:${TRAVIS_BRANCH}" -t "quay.io/olesku/eventhub:latest" . && \
+        docker push quay.io/olesku/eventhub
