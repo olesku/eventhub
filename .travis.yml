@@ -1,0 +1,19 @@
+- os: linux
+  dist: xenial
+  addons:
+    apt:
+      packages:
+        - g++
+        - make
+        - cmake
+        - cmake-data
+        - libhiredis-dev
+        - libssl-dev
+        - libgoogle-glog-dev
+        - redis-server
+  service:
+    - redis-server
+  jobs:
+    include:
+    - name: "Build and test"
+      script: "make"
