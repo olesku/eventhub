@@ -1,6 +1,6 @@
 language: cpp
 compiler: gcc
-dist: xenial
+dist: bionic
 addons:
   apt:
     packages:
@@ -16,8 +16,8 @@ service:
   - redis-server
 jobs:
   include:
-  - name: "Build and test"
-    before_script:
+  - name: "Install redis-plus-plus dependency."
+    script:
       - |
         git clone https://github.com/sewenew/redis-plus-plus.git && \
         cd redis-plus-plus && \
@@ -27,4 +27,5 @@ jobs:
         make && \
         sudo make install && \
         cd ../..
-    script: make
+    - name: "Build and test Eventhub"
+      script: make
