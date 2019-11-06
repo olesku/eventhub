@@ -18,7 +18,7 @@ RUN mkdir -p build && cd build && \
     sed -i 's/clang++/g++/' ../CMakeLists.txt && \
     sed -i 's/clang/gcc/' ../CMakeLists.txt && \
     cmake -DSKIP_TESTS=1 .. && \
-    make -j16 && \
+    make -j && \
     strip eventhub && \
     cp -a eventhub /usr/bin/eventhub
 
