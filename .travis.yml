@@ -27,5 +27,5 @@ jobs:
         make && \
         sudo make install && \
         cd ../..
-    - name: "Build and test Eventhub"
-      script: make
+  - name: "Build and test Eventhub"
+    script: make
