@@ -4,7 +4,7 @@ dist: xenial
 addons:
   apt:
     packages:
-      - g++
+      - git
       - make
       - cmake
       - cmake-data
@@ -17,4 +17,11 @@ service:
 jobs:
   include:
   - name: "Build and test"
+    before_script: |
+      git clone https://github.com/sewenew/redis-plus-plus.git && \
+      cd redis-plus-plus && \
+      mkdir compile && \
+      cmake -DCMAKE_BUILD_TYPE=Release .. && \
+      make && \
+      make install
     script: "make"
