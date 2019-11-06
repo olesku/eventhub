@@ -1,6 +1,7 @@
 language: cpp
 compiler: gcc
 dist: bionic
+sudo: true
 addons:
   apt:
     packages:
@@ -12,8 +13,9 @@ addons:
       - libssl-dev
       - libgoogle-glog-dev
       - redis-server
-service:
+services:
   - redis-server
+  - docker
 jobs:
   include:
   - name: "Build and test"
@@ -28,3 +30,11 @@ jobs:
         sudo make install && \
         cd ../..
     script: make
+
+  - name: "Build and push docker image to quay.io"
+    script: |
+    docker login -u="olesku+travis" -p="${QUAY_PASSWORD}" quay.io && \
+    COMMIT_ID=$(git rev-parse --short HEAD) \
+    docker build -t quay.io/olesku/eventhub:$COMMIT_ID -t quay.io/olesku/eventhub:latest . && \
+    docker push quay.io/olesku/eventhub
+
