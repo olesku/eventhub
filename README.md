@@ -2,11 +2,9 @@
 [![Build Status](https://travis-ci.com/olesku/eventhub.svg?branch=master)](https://travis-ci.com/olesku/eventhub)
 [![Docker Repository on Quay](https://quay.io/repository/olesku/eventhub/status "Docker Repository on Quay")](https://quay.io/repository/olesku/eventhub)
 
-Eventhub is a high performance websocket server written in modern C++. It implements the [Publish-subscribe pattern](https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern) and the concept of topics.
+Eventhub is a WebSocket message broker written in modern C++.
 
-It has successfully been tested with 100k+ simultanious clients on a single instance running on commodity hardware.
-
-It also has cluster capabilities, so you can easily scale it to as many instances as your deployment requires.
+It's written with focus on high performance and availability, and implements the [publish-subscribe pattern](https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern) and the concept of topics.
 
 # Concepts
 ## Topics
@@ -118,8 +116,12 @@ cmake -DSKIP_TESTS=1 .. && \
 make
 ```
 
+## Clustering
+Eventhub has clustering capabilities, and it's easy to run multiple instances with the same datasources.
+It is using Redis for intercommunication, so the only thing you have to do in is to configure each instance to use the same Redis server.
+
 # TLS/SSL
-Right now Eventhub doesn't support this natively. If you want to use this you have to front it with a loadbalancer that does the TLS-termination. It has been tested with ELB/NLB/ALB on AWS and HaProxy and Nginx on-premise.
+Right now Eventhub doesn't support this natively. If you want to use this you have to front it with a loadbalancer that does the TLS-termination. It has been tested with ELB/NLB/ALB on AWS and HAProxy and NGINX on-premise.
 
 In clustered installations you usually have a loadbalancer with these capabilities in front anyway.
 
