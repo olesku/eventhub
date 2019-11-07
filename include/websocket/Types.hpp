@@ -1,5 +1,5 @@
-#ifndef EVENTHUB_WEBSOCKET_TYPES_HPP
-#define EVENTHUB_WEBSOCKET_TYPES_HPP
+#ifndef INCLUDE_WEBSOCKET_TYPES_HPP_
+#define INCLUDE_WEBSOCKET_TYPES_HPP_
 
 #include <cstdint>
 #include <string>
@@ -25,7 +25,7 @@ enum class ParserStatus {
 
 using ParserCallback = std::function<void(ParserStatus status, FrameType frameType, const std::string& data)>;
 
-}
-}
+} // namespace websocket
+} // namespace eventhub
 
-#endif
+#endif // INCLUDE_WEBSOCKET_TYPES_HPP_

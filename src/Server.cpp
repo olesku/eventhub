@@ -1,12 +1,16 @@
 #include "Server.hpp"
-#include "Common.hpp"
-#include "Config.hpp"
+
 #include <fcntl.h>
-#include <mutex>
 #include <netinet/in.h>
 #include <signal.h>
 #include <string.h>
 #include <sys/socket.h>
+
+#include <string>
+#include <mutex>
+
+#include "Common.hpp"
+#include "Config.hpp"
 
 int stopEventhub = 0;
 
@@ -35,7 +39,7 @@ void Server::start() {
 
   // Bind socket.
   struct sockaddr_in sin;
-  memset((char*)&sin, '\0', sizeof(sin));
+  memset(reinterpret_cast<char*>(&sin), '\0', sizeof(sin));
   sin.sin_family = AF_INET;
   sin.sin_port   = htons(Config.getInt("LISTEN_PORT"));
 

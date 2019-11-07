@@ -1,5 +1,7 @@
 #include <string.h>
 
+#include <string>
+
 #include "Common.hpp"
 #include "Config.hpp"
 #include "ConnectionWorker.hpp"

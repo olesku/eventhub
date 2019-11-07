@@ -1,11 +1,14 @@
-#ifndef EVENTHUB_REDIS_HPP
-#define EVENTHUB_REDIS_HPP
+#ifndef INCLUDE_REDIS_HPP_
+#define INCLUDE_REDIS_HPP_
 
+#include <sw/redis++/redis++.h>
+
+#include <vector>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <string>
-#include <sw/redis++/redis++.h>
+
 #include "jwt/json/json.hpp"
 
 namespace eventhub {
@@ -18,8 +21,8 @@ using RedisMsgCallback = std::function<void(std::string pattern,
 class Redis {
 #define REDIS_PREFIX(key) (_prefix.length() > 0) ? _prefix + "." + key : key
 public:
-  Redis(const string host, int port = 6379, const string password = "", int poolSize = 5);
-  ~Redis(){};
+  explicit Redis(const string host, int port = 6379, const string password = "", int poolSize = 5);
+  ~Redis(){}
 
   void publishMessage(const string topic, const string id, const string payload);
   void psubscribe(const std::string pattern, RedisMsgCallback callback);
@@ -41,4 +44,4 @@ private:
 
 } // namespace eventhub
 
-#endif
+#endif // INCLUDE_REDIS_HPP_

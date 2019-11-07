@@ -1,5 +1,5 @@
-#ifndef EVENTHUB_CONFIG_HPP
-#define EVENTHUB_CONFIG_HPP
+#ifndef INCLUDE_CONFIG_HPP_
+#define INCLUDE_CONFIG_HPP_
 
 #include <string>
 #include <unordered_map>
@@ -12,10 +12,10 @@ namespace config {
 class AlreadyAdded : public std::exception {
 public:
   std::string msg;
-  AlreadyAdded(const std::string& param) :
-    msg("Parameter '"+ param + "' is already added") {};
+  explicit AlreadyAdded(const std::string& param) :
+    msg("Parameter '"+ param + "' is already added") {}
   virtual const char* what() const throw() {
-    return msg.c_str();;
+    return msg.c_str();
   }
 };
 
@@ -23,7 +23,7 @@ class InvalidValue : public std::exception {
 public:
   std::string msg;
   InvalidValue(const std::string& param, const std::string& expectedType) :
-    msg("Config parameter '" +  param + "' SSSSvalue has invalid type. Expected " + expectedType) {};
+    msg("Config parameter '" +  param + "' SSSSvalue has invalid type. Expected " + expectedType) {}
   virtual const char* what() const throw() {
     return msg.c_str();
   }
@@ -32,8 +32,8 @@ public:
 class InvalidParameter : public std::exception {
 public:
   std::string msg;
-  InvalidParameter(const std::string& param) :
-    msg("Requested config parameter '" + param + "' does not exist") {};
+  explicit InvalidParameter(const std::string& param) :
+    msg("Requested config parameter '" + param + "' does not exist") {}
   virtual const char* what() const throw() {
     return msg.c_str();
   }
@@ -43,7 +43,7 @@ class InvalidTypeRequested : public std::exception {
 public:
   std::string msg;
   InvalidTypeRequested(const std::string& wrongType, const std::string& param) :
-    msg("Invalid type '" + wrongType + "' requested for parameter '"+ param + "'") {};
+    msg("Invalid type '" + wrongType + "' requested for parameter '"+ param + "'") {}
   virtual const char* what() const throw() {
     return msg.c_str();
   }
@@ -89,4 +89,4 @@ public:
 } // namespace eventhub
 
 #define Config config::EventhubConfig::getInstance()
-#endif
+#endif // INCLUDE_CONFIG_HPP_

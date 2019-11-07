@@ -1,11 +1,16 @@
 #include "Redis.hpp"
-#include "Config.hpp"
-#include "TopicManager.hpp"
-#include "jwt/json/json.hpp"
+
 #include <chrono>
 #include <memory>
 #include <mutex>
 #include <string>
+#include <utility>
+#include <vector>
+#include <unordered_map>
+
+#include "Config.hpp"
+#include "TopicManager.hpp"
+#include "jwt/json/json.hpp"
 
 namespace eventhub {
 

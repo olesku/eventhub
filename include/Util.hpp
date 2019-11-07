@@ -1,5 +1,5 @@
-#ifndef EVENTHUB_UTIL_HPP
-#define EVENTHUB_UTIL_HPP
+#ifndef INCLUDE_UTIL_HPP_
+#define INCLUDE_UTIL_HPP_
 
 #include <string>
 
@@ -11,9 +11,9 @@ public:
   static std::string& strToLower(std::string& s);
 
 private:
-  Util(){};
-  ~Util(){};
+  Util(){}
+  ~Util(){}
 };
 } // namespace eventhub
 
-#endif
+#endif // INCLUDE_UTIL_HPP_

@@ -1,13 +1,13 @@
-#include "Common.hpp"
-#include "Config.hpp"
-#include "Server.hpp"
-#include <iostream>
-#include <memory>
 #include <signal.h>
 #include <stdio.h>
 #include <time.h>
+#include <iostream>
+#include <memory>
 #include <string>
 #include <stdexcept>
+#include "Common.hpp"
+#include "Config.hpp"
+#include "Server.hpp"
 
 using namespace std;
 extern int stopEventhub;

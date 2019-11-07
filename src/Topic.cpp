@@ -1,17 +1,18 @@
 #include "Topic.hpp"
+
+#include <memory>
+#include <string>
+#include <utility>
+
 #include "Common.hpp"
 #include "Connection.hpp"
 #include "websocket/Types.hpp"
 #include "websocket/Response.hpp"
-#include <memory>
-#include <string>
 
 using namespace std;
 
 namespace eventhub {
-Topic::~Topic() {
-  LOG(INFO) << "Topic: " << _id << " destructor.";
-}
+Topic::~Topic() {}
 
 /**
  * Add a subscriber to this Topic.

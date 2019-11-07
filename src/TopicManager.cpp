@@ -1,11 +1,14 @@
 #include "TopicManager.hpp"
-#include "Common.hpp"
-#include "Topic.hpp"
+
 #include <ctype.h>
+
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <utility>
+
+#include "Common.hpp"
+#include "Topic.hpp"
 
 namespace eventhub {
 std::pair<TopicPtr, TopicSubscriberList::iterator> TopicManager::subscribeConnection(ConnectionPtr conn, const std::string& topicFilter, const jsonrpcpp::Id subscriptionRequestId) {

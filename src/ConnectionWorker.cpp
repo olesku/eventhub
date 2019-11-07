@@ -1,13 +1,17 @@
+#include "ConnectionWorker.hpp"
+
 #include <errno.h>
 #include <fcntl.h>
-#include <memory>
-#include <mutex>
 #include <netinet/in.h>
-#include <stdexcept>
 #include <string.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
+
+#include <memory>
+#include <mutex>
+#include <stdexcept>
+#include <string>
 
 #include "Common.hpp"
 #include "Config.hpp"
@@ -56,7 +60,7 @@ void Worker::_acceptConnection() {
   socklen_t clen;
   int clientFd;
 
-  memset((char*)&csin, '\0', sizeof(csin));
+  memset(reinterpret_cast<char*>(&csin), '\0', sizeof(csin));
   clen = sizeof(csin);
 
 // Accept the connection.
@@ -131,7 +135,7 @@ void Worker::_addConnection(int fd, struct sockaddr_in* csin) {
     auto c = wptrConnection.lock();
 
     if (c && c->getState() != ConnectionState::WEBSOCKET) {
-      DLOG(INFO) << "Client " << c->getIP() << " failed to handshake in " << Config.getInt("WEBSOCKET_HANDSHAKE_TIMEOUT") <<  " seconds. Removing.";
+      //DLOG(INFO) << "Client " << c->getIP() << " failed to handshake in " << Config.getInt("WEBSOCKET_HANDSHAKE_TIMEOUT") <<  " seconds. Removing.";
       c->shutdown();
     }
   });

@@ -1,8 +1,11 @@
 #include "websocket/Response.hpp"
-#include "websocket/Types.hpp"
-#include "Common.hpp"
+
 #include <arpa/inet.h>
 #include <string.h>
+#include <string>
+
+#include "websocket/Types.hpp"
+#include "Common.hpp"
 
 namespace eventhub {
 namespace websocket {

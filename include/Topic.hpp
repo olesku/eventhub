@@ -1,10 +1,12 @@
-#ifndef EVENTHUB_TOPIC_HPP
-#define EVENTHUB_TOPIC_HPP
+#ifndef INCLUDE_TOPIC_HPP_
+#define INCLUDE_TOPIC_HPP_
 
 #include <list>
 #include <memory>
 #include <mutex>
 #include <string>
+#include <utility>
+
 #include "jsonrpc/jsonrpcpp.hpp"
 #include "Connection.hpp"
 
@@ -15,7 +17,7 @@ using TopicSubscriberList = std::list<std::pair<ConnectionWeakPtr, jsonrpcpp::Id
 
 class Topic {
 public:
-  Topic(const std::string& topicFilter) { _id = topicFilter; };
+  explicit Topic(const std::string& topicFilter) { _id = topicFilter; }
   ~Topic();
 
   TopicSubscriberList::iterator addSubscriber(ConnectionPtr conn, const jsonrpcpp::Id subscriptionRequestId);
@@ -31,4 +33,5 @@ private:
 };
 
 }; // namespace eventhub
-#endif
+
+#endif // INCLUDE_TOPIC_HPP_

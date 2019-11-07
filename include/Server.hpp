@@ -1,11 +1,13 @@
-#ifndef EVENTHUB_SERVER_HPP
-#define EVENTHUB_SERVER_HPP
+#ifndef INCLUDE_SERVER_HPP_
+#define INCLUDE_SERVER_HPP_
+
+#include <string>
+#include <memory>
+#include <mutex>
 
 #include "ConnectionWorker.hpp"
 #include "Redis.hpp"
 #include "Worker.hpp"
-#include <memory>
-#include <mutex>
 
 using namespace std;
 
@@ -30,6 +32,7 @@ private:
   std::mutex _connection_workers_lock;
   Redis _redis;
 };
+
 } // namespace eventhub
 
-#endif
+#endif // INCLUDE_SERVER_HPP_

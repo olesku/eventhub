@@ -1,13 +1,15 @@
-#ifndef EVENTHUB_TOPIC_MANAGER_HPP
-#define EVENTHUB_TOPIC_MANAGER_HPP
+#ifndef INCLUDE_TOPICMANAGER_HPP_
+#define INCLUDE_TOPICMANAGER_HPP_
 
-#include "Common.hpp"
-//#include "Connection.hpp"
-#include "Topic.hpp"
 #include <memory>
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <utility>
+
+#include "Common.hpp"
+#include "Connection.hpp"
+#include "Topic.hpp"
 
 namespace eventhub {
 using TopicList = std::unordered_map<std::string, TopicPtr>;
@@ -27,4 +29,4 @@ private:
 };
 } // namespace eventhub
 
-#endif
+#endif // INCLUDE_TOPICMANAGER_HPP_

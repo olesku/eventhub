@@ -1,10 +1,15 @@
 #include "http/Parser.hpp"
+
+#include <string.h>
+
+#include <iostream>
+#include <stdexcept>
+#include <string>
+#include <map>
+
+#include "http/picohttpparser.h"
 #include "Common.hpp"
 #include "Util.hpp"
-#include "http/picohttpparser.h"
-#include <iostream>
-#include <string.h>
-#include <stdexcept>
 
 namespace eventhub {
 namespace http {
@@ -82,7 +87,7 @@ void Parser::parse(const char* data, int len) {
     }
   }
 
-  for (int i = 0; i < (int)_phr_num_headers; i++) {
+  for (int i = 0; i < static_cast<int>(_phr_num_headers); i++) {
     string name, value;
     name.insert(0, _phr_headers[i].name, _phr_headers[i].name_len);
     value.insert(0, _phr_headers[i].value, _phr_headers[i].value_len);

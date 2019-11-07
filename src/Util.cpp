@@ -1,12 +1,15 @@
+#include "Util.hpp"
+
 #include <openssl/bio.h>
 #include <openssl/buffer.h>
 #include <openssl/evp.h>
-#include <sstream>
 #include <stdint.h>
+
+#include <sstream>
 #include <string>
+#include <algorithm>
 
 #include "Common.hpp"
-#include "Util.hpp"
 
 namespace eventhub {
 const std::string Util::base64Encode(const unsigned char* buffer, size_t length) {
@@ -49,12 +52,12 @@ const std::string Util::uriDecode(const std::string& str) {
       int hex1        = (isdigit(ch1) ? (ch1 - '0') : (toupper(ch1) - 'A' + 10));
       int hex2        = (isdigit(ch2) ? (ch2 - '0') : (toupper(ch2) - 'A' + 10));
       int decodedChar = (hex1 << 4) + hex2;
-      unescaped << (char)decodedChar;
+      unescaped << static_cast<char>(decodedChar);
       i += 2;
     } else {
       std::ostringstream msg;
       DLOG(INFO) << "urlDecode: Unexpected character in string: "
-                 << (int)c << " (" << c << ")";
+                 << static_cast<int>(c) << " (" << c << ")";
       return "";
     }
   }

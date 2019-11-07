@@ -1,4 +1,9 @@
 #include "websocket/Handler.hpp"
+
+#include <vector>
+#include <functional>
+#include <string>
+
 #include "Common.hpp"
 #include "Config.hpp"
 #include "Connection.hpp"
@@ -8,8 +13,6 @@
 #include "websocket/Types.hpp"
 #include "jsonrpc/jsonrpcpp.hpp"
 #include "HandlerContext.hpp"
-#include <vector>
-#include <functional>
 
 namespace eventhub {
 namespace websocket {

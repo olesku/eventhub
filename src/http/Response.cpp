@@ -1,7 +1,9 @@
 #include "http/Response.hpp"
-#include "Common.hpp"
+
 #include <sstream>
 #include <string>
+
+#include "Common.hpp"
 
 namespace eventhub {
 namespace http {

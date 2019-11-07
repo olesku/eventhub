@@ -1,4 +1,18 @@
 #include "Connection.hpp"
+
+#include <arpa/inet.h>
+#include <fcntl.h>
+#include <netinet/tcp.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+#include <utility>
+#include <memory>
+#include <string>
+#include <vector>
+#include <ctime>
+
 #include "Common.hpp"
 #include "Config.hpp"
 #include "http/Parser.hpp"
@@ -6,13 +20,6 @@
 #include "ConnectionWorker.hpp"
 #include "Topic.hpp"
 #include "TopicManager.hpp"
-#include <arpa/inet.h>
-#include <ctime>
-#include <fcntl.h>
-#include <netinet/tcp.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <unistd.h>
 
 namespace eventhub {
 using namespace std;
@@ -27,16 +34,16 @@ Connection::Connection(int fd, struct sockaddr_in* csin, Worker* worker) : _fd(f
   fcntl(fd, F_SETFL, O_NONBLOCK);
 
   // Set KEEPALIVE on socket.
-  setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (char*)&flag, sizeof(int));
+  setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast<char*>(&flag), sizeof(int));
 
 // If we have TCP_USER_TIMEOUT set it to 10 seconds.
 #ifdef TCP_USER_TIMEOUT
   int timeout = 10000;
-  setsockopt(fd, SOL_TCP, TCP_USER_TIMEOUT, (char*)&timeout, sizeof(timeout));
+  setsockopt(fd, SOL_TCP, TCP_USER_TIMEOUT, reinterpret_cast<char*>(&timeout), sizeof(timeout));
 #endif
 
   // Set TCP_NODELAY on socket.
-  setsockopt(_fd, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(int));
+  setsockopt(_fd, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<char*>(&flag), sizeof(int));
 
   //DLOG(INFO) << "Initialized client with IP: " << getIP();
 
@@ -152,7 +159,7 @@ ssize_t Connection::flushSendBuffer() {
 
 const std::string Connection::getIP() {
   char ip[32];
-  inet_ntop(AF_INET, &_csin.sin_addr, (char*)&ip, 32);
+  inet_ntop(AF_INET, &_csin.sin_addr, reinterpret_cast<char*>(&ip), 32);
 
   return ip;
 }
@@ -162,7 +169,7 @@ int Connection::addToEpoll(ConnectionListIterator connectionIterator, uint32_t e
 
   _epoll_event.events  = epollEvents;
   _epoll_event.data.fd = _fd;
-  _epoll_event.data.ptr = (void*)this;
+  _epoll_event.data.ptr = reinterpret_cast<void*>(this);
 
   int ret = epoll_ctl(_worker->getEpollFileDescriptor(), EPOLL_CTL_ADD, _fd, &_epoll_event);
 
@@ -192,7 +199,7 @@ void Connection::subscribe(const std::string& topicPattern, const jsonrpcpp::Id 
 
   ConnectionState Connection::getState() {
     return _state;
-  };
+  }
 
   void Connection::onWebsocketRequest(websocket::ParserCallback callback) {
     _websocket_parser.setCallback(callback);

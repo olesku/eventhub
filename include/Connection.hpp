@@ -1,22 +1,25 @@
-#ifndef EVENTHUB_CONNECTION_HPP
-#define EVENTHUB_CONNECTION_HPP
+#ifndef INCLUDE_CONNECTION_HPP_
+#define INCLUDE_CONNECTION_HPP_
+
+#include <netinet/in.h>
+#include <stdint.h>
+#include <sys/epoll.h>
+#include <sys/socket.h>
+
+#include <string>
+#include <ctime>
+#include <list>
+#include <memory>
+#include <mutex>
+#include <unordered_map>
+#include <vector>
+#include <utility>
 
 #include "Common.hpp"
 #include "AccessController.hpp"
 #include "http/Parser.hpp"
 #include "websocket/Parser.hpp"
 #include "jsonrpc/jsonrpcpp.hpp"
-#include <ctime>
-#include <list>
-#include <memory>
-#include <mutex>
-#include <netinet/in.h>
-#include <stdint.h>
-#include <string>
-#include <sys/epoll.h>
-#include <sys/socket.h>
-#include <unordered_map>
-#include <vector>
 
 using namespace std;
 
@@ -69,9 +72,9 @@ public:
   inline void shutdown() {
     !_is_shutdown && ::shutdown(_fd, SHUT_RDWR);
     _is_shutdown = true;
-  };
+  }
 
-  inline bool isShutdown() { return _is_shutdown; };
+  inline bool isShutdown() { return _is_shutdown; }
 
 private:
   int _fd;
@@ -97,4 +100,4 @@ private:
 
 } // namespace eventhub
 
-#endif
+#endif // INCLUDE_CONNECTION_HPP_

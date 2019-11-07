@@ -1,6 +1,8 @@
 #include "Config.hpp"
-#include <string>
+
 #include <string.h>
+
+#include <string>
 #include <cstdlib>
 #include <unordered_map>
 #include <memory>
@@ -71,13 +73,11 @@ void EventhubConfig::addBool(const std::string& name, bool defaultValue) {
     size_t envLen = strlen(envVal);
     if (memcmp(envVal, "true", envLen) == 0 ||
         memcmp(envVal, "TRUE", envLen) == 0 ||
-        memcmp(envVal, "1", envLen) == 0)
-    {
+        memcmp(envVal, "1", envLen) == 0) {
       val.boolValue = true;
     } else if (memcmp(envVal, "false", envLen) == 0 ||
         memcmp(envVal, "FALSE", envLen) == 0 ||
-        memcmp(envVal, "0", envLen) == 0)
-    {
+        memcmp(envVal, "0", envLen) == 0) {
       val.boolValue = false;
     } else {
       throw InvalidValue(name, "boolean");

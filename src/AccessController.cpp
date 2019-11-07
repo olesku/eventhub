@@ -1,9 +1,11 @@
-#include "Config.hpp"
 #include "AccessController.hpp"
-#include "TopicManager.hpp"
+
 #include <stdexcept>
 #include <string>
 #include <vector>
+
+#include "Config.hpp"
+#include "TopicManager.hpp"
 
 /*
 {

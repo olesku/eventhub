@@ -1,10 +1,11 @@
-#ifndef EVENTHUB_ACCESSCONTROLLER_HPP
-#define EVENTHUB_ACCESSCONTROLLER_HPP
+#ifndef INCLUDE_ACCESSCONTROLLER_HPP_
+#define INCLUDE_ACCESSCONTROLLER_HPP_
 
-#include "jwt/jwt.hpp"
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "jwt/jwt.hpp"
 
 namespace eventhub {
 class AccessController {
@@ -27,4 +28,4 @@ public:
 };
 } // namespace eventhub
 
-#endif
+#endif // INCLUDE_ACCESSCONTROLLER_HPP_

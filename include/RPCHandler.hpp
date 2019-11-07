@@ -1,11 +1,14 @@
-#ifndef EVENTHUB_RPC_HANDLER_HPP
-#define EVENTHUB_RPC_HANDLER_HPP
+#ifndef INCLUDE_RPCHANDLER_HPP_
+#define INCLUDE_RPCHANDLER_HPP_
+
+#include <string>
+#include <vector>
+#include <functional>
+#include <utility>
 
 #include "jsonrpc/jsonrpcpp.hpp"
 #include "HandlerContext.hpp"
 #include "Connection.hpp"
-#include <vector>
-#include <functional>
 
 namespace eventhub {
 using RPCMethod = std::function<void(HandlerContext& hCtx, jsonrpcpp::request_ptr)>;
@@ -31,6 +34,6 @@ class RPCHandler {
     static void _handleDisconnect(HandlerContext& hCtx, jsonrpcpp::request_ptr req);
 };
 
-}
+} // namespace eventhub
 
-#endif
+#endif // INCLUDE_RPCHANDLER_HPP_

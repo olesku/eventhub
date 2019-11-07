@@ -1,8 +1,10 @@
 #include "websocket/Parser.hpp"
+
+#include <string>
+
 #include "websocket/Types.hpp"
 #include "Common.hpp"
 #include "websocket/ws_parser.h"
-#include <string>
 
 namespace eventhub {
 namespace websocket {

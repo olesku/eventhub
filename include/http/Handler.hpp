@@ -1,12 +1,14 @@
-#ifndef EVENTHUB_HTTP_HANDLER_HPP
-#define EVENTHUB_HTTP_HANDLER_HPP
+#ifndef INCLUDE_HTTP_HANDLER_HPP_
+#define INCLUDE_HTTP_HANDLER_HPP_
+
+#include <string>
+#include <memory>
 
 #include "Connection.hpp"
 #include "ConnectionWorker.hpp"
 #include "TopicManager.hpp"
 #include "http/Parser.hpp"
 #include "HandlerContext.hpp"
-#include <memory>
 
 namespace eventhub {
 namespace http {
@@ -17,8 +19,8 @@ public:
   static void HandleRequest(HandlerContext&& ctx, Parser* req, RequestState reqState);
 
 private:
-  Handler(){};
-  ~Handler(){};
+  Handler(){}
+  ~Handler(){}
 
   static void _handlePath(HandlerContext& ctx, Parser* req);
   static bool _websocketHandshake(HandlerContext& ctx, Parser* req);
@@ -28,4 +30,4 @@ private:
 } // namespace http
 } // namespace eventhub
 
-#endif
+#endif // INCLUDE_HTTP_HANDLER_HPP_
