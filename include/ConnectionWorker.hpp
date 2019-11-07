@@ -1,9 +1,9 @@
 #ifndef INCLUDE_CONNECTIONWORKER_HPP_
 #define INCLUDE_CONNECTIONWORKER_HPP_
 
+#include <list>
 #include <memory>
 #include <mutex>
-#include <list>
 #include <string>
 
 #include "Connection.hpp"

@@ -1,10 +1,10 @@
 #ifndef INCLUDE_CONFIG_HPP_
 #define INCLUDE_CONFIG_HPP_
 
-#include <string>
-#include <unordered_map>
 #include <memory>
 #include <mutex>
+#include <string>
+#include <unordered_map>
 
 namespace eventhub {
 namespace config {
@@ -12,8 +12,7 @@ namespace config {
 class AlreadyAdded : public std::exception {
 public:
   std::string msg;
-  explicit AlreadyAdded(const std::string& param) :
-    msg("Parameter '"+ param + "' is already added") {}
+  explicit AlreadyAdded(const std::string& param) : msg("Parameter '" + param + "' is already added") {}
   virtual const char* what() const throw() {
     return msg.c_str();
   }
@@ -22,8 +21,7 @@ public:
 class InvalidValue : public std::exception {
 public:
   std::string msg;
-  InvalidValue(const std::string& param, const std::string& expectedType) :
-    msg("Config parameter '" +  param + "' SSSSvalue has invalid type. Expected " + expectedType) {}
+  InvalidValue(const std::string& param, const std::string& expectedType) : msg("Config parameter '" + param + "' SSSSvalue has invalid type. Expected " + expectedType) {}
   virtual const char* what() const throw() {
     return msg.c_str();
   }
@@ -32,8 +30,7 @@ public:
 class InvalidParameter : public std::exception {
 public:
   std::string msg;
-  explicit InvalidParameter(const std::string& param) :
-    msg("Requested config parameter '" + param + "' does not exist") {}
+  explicit InvalidParameter(const std::string& param) : msg("Requested config parameter '" + param + "' does not exist") {}
   virtual const char* what() const throw() {
     return msg.c_str();
   }
@@ -42,8 +39,7 @@ public:
 class InvalidTypeRequested : public std::exception {
 public:
   std::string msg;
-  InvalidTypeRequested(const std::string& wrongType, const std::string& param) :
-    msg("Invalid type '" + wrongType + "' requested for parameter '"+ param + "'") {}
+  InvalidTypeRequested(const std::string& wrongType, const std::string& param) : msg("Invalid type '" + wrongType + "' requested for parameter '" + param + "'") {}
   virtual const char* what() const throw() {
     return msg.c_str();
   }
@@ -80,9 +76,9 @@ public:
     return instance;
   }
 
-  private:
-    std::unordered_map<std::string, ConfigValue> _configMap;
-    std::mutex _configMapLock;
+private:
+  std::unordered_map<std::string, ConfigValue> _configMap;
+  std::mutex _configMapLock;
 };
 
 } // namespace config

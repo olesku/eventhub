@@ -5,9 +5,9 @@
 #include <openssl/evp.h>
 #include <stdint.h>
 
+#include <algorithm>
 #include <sstream>
 #include <string>
-#include <algorithm>
 
 #include "Common.hpp"
 

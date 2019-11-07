@@ -1,10 +1,10 @@
 #ifndef INCLUDE_HTTP_PARSER_HPP_
 #define INCLUDE_HTTP_PARSER_HPP_
 
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
-#include <functional>
 
 #include "http/picohttpparser.h"
 

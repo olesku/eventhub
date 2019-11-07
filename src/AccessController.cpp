@@ -23,7 +23,7 @@ namespace eventhub {
   if (!_token_loaded)           \
     return false;
 
-#define BYPASS_AUTH_IF_DISABLED(x) \
+#define BYPASS_AUTH_IF_DISABLED(x)    \
   if (Config.getBool("DISABLE_AUTH")) \
     return true;
 

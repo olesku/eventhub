@@ -11,8 +11,8 @@ public:
   static std::string& strToLower(std::string& s);
 
 private:
-  Util(){}
-  ~Util(){}
+  Util() {}
+  ~Util() {}
 };
 } // namespace eventhub
 

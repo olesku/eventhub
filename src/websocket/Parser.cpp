@@ -2,8 +2,8 @@
 
 #include <string>
 
-#include "websocket/Types.hpp"
 #include "Common.hpp"
+#include "websocket/Types.hpp"
 #include "websocket/ws_parser.h"
 
 namespace eventhub {
@@ -53,7 +53,7 @@ static int parserOnControlEnd(void* userData) {
 }
 
 Parser::Parser() {
-  _callback = [](ParserStatus status, FrameType frameType, const std::string& data){};
+  _callback = [](ParserStatus status, FrameType frameType, const std::string& data) {};
 
   ws_parser_init(&_ws_parser);
 

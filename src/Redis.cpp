@@ -4,9 +4,9 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
-#include <unordered_map>
 
 #include "Config.hpp"
 #include "TopicManager.hpp"
@@ -45,9 +45,9 @@ void Redis::publishMessage(const string topic, const string id, const string pay
   std::lock_guard<std::mutex> lock(_publish_mtx);
   nlohmann::json j;
 
-  j["topic"]    = topic;
-  j["id"]  = id;
-  j["message"]  = payload;
+  j["topic"]   = topic;
+  j["id"]      = id;
+  j["message"] = payload;
 
   auto jsonData = j.dump();
   _redisInstance->publish(REDIS_PREFIX(topic), jsonData);
@@ -96,9 +96,9 @@ size_t Redis::getCache(const string topicPattern, const string since, size_t lim
           auto& payload    = keyVals.second;
           */
           nlohmann::json j;
-          j["id"]  = msgID.first;
-          j["topic"]    = keyVals.first;
-          j["message"]  = keyVals.second;
+          j["id"]      = msgID.first;
+          j["topic"]   = keyVals.first;
+          j["message"] = keyVals.second;
 
           result.push_back(j);
         }

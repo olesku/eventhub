@@ -3,11 +3,11 @@
 
 #include <sw/redis++/redis++.h>
 
-#include <vector>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <string>
+#include <vector>
 
 #include "jwt/json/json.hpp"
 
@@ -22,7 +22,7 @@ class Redis {
 #define REDIS_PREFIX(key) (_prefix.length() > 0) ? _prefix + "." + key : key
 public:
   explicit Redis(const string host, int port = 6379, const string password = "", int poolSize = 5);
-  ~Redis(){}
+  ~Redis() {}
 
   void publishMessage(const string topic, const string id, const string payload);
   void psubscribe(const std::string pattern, RedisMsgCallback callback);

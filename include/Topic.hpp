@@ -7,12 +7,12 @@
 #include <string>
 #include <utility>
 
-#include "jsonrpc/jsonrpcpp.hpp"
 #include "Connection.hpp"
+#include "jsonrpc/jsonrpcpp.hpp"
 
 namespace eventhub {
 
-using TopicPtr = std::shared_ptr<class Topic>;
+using TopicPtr            = std::shared_ptr<class Topic>;
 using TopicSubscriberList = std::list<std::pair<ConnectionWeakPtr, jsonrpcpp::Id>>;
 
 class Topic {

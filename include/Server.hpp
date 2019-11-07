@@ -1,9 +1,9 @@
 #ifndef INCLUDE_SERVER_HPP_
 #define INCLUDE_SERVER_HPP_
 
-#include <string>
 #include <memory>
 #include <mutex>
+#include <string>
 
 #include "ConnectionWorker.hpp"
 #include "Redis.hpp"

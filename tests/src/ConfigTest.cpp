@@ -1,13 +1,14 @@
 #include "Config.hpp"
 #include "catch.hpp"
-#include <string>
 #include <cstdlib>
+#include <string>
 
 using namespace eventhub;
 using namespace eventhub::config;
 
 // Integers
-TEST_CASE("Integer type configuration option test" "[config]") {
+TEST_CASE("Integer type configuration option test"
+          "[config]") {
   GIVEN("That we set a default value") {
     Config.addInt("MY_INT_PARAM_1", 1000);
     THEN("We should get that value back if the env is unset.") {
@@ -47,7 +48,8 @@ TEST_CASE("Integer type configuration option test" "[config]") {
 }
 
 // Strings
-TEST_CASE("Test string configuration options" "[config]") {
+TEST_CASE("Test string configuration options"
+          "[config]") {
   GIVEN("That we set a default value") {
     Config.addString("MY_STRING_PARAM_1", "Test string 1");
     THEN("We should get that value back if the env is unset.") {
@@ -80,7 +82,8 @@ TEST_CASE("Test string configuration options" "[config]") {
 }
 
 // Booleans
-TEST_CASE("Test boolean configuration options" "[config]") {
+TEST_CASE("Test boolean configuration options"
+          "[config]") {
   GIVEN("That we set default values") {
     Config.addBool("MY_BOOL_PARAM_1", true);
     Config.addBool("MY_BOOL_PARAM_2", false);

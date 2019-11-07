@@ -3,13 +3,13 @@
 #include <string.h>
 
 #include <iostream>
+#include <map>
 #include <stdexcept>
 #include <string>
-#include <map>
 
-#include "http/picohttpparser.h"
 #include "Common.hpp"
 #include "Util.hpp"
+#include "http/picohttpparser.h"
 
 namespace eventhub {
 namespace http {
@@ -18,11 +18,11 @@ namespace http {
   Constructor.
 **/
 Parser::Parser() {
-  _bytes_read         = 0;
-  _bytes_read_prev    = 0;
-  _is_complete        = false;
-  _error_message      = "";
-  _callback           = [](Parser* parser, RequestState state) {};
+  _bytes_read      = 0;
+  _bytes_read_prev = 0;
+  _is_complete     = false;
+  _error_message   = "";
+  _callback        = [](Parser* parser, RequestState state) {};
 }
 
 /**

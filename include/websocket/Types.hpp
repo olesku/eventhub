@@ -2,8 +2,8 @@
 #define INCLUDE_WEBSOCKET_TYPES_HPP_
 
 #include <cstdint>
-#include <string>
 #include <functional>
+#include <string>
 
 namespace eventhub {
 namespace websocket {

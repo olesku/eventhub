@@ -17,13 +17,13 @@
 #include "Config.hpp"
 #include "Connection.hpp"
 #include "EventLoop.hpp"
+#include "HandlerContext.hpp"
 #include "Server.hpp"
 #include "Worker.hpp"
 #include "http/Handler.hpp"
 #include "websocket/Handler.hpp"
 #include "websocket/Parser.hpp"
 #include "websocket/Response.hpp"
-#include "HandlerContext.hpp"
 
 using namespace std;
 
@@ -100,7 +100,7 @@ void Worker::_addConnection(int fd, struct sockaddr_in* csin) {
   auto client = make_shared<Connection>(fd, csin, this);
 
   auto connectionIterator = _connection_list.insert(_connection_list.end(), client);
-  int ret = client->addToEpoll(connectionIterator, (EPOLLIN | EPOLLRDHUP | EPOLLHUP | EPOLLERR));
+  int ret                 = client->addToEpoll(connectionIterator, (EPOLLIN | EPOLLRDHUP | EPOLLHUP | EPOLLERR));
 
   if (ret == -1) {
     LOG(WARNING) << "Could not add client to epoll: " << strerror(errno);
@@ -114,21 +114,21 @@ void Worker::_addConnection(int fd, struct sockaddr_in* csin) {
   // Set up HTTP request callback.
   client->onHTTPRequest([this, wptrConnection](http::Parser* req, http::RequestState reqState) {
     auto c = wptrConnection.lock();
-    if (!c) return;
+    if (!c)
+      return;
     http::Handler::HandleRequest(HandlerContext(_server, this, c), req, reqState);
   });
 
   // Set up websocket request callback.
   client->onWebsocketRequest([this, wptrConnection](websocket::ParserStatus status,
-                                                  websocket::FrameType frameType,
-                                                  const std::string& data)
-  {
+                                                    websocket::FrameType frameType,
+                                                    const std::string& data) {
     auto c = wptrConnection.lock();
-    if (!c) return;
+    if (!c)
+      return;
     websocket::Handler::HandleRequest(HandlerContext(_server, this, c),
                                       status, frameType, data);
   });
-
 
   // Disconnect client if successful websocket handshake hasn't occurred in 10 seconds.
   addTimer(Config.getInt("WEBSOCKET_HANDSHAKE_TIMEOUT") * 1000, [this, wptrConnection](TimerCtx* ctx) {

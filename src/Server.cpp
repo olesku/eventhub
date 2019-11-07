@@ -6,8 +6,8 @@
 #include <string.h>
 #include <sys/socket.h>
 
-#include <string>
 #include <mutex>
+#include <string>
 
 #include "Common.hpp"
 #include "Config.hpp"
@@ -17,8 +17,7 @@ int stopEventhub = 0;
 namespace eventhub {
 
 Server::Server(const string redisHost, int redisPort, const std::string redisPassword, int redisPoolSize)
-  : _redis(redisHost, redisPort, redisPassword, redisPoolSize)
-{}
+    : _redis(redisHost, redisPort, redisPassword, redisPoolSize) {}
 
 Server::~Server() {
   DLOG(INFO) << "Server destructor.";
@@ -57,8 +56,7 @@ void Server::start() {
   // Start the connection workers.
   _connection_workers_lock.lock();
 
-  unsigned int numWorkerThreads = Config.getInt("WORKER_THREADS") == 0 ?
-    std::thread::hardware_concurrency() : Config.getInt("WORKER_THREADS");
+  unsigned int numWorkerThreads = Config.getInt("WORKER_THREADS") == 0 ? std::thread::hardware_concurrency() : Config.getInt("WORKER_THREADS");
 
   for (unsigned i = 0; i < numWorkerThreads; i++) {
     _connection_workers.addWorker(new Worker(this, i + 1));

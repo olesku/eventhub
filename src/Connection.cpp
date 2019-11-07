@@ -7,19 +7,19 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include <utility>
+#include <ctime>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
-#include <ctime>
 
 #include "Common.hpp"
 #include "Config.hpp"
-#include "http/Parser.hpp"
-#include "websocket/Parser.hpp"
 #include "ConnectionWorker.hpp"
 #include "Topic.hpp"
 #include "TopicManager.hpp"
+#include "http/Parser.hpp"
+#include "websocket/Parser.hpp"
 
 namespace eventhub {
 using namespace std;
@@ -107,7 +107,6 @@ void Connection::read() {
     return;
   }
 
-
   // _parser.parse(buf, bytesRead);
   // Redirect request to either HTTP handler or websocket handler
   // based on which state the client is in.
@@ -118,7 +117,7 @@ void Connection::read() {
 
     case ConnectionState::WEBSOCKET:
       _websocket_parser.parse(buf, bytesRead);
-    break;
+      break;
 
     default:
       DLOG(ERROR) << "Connection " << getIP() << " has invalid state, disconnecting.";
@@ -167,8 +166,8 @@ const std::string Connection::getIP() {
 int Connection::addToEpoll(ConnectionListIterator connectionIterator, uint32_t epollEvents) {
   _connection_list_iterator = connectionIterator;
 
-  _epoll_event.events  = epollEvents;
-  _epoll_event.data.fd = _fd;
+  _epoll_event.events   = epollEvents;
+  _epoll_event.data.fd  = _fd;
   _epoll_event.data.ptr = reinterpret_cast<void*>(this);
 
   int ret = epoll_ctl(_worker->getEpollFileDescriptor(), EPOLL_CTL_ADD, _fd, &_epoll_event);
@@ -197,29 +196,29 @@ void Connection::subscribe(const std::string& topicPattern, const jsonrpcpp::Id 
   _subscribedTopics.insert(std::make_pair(topicPattern, TopicSubscription{topicSubscription.first, topicSubscription.second, subscriptionRequestId}));
 }
 
-  ConnectionState Connection::getState() {
-    return _state;
-  }
+ConnectionState Connection::getState() {
+  return _state;
+}
 
-  void Connection::onWebsocketRequest(websocket::ParserCallback callback) {
-    _websocket_parser.setCallback(callback);
-  }
+void Connection::onWebsocketRequest(websocket::ParserCallback callback) {
+  _websocket_parser.setCallback(callback);
+}
 
-  void Connection::onHTTPRequest(http::ParserCallback callback) {
-    _http_parser->setCallback(callback);
-  }
+void Connection::onHTTPRequest(http::ParserCallback callback) {
+  _http_parser->setCallback(callback);
+}
 
-  AccessController& Connection::getAccessController() {
-    return _access_controller;
-  }
+AccessController& Connection::getAccessController() {
+  return _access_controller;
+}
 
-  ConnectionListIterator Connection::getConnectionListIterator() {
-    return _connection_list_iterator;
-  }
+ConnectionListIterator Connection::getConnectionListIterator() {
+  return _connection_list_iterator;
+}
 
-  ConnectionPtr Connection::getSharedPtr() {
-    return shared_from_this();
-  }
+ConnectionPtr Connection::getSharedPtr() {
+  return shared_from_this();
+}
 
 bool Connection::unsubscribe(const std::string& topicPattern) {
   std::lock_guard<std::mutex> lock(_subscription_list_lock);
@@ -229,7 +228,7 @@ bool Connection::unsubscribe(const std::string& topicPattern) {
     return false;
   }
 
-  auto it = _subscribedTopics.find(topicPattern);
+  auto it            = _subscribedTopics.find(topicPattern);
   auto& subscription = it->second;
 
   subscription.topic->deleteSubscriberByIterator(subscription.topicListIterator);
@@ -244,7 +243,7 @@ bool Connection::unsubscribe(const std::string& topicPattern) {
 
 unsigned int Connection::unsubscribeAll() {
   std::lock_guard<std::mutex> lock(_subscription_list_lock);
-  auto& tm = _worker->getTopicManager();
+  auto& tm           = _worker->getTopicManager();
   unsigned int count = _subscribedTopics.size();
 
   // TODO: If erase fails here we might end up in a infinite loop.

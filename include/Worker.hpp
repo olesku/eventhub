@@ -56,8 +56,8 @@ protected:
 template <class T>
 class WorkerGroup {
 public:
-  WorkerGroup<T>(){}
-  ~WorkerGroup<T>(){}
+  WorkerGroup<T>() {}
+  ~WorkerGroup<T>() {}
   using iterator = typename worker_list_t<T>::iterator;
 
   void addWorker(T* worker) {

@@ -6,27 +6,27 @@
 #include <sys/epoll.h>
 #include <sys/socket.h>
 
-#include <string>
 #include <ctime>
 #include <list>
 #include <memory>
 #include <mutex>
+#include <string>
 #include <unordered_map>
-#include <vector>
 #include <utility>
+#include <vector>
 
-#include "Common.hpp"
 #include "AccessController.hpp"
+#include "Common.hpp"
 #include "http/Parser.hpp"
-#include "websocket/Parser.hpp"
 #include "jsonrpc/jsonrpcpp.hpp"
+#include "websocket/Parser.hpp"
 
 using namespace std;
 
 namespace eventhub {
 
-using ConnectionPtr     = std::shared_ptr<class Connection>;
-using ConnectionWeakPtr = std::weak_ptr<class Connection>;
+using ConnectionPtr          = std::shared_ptr<class Connection>;
+using ConnectionWeakPtr      = std::weak_ptr<class Connection>;
 using ConnectionListIterator = std::list<ConnectionPtr>::iterator;
 
 class Worker;
