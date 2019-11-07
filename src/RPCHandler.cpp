@@ -8,6 +8,7 @@
 #include "TopicManager.hpp"
 #include "Util.hpp"
 #include "websocket/Response.hpp"
+
 #include <sstream>
 #include <stdexcept>
 #include <string>
