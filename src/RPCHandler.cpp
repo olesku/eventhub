@@ -1,16 +1,17 @@
-#include <stdexcept>
-#include <sstream>
-#include <string>
-#include "Common.hpp"
-#include "Util.hpp"
 #include "RPCHandler.hpp"
-#include "websocket/Response.hpp"
-#include "HandlerContext.hpp"
+#include "Common.hpp"
 #include "Connection.hpp"
 #include "ConnectionWorker.hpp"
+#include "HandlerContext.hpp"
+#include "Redis.hpp"
 #include "Server.hpp"
 #include "TopicManager.hpp"
-#include "Redis.hpp"
+#include "Util.hpp"
+#include "websocket/Response.hpp"
+
+#include <sstream>
+#include <stdexcept>
+#include <string>
 
 namespace eventhub {
 
@@ -21,19 +22,18 @@ namespace eventhub {
  */
 RPCMethod RPCHandler::getHandler(const std::string& methodName) {
   static RPCHandlerList handlers = {
-    { "subscribe",      _handleSubscribe      },
-    { "unsubscribe",    _handleUnsubscribe    },
-    { "unsubscribeAll", _handleUnsubscribeAll },
-    { "publish",        _handlePublish        },
-    { "list",           _handleList           },
-    { "history",        _handleHistory        },
-    { "disconnect",     _handleDisconnect     }
-  };
+      {"subscribe", _handleSubscribe},
+      {"unsubscribe", _handleUnsubscribe},
+      {"unsubscribeAll", _handleUnsubscribeAll},
+      {"publish", _handlePublish},
+      {"list", _handleList},
+      {"history", _handleHistory},
+      {"disconnect", _handleDisconnect}};
 
   std::string methodNameLC = methodName;
   Util::strToLower(methodNameLC);
 
-  for(auto handler : handlers) {
+  for (auto handler : handlers) {
     if (methodNameLC == handler.first) {
       return handler.second;
     }
@@ -44,14 +44,14 @@ RPCMethod RPCHandler::getHandler(const std::string& methodName) {
 
 void RPCHandler::_sendInvalidParamsError(HandlerContext& ctx, jsonrpcpp::request_ptr req, const std::string& message) {
   websocket::response::sendData(ctx.connection(),
-    jsonrpcpp::Response(jsonrpcpp::InvalidParamsException(message, req->id())).to_json().dump(),
-    websocket::FrameType::TEXT_FRAME);
+                                jsonrpcpp::Response(jsonrpcpp::InvalidParamsException(message, req->id())).to_json().dump(),
+                                websocket::FrameType::TEXT_FRAME);
 }
 
 void RPCHandler::_sendSuccessResponse(HandlerContext& ctx, jsonrpcpp::request_ptr req, const nlohmann::json& result) {
   websocket::response::sendData(ctx.connection(),
-    jsonrpcpp::Response(*req, result).to_json().dump(),
-    websocket::FrameType::TEXT_FRAME);
+                                jsonrpcpp::Response(*req, result).to_json().dump(),
+                                websocket::FrameType::TEXT_FRAME);
 }
 
 /**
@@ -62,7 +62,7 @@ void RPCHandler::_sendSuccessResponse(HandlerContext& ctx, jsonrpcpp::request_pt
  */
 void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
   auto& accessController = ctx.connection()->getAccessController();
-  auto params = req->params();
+  auto params            = req->params();
   std::string topicName;
   std::string sinceEvent;
   std::stringstream msg;
@@ -71,8 +71,7 @@ void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr re
     topicName = params.get("topic").get<std::string>();
     // TODO: Do some sinceEvent validation. Should only contain [0-9\-]+.
     sinceEvent = params.get("sinceEvent").get<std::string>();
-  } catch(...) {
-
+  } catch (...) {
   }
 
   if (topicName.empty()) {
@@ -96,7 +95,7 @@ void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr re
 
   nlohmann::json result;
   result["action"] = "subscribe";
-  result["topic"] = topicName;
+  result["topic"]  = topicName;
   result["status"] = "ok";
 
   //DLOG(INFO) << "Client " << ctx.connection()->getIP() << " subscribed to " << topicName << " request id: " << req->id();
@@ -107,13 +106,13 @@ void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr re
     try {
       //DLOG(INFO) << "Sending cache since '" << sinceEvent << "' to client " << ctx.connection()->getIP() << " topic: " << topicName << " request id: " << req->id();
       nlohmann::json result;
-      auto& redis  = ctx.server()->getRedis();
+      auto& redis      = ctx.server()->getRedis();
       size_t cacheSize = redis.getCache(topicName, sinceEvent, 0, result);
 
       for (auto& cacheItem : result) {
         _sendSuccessResponse(ctx, req, cacheItem);
       }
-    } catch(std::exception &e) {
+    } catch (std::exception& e) {
       LOG(ERROR) << "Redis error while looking up cache " << e.what();
     }
   }
@@ -133,7 +132,7 @@ void RPCHandler::_handleUnsubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr 
     return;
   }
 
-  auto topics = req->params().to_json();
+  auto topics        = req->params().to_json();
   unsigned int count = 0;
   for (auto topic : topics) {
     if (!TopicManager::isValidTopicFilter(topic) || !accessController.allowSubscribe(topic)) {
@@ -176,12 +175,12 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
   std::stringstream msg;
 
   auto& accessController = ctx.connection()->getAccessController();
-  auto params = req->params();
+  auto params            = req->params();
 
   try {
     topicName = params.get("topic").get<std::string>();
-    message = params.get("message").get<std::string>();
-  } catch(...) {}
+    message   = params.get("message").get<std::string>();
+  } catch (...) {}
 
   if (topicName.empty() || message.empty()) {
     msg << "You need to specify topic and message to publish to.";
@@ -202,11 +201,11 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
   }
 
   try {
-    auto& redis  = ctx.server()->getRedis();
-    auto id = redis.cacheMessage(topicName, message);
+    auto& redis = ctx.server()->getRedis();
+    auto id     = redis.cacheMessage(topicName, message);
 
     if (id.length() == 0) {
-      msg << "Failed to cache message to Redis, discarding." ;
+      msg << "Failed to cache message to Redis, discarding.";
       _sendInvalidParamsError(ctx, req, msg.str());
       return;
     }
@@ -215,8 +214,8 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
 
     nlohmann::json result;
     result["action"] = "publish";
-    result["topic"] = topicName;
-    result["id"] = id;
+    result["topic"]  = topicName;
+    result["id"]     = id;
     result["status"] = "ok";
 
     _sendSuccessResponse(ctx, req, result);
@@ -263,4 +262,4 @@ void RPCHandler::_handleDisconnect(HandlerContext& ctx, jsonrpcpp::request_ptr r
   ctx.connection()->isShutdown();
 }
 
-}
+} // namespace eventhub

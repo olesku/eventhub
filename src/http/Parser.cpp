@@ -1,10 +1,15 @@
 #include "http/Parser.hpp"
+
+#include <string.h>
+
+#include <iostream>
+#include <map>
+#include <stdexcept>
+#include <string>
+
 #include "Common.hpp"
 #include "Util.hpp"
 #include "http/picohttpparser.h"
-#include <iostream>
-#include <string.h>
-#include <stdexcept>
 
 namespace eventhub {
 namespace http {
@@ -13,11 +18,11 @@ namespace http {
   Constructor.
 **/
 Parser::Parser() {
-  _bytes_read         = 0;
-  _bytes_read_prev    = 0;
-  _is_complete        = false;
-  _error_message      = "";
-  _callback           = [](Parser* parser, RequestState state) {};
+  _bytes_read      = 0;
+  _bytes_read_prev = 0;
+  _is_complete     = false;
+  _error_message   = "";
+  _callback        = [](Parser* parser, RequestState state) {};
 }
 
 /**
@@ -82,7 +87,7 @@ void Parser::parse(const char* data, int len) {
     }
   }
 
-  for (int i = 0; i < (int)_phr_num_headers; i++) {
+  for (int i = 0; i < static_cast<int>(_phr_num_headers); i++) {
     string name, value;
     name.insert(0, _phr_headers[i].name, _phr_headers[i].name_len);
     value.insert(0, _phr_headers[i].value, _phr_headers[i].value_len);

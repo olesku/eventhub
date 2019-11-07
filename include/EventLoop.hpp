@@ -1,5 +1,5 @@
-#ifndef EVENTHUB_EVENT_LOOP_HPP
-#define EVENTHUB_EVENT_LOOP_HPP
+#ifndef INCLUDE_EVENTLOOP_HPP_
+#define INCLUDE_EVENTLOOP_HPP_
 
 #include <chrono>
 #include <deque>
@@ -121,4 +121,4 @@ private:
 };
 } // namespace eventhub
 
-#endif
+#endif // INCLUDE_EVENTLOOP_HPP_

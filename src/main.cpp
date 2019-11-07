@@ -4,10 +4,10 @@
 #include <iostream>
 #include <memory>
 #include <signal.h>
-#include <stdio.h>
-#include <time.h>
-#include <string>
 #include <stdexcept>
+#include <stdio.h>
+#include <string>
+#include <time.h>
 
 using namespace std;
 extern int stopEventhub;
@@ -47,18 +47,16 @@ int main(int argc, char** argv) {
     eventhub::Config.addInt("PING_INTERVAL", 30);
     eventhub::Config.addInt("WEBSOCKET_HANDSHAKE_TIMEOUT", 15);
     eventhub::Config.addBool("DISABLE_AUTH", false);
-  } catch(std::exception &e) {
+  } catch (std::exception& e) {
     LOG(ERROR) << "Error reading configuration: " << e.what();
     return 1;
   }
 
-
   eventhub::Server server(
-    eventhub::Config.getString("REDIS_HOST"),
-    eventhub::Config.getInt("REDIS_PORT"),
-    eventhub::Config.getString("REDIS_PASSWORD"),
-    eventhub::Config.getInt("REDIS_POOL_SIZE")
-  );
+      eventhub::Config.getString("REDIS_HOST"),
+      eventhub::Config.getInt("REDIS_PORT"),
+      eventhub::Config.getString("REDIS_PASSWORD"),
+      eventhub::Config.getInt("REDIS_POOL_SIZE"));
 
   server.start();
 

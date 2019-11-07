@@ -1,13 +1,15 @@
-#ifndef EVENTHUB_CONNECTION_WORKER_HPP
-#define EVENTHUB_CONNECTION_WORKER_HPP
+#ifndef INCLUDE_CONNECTIONWORKER_HPP_
+#define INCLUDE_CONNECTIONWORKER_HPP_
+
+#include <list>
+#include <memory>
+#include <mutex>
+#include <string>
 
 #include "Connection.hpp"
 #include "EventLoop.hpp"
 #include "TopicManager.hpp"
 #include "Worker.hpp"
-#include <memory>
-#include <mutex>
-#include <list>
 
 namespace eventhub {
 class Server; // Forward declaration.
@@ -45,4 +47,4 @@ private:
 };
 } // namespace eventhub
 
-#endif
+#endif // INCLUDE_CONNECTIONWORKER_HPP_

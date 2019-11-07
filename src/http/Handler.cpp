@@ -1,14 +1,16 @@
 #include <string.h>
 
+#include <string>
+
 #include "Common.hpp"
 #include "Config.hpp"
 #include "ConnectionWorker.hpp"
+#include "HandlerContext.hpp"
 #include "TopicManager.hpp"
 #include "Util.hpp"
 #include "http/Handler.hpp"
 #include "http/Parser.hpp"
 #include "http/Response.hpp"
-#include "HandlerContext.hpp"
 
 using namespace std;
 
@@ -16,23 +18,24 @@ namespace eventhub {
 namespace http {
 void Handler::HandleRequest(HandlerContext&& ctx, Parser* req, RequestState reqState) {
   switch (reqState) {
-    case RequestState::REQ_INCOMPLETE: return;
+    case RequestState::REQ_INCOMPLETE:
+      return;
 
     case RequestState::REQ_TO_BIG:
       ctx.connection()->shutdown();
       return;
-    break;
+      break;
 
     case RequestState::REQ_OK:
       _handlePath(ctx, req);
-    break;
+      break;
 
     default:
       ctx.connection()->shutdown();
   }
 }
 
-void Handler::_handlePath(HandlerContext &ctx, Parser* req) {
+void Handler::_handlePath(HandlerContext& ctx, Parser* req) {
   if (req->getPath().compare("/healthz") == 0) {
     Response resp;
     resp.setStatus(200);

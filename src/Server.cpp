@@ -1,20 +1,23 @@
 #include "Server.hpp"
-#include "Common.hpp"
-#include "Config.hpp"
+
 #include <fcntl.h>
-#include <mutex>
 #include <netinet/in.h>
 #include <signal.h>
 #include <string.h>
 #include <sys/socket.h>
+
+#include <mutex>
+#include <string>
+
+#include "Common.hpp"
+#include "Config.hpp"
 
 int stopEventhub = 0;
 
 namespace eventhub {
 
 Server::Server(const string redisHost, int redisPort, const std::string redisPassword, int redisPoolSize)
-  : _redis(redisHost, redisPort, redisPassword, redisPoolSize)
-{}
+    : _redis(redisHost, redisPort, redisPassword, redisPoolSize) {}
 
 Server::~Server() {
   DLOG(INFO) << "Server destructor.";
@@ -35,7 +38,7 @@ void Server::start() {
 
   // Bind socket.
   struct sockaddr_in sin;
-  memset((char*)&sin, '\0', sizeof(sin));
+  memset(reinterpret_cast<char*>(&sin), '\0', sizeof(sin));
   sin.sin_family = AF_INET;
   sin.sin_port   = htons(Config.getInt("LISTEN_PORT"));
 
@@ -53,8 +56,7 @@ void Server::start() {
   // Start the connection workers.
   _connection_workers_lock.lock();
 
-  unsigned int numWorkerThreads = Config.getInt("WORKER_THREADS") == 0 ?
-    std::thread::hardware_concurrency() : Config.getInt("WORKER_THREADS");
+  unsigned int numWorkerThreads = Config.getInt("WORKER_THREADS") == 0 ? std::thread::hardware_concurrency() : Config.getInt("WORKER_THREADS");
 
   for (unsigned i = 0; i < numWorkerThreads; i++) {
     _connection_workers.addWorker(new Worker(this, i + 1));

@@ -1,8 +1,9 @@
-#ifndef EVENTHUB_HTTP_RESPONSE_H
-#define EVENTHUB_HTTP_RESPONSE_H
+#ifndef INCLUDE_HTTP_RESPONSE_HPP_
+#define INCLUDE_HTTP_RESPONSE_HPP_
 
 #include <string>
 #include <unordered_map>
+
 namespace eventhub {
 namespace http {
 
@@ -10,7 +11,7 @@ typedef std::unordered_map<std::string, std::string> HeaderList_t;
 
 class Response {
 public:
-  Response(int statusCode = 200, const std::string body = "");
+  explicit Response(int statusCode = 200, const std::string body = "");
   void setStatus(int status, std::string statusMsg);
   void setStatus(int status);
   void setHeader(const std::string& name, const std::string& value);
@@ -29,4 +30,4 @@ private:
 } // namespace http
 } // namespace eventhub
 
-#endif
+#endif // INCLUDE_HTTP_RESPONSE_HPP_

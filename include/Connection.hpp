@@ -1,29 +1,32 @@
-#ifndef EVENTHUB_CONNECTION_HPP
-#define EVENTHUB_CONNECTION_HPP
+#ifndef INCLUDE_CONNECTION_HPP_
+#define INCLUDE_CONNECTION_HPP_
 
-#include "Common.hpp"
-#include "AccessController.hpp"
-#include "http/Parser.hpp"
-#include "websocket/Parser.hpp"
-#include "jsonrpc/jsonrpcpp.hpp"
+#include <netinet/in.h>
+#include <stdint.h>
+#include <sys/epoll.h>
+#include <sys/socket.h>
+
 #include <ctime>
 #include <list>
 #include <memory>
 #include <mutex>
-#include <netinet/in.h>
-#include <stdint.h>
 #include <string>
-#include <sys/epoll.h>
-#include <sys/socket.h>
 #include <unordered_map>
+#include <utility>
 #include <vector>
+
+#include "AccessController.hpp"
+#include "Common.hpp"
+#include "http/Parser.hpp"
+#include "jsonrpc/jsonrpcpp.hpp"
+#include "websocket/Parser.hpp"
 
 using namespace std;
 
 namespace eventhub {
 
-using ConnectionPtr     = std::shared_ptr<class Connection>;
-using ConnectionWeakPtr = std::weak_ptr<class Connection>;
+using ConnectionPtr          = std::shared_ptr<class Connection>;
+using ConnectionWeakPtr      = std::weak_ptr<class Connection>;
 using ConnectionListIterator = std::list<ConnectionPtr>::iterator;
 
 class Worker;
@@ -69,9 +72,9 @@ public:
   inline void shutdown() {
     !_is_shutdown && ::shutdown(_fd, SHUT_RDWR);
     _is_shutdown = true;
-  };
+  }
 
-  inline bool isShutdown() { return _is_shutdown; };
+  inline bool isShutdown() { return _is_shutdown; }
 
 private:
   int _fd;
@@ -97,4 +100,4 @@ private:
 
 } // namespace eventhub
 
-#endif
+#endif // INCLUDE_CONNECTION_HPP_

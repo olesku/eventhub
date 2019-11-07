@@ -1,11 +1,14 @@
 #include "TopicManager.hpp"
-#include "Common.hpp"
-#include "Topic.hpp"
+
 #include <ctype.h>
+
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <utility>
+
+#include "Common.hpp"
+#include "Topic.hpp"
 
 namespace eventhub {
 std::pair<TopicPtr, TopicSubscriberList::iterator> TopicManager::subscribeConnection(ConnectionPtr conn, const std::string& topicFilter, const jsonrpcpp::Id subscriptionRequestId) {
@@ -83,14 +86,13 @@ bool TopicManager::isValidTopicFilter(const std::string& filterName) {
 
 // This method assumes topic filter is validated through is_valid_topic_filter.
 bool TopicManager::isFilterMatched(const std::string& filterName, const string& topicName) {
-
   for (auto fnIt = filterName.begin(), tnIt = topicName.begin();
        tnIt != topicName.end(); fnIt++, tnIt++) {
     if (fnIt == filterName.end()) {
       return false;
     }
 
-    if (tnIt+1 == topicName.end() && fnIt+1 != filterName.end()) {
+    if (tnIt + 1 == topicName.end() && fnIt + 1 != filterName.end()) {
       return false;
     }
 

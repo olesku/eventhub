@@ -1,5 +1,5 @@
-#ifndef EVENTHUB_WORKER_HPP
-#define EVENTHUB_WORKER_HPP
+#ifndef INCLUDE_WORKER_HPP_
+#define INCLUDE_WORKER_HPP_
 
 #include <chrono>
 #include <future>
@@ -56,8 +56,8 @@ protected:
 template <class T>
 class WorkerGroup {
 public:
-  WorkerGroup<T>(){};
-  ~WorkerGroup<T>(){};
+  WorkerGroup<T>() {}
+  ~WorkerGroup<T>() {}
   using iterator = typename worker_list_t<T>::iterator;
 
   void addWorker(T* worker) {
@@ -92,4 +92,4 @@ private:
   worker_list_t<T> _workers;
 };
 
-#endif
+#endif // INCLUDE_WORKER_HPP_

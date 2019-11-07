@@ -1,18 +1,25 @@
 #include "Connection.hpp"
-#include "Common.hpp"
-#include "Config.hpp"
-#include "http/Parser.hpp"
-#include "websocket/Parser.hpp"
-#include "ConnectionWorker.hpp"
-#include "Topic.hpp"
-#include "TopicManager.hpp"
+
 #include <arpa/inet.h>
-#include <ctime>
 #include <fcntl.h>
 #include <netinet/tcp.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+
+#include <ctime>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include "Common.hpp"
+#include "Config.hpp"
+#include "ConnectionWorker.hpp"
+#include "Topic.hpp"
+#include "TopicManager.hpp"
+#include "http/Parser.hpp"
+#include "websocket/Parser.hpp"
 
 namespace eventhub {
 using namespace std;
@@ -27,16 +34,16 @@ Connection::Connection(int fd, struct sockaddr_in* csin, Worker* worker) : _fd(f
   fcntl(fd, F_SETFL, O_NONBLOCK);
 
   // Set KEEPALIVE on socket.
-  setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (char*)&flag, sizeof(int));
+  setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast<char*>(&flag), sizeof(int));
 
 // If we have TCP_USER_TIMEOUT set it to 10 seconds.
 #ifdef TCP_USER_TIMEOUT
   int timeout = 10000;
-  setsockopt(fd, SOL_TCP, TCP_USER_TIMEOUT, (char*)&timeout, sizeof(timeout));
+  setsockopt(fd, SOL_TCP, TCP_USER_TIMEOUT, reinterpret_cast<char*>(&timeout), sizeof(timeout));
 #endif
 
   // Set TCP_NODELAY on socket.
-  setsockopt(_fd, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(int));
+  setsockopt(_fd, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<char*>(&flag), sizeof(int));
 
   //DLOG(INFO) << "Initialized client with IP: " << getIP();
 
@@ -100,7 +107,6 @@ void Connection::read() {
     return;
   }
 
-
   // _parser.parse(buf, bytesRead);
   // Redirect request to either HTTP handler or websocket handler
   // based on which state the client is in.
@@ -111,7 +117,7 @@ void Connection::read() {
 
     case ConnectionState::WEBSOCKET:
       _websocket_parser.parse(buf, bytesRead);
-    break;
+      break;
 
     default:
       DLOG(ERROR) << "Connection " << getIP() << " has invalid state, disconnecting.";
@@ -152,7 +158,7 @@ ssize_t Connection::flushSendBuffer() {
 
 const std::string Connection::getIP() {
   char ip[32];
-  inet_ntop(AF_INET, &_csin.sin_addr, (char*)&ip, 32);
+  inet_ntop(AF_INET, &_csin.sin_addr, reinterpret_cast<char*>(&ip), 32);
 
   return ip;
 }
@@ -160,9 +166,9 @@ const std::string Connection::getIP() {
 int Connection::addToEpoll(ConnectionListIterator connectionIterator, uint32_t epollEvents) {
   _connection_list_iterator = connectionIterator;
 
-  _epoll_event.events  = epollEvents;
-  _epoll_event.data.fd = _fd;
-  _epoll_event.data.ptr = (void*)this;
+  _epoll_event.events   = epollEvents;
+  _epoll_event.data.fd  = _fd;
+  _epoll_event.data.ptr = reinterpret_cast<void*>(this);
 
   int ret = epoll_ctl(_worker->getEpollFileDescriptor(), EPOLL_CTL_ADD, _fd, &_epoll_event);
 
@@ -190,29 +196,29 @@ void Connection::subscribe(const std::string& topicPattern, const jsonrpcpp::Id 
   _subscribedTopics.insert(std::make_pair(topicPattern, TopicSubscription{topicSubscription.first, topicSubscription.second, subscriptionRequestId}));
 }
 
-  ConnectionState Connection::getState() {
-    return _state;
-  };
+ConnectionState Connection::getState() {
+  return _state;
+}
 
-  void Connection::onWebsocketRequest(websocket::ParserCallback callback) {
-    _websocket_parser.setCallback(callback);
-  }
+void Connection::onWebsocketRequest(websocket::ParserCallback callback) {
+  _websocket_parser.setCallback(callback);
+}
 
-  void Connection::onHTTPRequest(http::ParserCallback callback) {
-    _http_parser->setCallback(callback);
-  }
+void Connection::onHTTPRequest(http::ParserCallback callback) {
+  _http_parser->setCallback(callback);
+}
 
-  AccessController& Connection::getAccessController() {
-    return _access_controller;
-  }
+AccessController& Connection::getAccessController() {
+  return _access_controller;
+}
 
-  ConnectionListIterator Connection::getConnectionListIterator() {
-    return _connection_list_iterator;
-  }
+ConnectionListIterator Connection::getConnectionListIterator() {
+  return _connection_list_iterator;
+}
 
-  ConnectionPtr Connection::getSharedPtr() {
-    return shared_from_this();
-  }
+ConnectionPtr Connection::getSharedPtr() {
+  return shared_from_this();
+}
 
 bool Connection::unsubscribe(const std::string& topicPattern) {
   std::lock_guard<std::mutex> lock(_subscription_list_lock);
@@ -222,7 +228,7 @@ bool Connection::unsubscribe(const std::string& topicPattern) {
     return false;
   }
 
-  auto it = _subscribedTopics.find(topicPattern);
+  auto it            = _subscribedTopics.find(topicPattern);
   auto& subscription = it->second;
 
   subscription.topic->deleteSubscriberByIterator(subscription.topicListIterator);
@@ -237,7 +243,7 @@ bool Connection::unsubscribe(const std::string& topicPattern) {
 
 unsigned int Connection::unsubscribeAll() {
   std::lock_guard<std::mutex> lock(_subscription_list_lock);
-  auto& tm = _worker->getTopicManager();
+  auto& tm           = _worker->getTopicManager();
   unsigned int count = _subscribedTopics.size();
 
   // TODO: If erase fails here we might end up in a infinite loop.

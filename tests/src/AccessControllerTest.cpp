@@ -1,5 +1,5 @@
-#include "Config.hpp"
 #include "AccessController.hpp"
+#include "Config.hpp"
 #include "catch.hpp"
 #include <string>
 

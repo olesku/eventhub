@@ -1,17 +1,18 @@
 #include "Topic.hpp"
-#include "Common.hpp"
-#include "Connection.hpp"
-#include "websocket/Types.hpp"
-#include "websocket/Response.hpp"
+
 #include <memory>
 #include <string>
+#include <utility>
+
+#include "Common.hpp"
+#include "Connection.hpp"
+#include "websocket/Response.hpp"
+#include "websocket/Types.hpp"
 
 using namespace std;
 
 namespace eventhub {
-Topic::~Topic() {
-  LOG(INFO) << "Topic: " << _id << " destructor.";
-}
+Topic::~Topic() {}
 
 /**
  * Add a subscriber to this Topic.
@@ -42,8 +43,8 @@ void Topic::publish(const string& data) {
       }
 
       websocket::response::sendData(c,
-      jsonrpcpp::Response(subscriber.second, jsonData).to_json().dump(),
-      websocket::FrameType::TEXT_FRAME);
+                                    jsonrpcpp::Response(subscriber.second, jsonData).to_json().dump(),
+                                    websocket::FrameType::TEXT_FRAME);
     }
   }
 

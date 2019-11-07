@@ -1,11 +1,13 @@
 #include "Config.hpp"
-#include <string>
+
 #include <string.h>
+
 #include <cstdlib>
-#include <unordered_map>
 #include <memory>
-#include <utility>
 #include <mutex>
+#include <string>
+#include <unordered_map>
+#include <utility>
 
 using namespace std;
 
@@ -27,7 +29,7 @@ void EventhubConfig::addInt(const std::string& name, int defaultValue) {
   } else {
     try {
       val.intValue = std::stoi(envVal);
-    } catch(...) {
+    } catch (...) {
       throw InvalidValue(name, "integer");
     }
   }
@@ -71,13 +73,11 @@ void EventhubConfig::addBool(const std::string& name, bool defaultValue) {
     size_t envLen = strlen(envVal);
     if (memcmp(envVal, "true", envLen) == 0 ||
         memcmp(envVal, "TRUE", envLen) == 0 ||
-        memcmp(envVal, "1", envLen) == 0)
-    {
+        memcmp(envVal, "1", envLen) == 0) {
       val.boolValue = true;
     } else if (memcmp(envVal, "false", envLen) == 0 ||
-        memcmp(envVal, "FALSE", envLen) == 0 ||
-        memcmp(envVal, "0", envLen) == 0)
-    {
+               memcmp(envVal, "FALSE", envLen) == 0 ||
+               memcmp(envVal, "0", envLen) == 0) {
       val.boolValue = false;
     } else {
       throw InvalidValue(name, "boolean");

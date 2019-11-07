@@ -1,7 +1,3 @@
-#ifdef PARSER_DUMP_STATE
-#include <stdio.h>
-#endif
-
 #include "websocket/ws_parser.h"
 
 namespace eventhub {
@@ -49,20 +45,6 @@ int ws_parser_execute(
     size_t len) {
   while (len) {
     uint8_t cur_byte = *buff;
-
-#ifdef PARSER_DUMP_STATE
-    printf("cur_byte=%d bytes_remaining=%llu fragment=%d fin=%d "
-           "control=%d mask_flag=%d mask_pos=%d state=%d len=%zu\n",
-           (int)cur_byte,
-           parser->bytes_remaining,
-           parser->fragment,
-           parser->fin,
-           parser->control,
-           parser->mask_flag,
-           parser->mask_pos,
-           parser->state,
-           len);
-#endif
 
     switch (parser->state) {
       case S_OPCODE: {

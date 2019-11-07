@@ -1,11 +1,12 @@
-#ifndef EVENTHUB_HTTP_PARSER_HPP
-#define EVENTHUB_HTTP_PARSER_HPP
+#ifndef INCLUDE_HTTP_PARSER_HPP_
+#define INCLUDE_HTTP_PARSER_HPP_
 
-#include "http/picohttpparser.h"
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
-#include <functional>
+
+#include "http/picohttpparser.h"
 
 namespace eventhub {
 namespace http {
@@ -62,4 +63,4 @@ private:
 } // namespace http
 } // namespace eventhub
 
-#endif
+#endif // INCLUDE_HTTP_PARSER_HPP_

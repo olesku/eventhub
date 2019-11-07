@@ -1,10 +1,11 @@
-#ifndef EVENTHUB_WEBSOCKET_PARSER_HPP
-#define EVENTHUB_WEBSOCKET_PARSER_HPP
+#ifndef INCLUDE_WEBSOCKET_PARSER_HPP_
+#define INCLUDE_WEBSOCKET_PARSER_HPP_
 
-#include "websocket/ws_parser.h"
-#include "websocket/Types.hpp"
-#include <string>
 #include <functional>
+#include <string>
+
+#include "websocket/Types.hpp"
+#include "websocket/ws_parser.h"
 
 namespace eventhub {
 namespace websocket {
@@ -12,7 +13,7 @@ namespace websocket {
 class Parser {
 public:
   Parser();
-  ~Parser(){};
+  ~Parser() {}
 
   void parse(char* buf, size_t len);
 
@@ -47,4 +48,4 @@ private:
 } // namespace websocket
 } // namespace eventhub
 
-#endif
+#endif // INCLUDE_WEBSOCKET_PARSER_HPP_

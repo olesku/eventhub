@@ -1,8 +1,11 @@
 #include "websocket/Response.hpp"
-#include "websocket/Types.hpp"
-#include "Common.hpp"
+
 #include <arpa/inet.h>
 #include <string.h>
+#include <string>
+
+#include "Common.hpp"
+#include "websocket/Types.hpp"
 
 namespace eventhub {
 namespace websocket {
@@ -12,7 +15,7 @@ namespace response {
 void sendFragment(ConnectionPtr conn, const std::string& fragment, uint8_t frameType, bool fin) {
   std::string sndBuf;
   char header[8];
-  size_t headerSize = 0;
+  size_t headerSize   = 0;
   size_t fragmentSize = fragment.size();
 
   header[0] = fin << 7;
@@ -51,9 +54,9 @@ void sendData(ConnectionPtr conn, const std::string& data, FrameType frameType) 
     size_t nChunks = dataSize / WS_MAX_CHUNK_SIZE;
     for (unsigned i = 0; i < nChunks; i++) {
       uint8_t chunkFrametype = uint8_t((i == 0) ? frameType : FrameType::CONTINUATION_FRAME);
-      bool fin = (i < (nChunks-1)) ? false : true;
-      size_t len = (i < (nChunks-1)) ? WS_MAX_CHUNK_SIZE : std::string::npos;
-      auto const chunk = data.substr(i*WS_MAX_CHUNK_SIZE, len);
+      bool fin               = (i < (nChunks - 1)) ? false : true;
+      size_t len             = (i < (nChunks - 1)) ? WS_MAX_CHUNK_SIZE : std::string::npos;
+      auto const chunk       = data.substr(i * WS_MAX_CHUNK_SIZE, len);
       sendFragment(conn, chunk, chunkFrametype, fin);
     }
   }
