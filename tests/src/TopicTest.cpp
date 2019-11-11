@@ -15,6 +15,10 @@ TEST_CASE("isValidTopicFilter", "[topic_manager]") {
     REQUIRE(TopicManager::isValidTopicFilter("/") == false);
   }
 
+  SECTION("Filter cannot end with /") {
+    REQUIRE(TopicManager::isValidTopicFilter("test/topic1/") == false);
+  }
+
   SECTION("Topic filter cannot include both # and + at the same time.") {
     REQUIRE(TopicManager::isValidTopicFilter("test/+/#") == false);
     REQUIRE(TopicManager::isValidTopicFilter("test/#/+") == false);
@@ -47,8 +51,39 @@ TEST_CASE("isValidTopicFilter", "[topic_manager]") {
     REQUIRE(TopicManager::isValidTopicFilter("#") == true);
   }
 
-  SECTION("Full path is a valid filter") {
-    REQUIRE(TopicManager::isValidTopicFilter("temperature/room1/sensor1") == true);
+  SECTION("Full path is not a valid filter") {
+    REQUIRE(TopicManager::isValidTopicFilter("temperature/room1/sensor1") == false);
+  }
+}
+
+TEST_CASE("isValidTopic", "[topic_manager]") {
+  SECTION("Topic cannot be empty") {
+    REQUIRE(TopicManager::isValidTopic("") == false);
+  }
+
+  SECTION("Topic cannot start with /") {
+    REQUIRE(TopicManager::isValidTopic("/") == false);
+  }
+
+  SECTION("Topic cannot end with /") {
+    REQUIRE(TopicManager::isValidTopic("test/topic1/") == false);
+  }
+
+  SECTION("Full path is a valid topic") {
+    REQUIRE(TopicManager::isValidTopic("temperature/room1/sensor1") == true);
+  }
+
+  SECTION("A topic filter with '#' is not a valid topic") {
+    REQUIRE(TopicManager::isValidTopic("temperature/#") == false);
+  }
+
+  SECTION("A topic filter with '+' is not a valid topic") {
+    REQUIRE(TopicManager::isValidTopic("temperature/+/sensor1") == false);
+  }
+
+  SECTION("Topic cannot include illegal characters") {
+    const string illegalChars = "&%~/(){}[]";
+    REQUIRE(TopicManager::isValidTopic(illegalChars) == false);
   }
 }
 

@@ -79,7 +79,7 @@ void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr re
     return;
   }
 
-  if (!TopicManager::isValidTopicFilter(topicName)) {
+  if (!TopicManager::isValidTopicOrFilter(topicName)) {
     msg << "Invalid topic in request: " << topicName;
     _sendInvalidParamsError(ctx, req, msg.str());
     return;
@@ -98,16 +98,14 @@ void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr re
   result["topic"]  = topicName;
   result["status"] = "ok";
 
-  //DLOG(INFO) << "Client " << ctx.connection()->getIP() << " subscribed to " << topicName << " request id: " << req->id();
   _sendSuccessResponse(ctx, req, result);
 
   // Send cached events if sinceEvent is set.
   if (!sinceEvent.empty()) {
     try {
-      //DLOG(INFO) << "Sending cache since '" << sinceEvent << "' to client " << ctx.connection()->getIP() << " topic: " << topicName << " request id: " << req->id();
       nlohmann::json result;
       auto& redis      = ctx.server()->getRedis();
-      size_t cacheSize = redis.getCache(topicName, sinceEvent, 0, result);
+      size_t cacheSize = redis.getCache(topicName, sinceEvent, 0, TopicManager::isValidTopicFilter(topicName), result);
 
       for (auto& cacheItem : result) {
         _sendSuccessResponse(ctx, req, cacheItem);
@@ -135,7 +133,7 @@ void RPCHandler::_handleUnsubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr 
   auto topics        = req->params().to_json();
   unsigned int count = 0;
   for (auto topic : topics) {
-    if (!TopicManager::isValidTopicFilter(topic) || !accessController.allowSubscribe(topic)) {
+    if (!TopicManager::isValidTopicOrFilter(topic) || !accessController.allowSubscribe(topic)) {
       continue;
     }
 
@@ -194,7 +192,7 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
     return;
   }
 
-  if (!TopicManager::isValidTopicFilter(topicName)) {
+  if (!TopicManager::isValidTopic(topicName)) {
     msg << topicName << " is not a valid topic.";
     _sendInvalidParamsError(ctx, req, msg.str());
     return;

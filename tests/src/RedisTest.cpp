@@ -59,6 +59,7 @@ TEST_CASE("Test redis", "[Redis") {
   }
 
   GIVEN("If we cache some items") {
+    Config.del("MAX_CACHE_LENGTH");
     Config.addInt("MAX_CACHE_LENGTH", 1000);
 
     redis.cacheMessage("test/channel1", "Test 1");
@@ -71,9 +72,16 @@ TEST_CASE("Test redis", "[Redis") {
     redis.cacheMessage("test/channel2", "Test 7");
     auto msgId = redis.cacheMessage("test/channel2", "Test 8");
 
-    THEN("Cache size should be larger than 0") {
+    THEN("Cache size should be larger than 0 when requesting a matching pattern") {
       nlohmann::json j;
-      size_t cacheSize = redis.getCache("test/#", "0", 0, j);
+      size_t cacheSize = redis.getCache("test/#", "0", 0, true, j);
+      REQUIRE(cacheSize > 0);
+      REQUIRE(j.size() > 0);
+    }
+
+    THEN("Cache size should be larger than 0 when requesting the actual topic") {
+      nlohmann::json j;
+      size_t cacheSize = redis.getCache("test/channel1", "0", 0, false, j);
       REQUIRE(cacheSize > 0);
       REQUIRE(j.size() > 0);
     }
