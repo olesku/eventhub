@@ -27,7 +27,7 @@ public:
   void publishMessage(const string topic, const string id, const string payload);
   void psubscribe(const std::string pattern, RedisMsgCallback callback);
   const std::string cacheMessage(const string topic, const string payload);
-  size_t getCache(const string topicPattern, const string since, size_t limit, nlohmann::json& result);
+  size_t getCache(const string topicPattern, const string since, size_t limit, bool isPattern, nlohmann::json& result);
   void consume();
   void resetSubscribers();
 

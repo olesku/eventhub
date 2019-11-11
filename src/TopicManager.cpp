@@ -11,6 +11,12 @@
 #include "Topic.hpp"
 
 namespace eventhub {
+/*
+* Subscribe a client to a topic.
+* @param conn Client to subscribe.
+* @param topicFilter Topic or filter name.
+* @param subscriptionRequestId JSONRPC ID for request.
+*/
 std::pair<TopicPtr, TopicSubscriberList::iterator> TopicManager::subscribeConnection(ConnectionPtr conn, const std::string& topicFilter, const jsonrpcpp::Id subscriptionRequestId) {
   std::lock_guard<std::mutex> lock(_topic_list_lock);
 
@@ -23,6 +29,12 @@ std::pair<TopicPtr, TopicSubscriberList::iterator> TopicManager::subscribeConnec
   return std::make_pair(_topic_list[topicFilter], it);
 }
 
+
+/*
+* Publish to a topic.
+* @param topicName topic to publish to.
+* @param data message to publish.
+*/
 void TopicManager::publish(const std::string& topicName, const std::string& data) {
   std::lock_guard<std::mutex> lock(_topic_list_lock);
 
@@ -33,13 +45,12 @@ void TopicManager::publish(const std::string& topicName, const std::string& data
   }
 }
 
+/*
+* Delete a topic.
+* @param topicFilter topic to delete.
+*/
 void TopicManager::deleteTopic(const std::string& topicFilter) {
   std::lock_guard<std::mutex> lock(_topic_list_lock);
-
-  if (!_topic_list.count(topicFilter)) {
-    LOG(ERROR) << "deleteTopic: Topic " << topicFilter << " does not exist.";
-    return;
-  }
 
   auto it = _topic_list.find(topicFilter);
   if (it == _topic_list.end()) {
@@ -50,16 +61,61 @@ void TopicManager::deleteTopic(const std::string& topicFilter) {
   _topic_list.erase(it);
 }
 
+/*
+* Check if a topic name is valid.
+* Rules: Cannot be empty, start or end with '/', and only contain [a-zA-Z0-9-_].
+* @param topicName topic name to validate.
+* @returns true if valid, false otherwise.
+*/
+bool TopicManager::isValidTopic(const std::string& topicName) {
+    if (topicName.empty()) {
+    return false;
+  }
+
+  if (topicName.at(0) == '/') {
+    return false;
+  }
+
+  if (topicName.find('+') != std::string::npos || topicName.find('#') != std::string::npos) {
+    return false;
+  }
+
+  for (auto it = topicName.begin(); it != topicName.end(); it++) {
+    if (!isalnum(*it) && *it != '-' && *it != '_' && *it != '/') {
+      return false;
+    }
+
+    if (it+1 == topicName.end() && *it == '/') {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/*
+* Check if a topic filter is valid.
+* Rules: Cannot be empty, start or end with '/', only contain [a-zA-Z0-9-_], must contain # or + but not at the same time.
+* @param filterName filter to validate.
+* @returns true if valid, false otherwise.
+*/
 bool TopicManager::isValidTopicFilter(const std::string& filterName) {
   if (filterName.empty()) {
     return false;
   }
 
+  // Cannot start with a /.
   if (filterName.at(0) == '/') {
     return false;
   }
 
+  // Cannot contain + and # at the same time.
   if (filterName.find('+') != std::string::npos && filterName.find('#') != std::string::npos) {
+    return false;
+  }
+
+  // Must contain either + or #.
+  if (filterName.find('+') == std::string::npos && filterName.find('#') == std::string::npos) {
     return false;
   }
 
@@ -84,7 +140,24 @@ bool TopicManager::isValidTopicFilter(const std::string& filterName) {
   return true;
 }
 
-// This method assumes topic filter is validated through is_valid_topic_filter.
+/*
+* Helper function to check if input is a valid topic or topic filter.
+* @param topic input.
+*/
+bool TopicManager::isValidTopicOrFilter(const std::string& topic) {
+  if (isValidTopic(topic) || isValidTopicFilter(topic)) {
+    return true;
+  }
+
+  return false;
+}
+
+/*
+* Check if a filter matches a topic.
+* @param filterName filter to use.
+* @param topicName topic name to validate.
+* @returns true if it matches, false otherwise.
+*/
 bool TopicManager::isFilterMatched(const std::string& filterName, const string& topicName) {
   for (auto fnIt = filterName.begin(), tnIt = topicName.begin();
        tnIt != topicName.end(); fnIt++, tnIt++) {

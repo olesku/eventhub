@@ -45,7 +45,7 @@ bool AccessController::authenticate(const std::string& jwtToken, const std::stri
 
     if (payload.has_claim("write")) {
       for (auto filter : payload.get_claim_value<std::vector<std::string>>("write")) {
-        if (TopicManager::isValidTopicFilter(filter)) {
+        if (TopicManager::isValidTopicOrFilter(filter)) {
           _publish_acl.push_back(filter);
         }
       }
@@ -53,7 +53,7 @@ bool AccessController::authenticate(const std::string& jwtToken, const std::stri
 
     if (payload.has_claim("read")) {
       for (auto filter : payload.get_claim_value<std::vector<std::string>>("read")) {
-        if (TopicManager::isValidTopicFilter(filter)) {
+        if (TopicManager::isValidTopicOrFilter(filter)) {
           _subscribe_acl.push_back(filter);
         }
       }

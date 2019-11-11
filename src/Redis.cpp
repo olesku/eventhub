@@ -70,13 +70,20 @@ const std::string Redis::cacheMessage(const string topic, const string payload) 
 // GetCache returns all matching cached messages for topics matching topicPattern
 // @param since List all messages since Unix timestamp or message ID
 // @param limit Limit resultset to at most @limit elements.
-size_t Redis::getCache(const string topicPattern, const string since, size_t limit, nlohmann::json& result) {
-  auto topicsSeen = _getTopicsSeen(topicPattern);
+size_t Redis::getCache(const string topicPattern, const string since, size_t limit, bool isPattern, nlohmann::json& result) {
   std::unordered_map<std::string, std::string> keys;
   result = nlohmann::json::array();
 
-  for (auto& topic : topicsSeen) {
-    keys.insert(pair<std::string, std::string>(REDIS_PREFIX(topic), since));
+  // Look up all matching topics in redis we get a request for a topic pattern
+  // and request the eventlog for each of them.
+  if (isPattern) {
+    for (auto& topic : _getTopicsSeen(topicPattern)) {
+       keys.insert(pair<std::string, std::string>(REDIS_PREFIX(topic), since));
+    }
+  }
+  // If it is a single topic then only look up eventlog for that.
+  else {
+    keys.insert(pair<std::string, std::string>(REDIS_PREFIX(topicPattern), since));
   }
 
   std::unordered_map<std::string, XItemStream> redisResult;
@@ -89,12 +96,7 @@ size_t Redis::getCache(const string topicPattern, const string since, size_t lim
     for (auto& streamID : redisResult) {
       for (auto& msgID : streamID.second) {
         for (auto& keyVals : msgID.second) {
-          /*
-          auto& streamName = streamID.first;
-          auto& payloadID  = msgID.first;
-          auto& topicName  = keyVals.first;
-          auto& payload    = keyVals.second;
-          */
+          // auto& streamName = streamID.first;
           nlohmann::json j;
           j["id"]      = msgID.first;
           j["topic"]   = keyVals.first;

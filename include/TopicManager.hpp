@@ -20,7 +20,9 @@ public:
   void publish(const std::string& topicName, const std::string& data);
   void deleteTopic(const std::string& topicFilter);
 
+  static bool isValidTopic(const std::string& topicName);
   static bool isValidTopicFilter(const std::string& filterName);
+  static bool isValidTopicOrFilter(const std::string& topic);
   static bool isFilterMatched(const std::string& filterName, const string& topicName);
 
 private:
