@@ -8,9 +8,11 @@
 
 #include <mutex>
 #include <string>
+#include <chrono>
 
 #include "Common.hpp"
 #include "Config.hpp"
+#include "Statistics.hpp"
 
 int stopEventhub = 0;
 
@@ -65,10 +67,15 @@ void Server::start() {
   _cur_worker = _connection_workers.begin();
   _connection_workers_lock.unlock();
 
+  _statistics.worker_count = numWorkerThreads;
+  _statistics.server_start_unixtime =
+    std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+
   _redis.setPrefix(Config.getString("REDIS_PREFIX"));
 
   RedisMsgCallback cb = [&](std::string pattern, std::string topic, std::string msg) {
     publish(topic, msg);
+    _statistics.publish_count++;
   };
 
   // Connect to redis.
@@ -78,6 +85,7 @@ void Server::start() {
   while (!stopEventhub) {
     try {
       if (reconnect) {
+        _statistics.redis_connection_fail_count++;
         std::this_thread::sleep_for(std::chrono::milliseconds(5000));
         reconnect = false;
         _redis.resetSubscribers();
