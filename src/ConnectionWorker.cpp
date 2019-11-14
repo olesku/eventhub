@@ -12,6 +12,7 @@
 #include <mutex>
 #include <stdexcept>
 #include <string>
+#include <chrono>
 
 #include "Common.hpp"
 #include "Config.hpp"
@@ -158,6 +159,9 @@ void Worker::_addConnection(int fd, struct sockaddr_in* csin) {
         // TODO: Disconnect client if lastPong was Config.getPingInterval() * 1000 * 3 ago.
       },
       true);
+
+  _metrics.current_connections_count++;
+  _metrics.total_connect_count++;
 }
 
 /**
@@ -167,6 +171,9 @@ void Worker::_addConnection(int fd, struct sockaddr_in* csin) {
 void Worker::_removeConnection(ConnectionPtr conn) {
   std::lock_guard<std::mutex> lock(_connection_list_mutex);
   _connection_list.erase(conn->getConnectionListIterator());
+
+  _metrics.current_connections_count--;
+  _metrics.total_disconnect_count++;
 }
 
 void Worker::publish(const string& topicName, const string& data) {
@@ -183,6 +190,17 @@ void Worker::_workerMain() {
   struct epoll_event serverSocketEvent;
 
   LOG(INFO) << "Worker " << getWorkerId() << " started.";
+
+  // Sample eventloop delay every <METRIC_DELAY_SAMPLE_RATE_MS> and store it in our metrics.
+  _last_ev_delay_sample_time = chrono::high_resolution_clock::now();
+  _ev.addTimer(METRIC_DELAY_SAMPLE_RATE_MS, [&](TimerCtx *ctx) {
+    chrono::high_resolution_clock::time_point now = chrono::high_resolution_clock::now();
+
+    auto diff = chrono::duration_cast<chrono::milliseconds>(now - _last_ev_delay_sample_time - chrono::milliseconds(METRIC_DELAY_SAMPLE_RATE_MS));
+    _last_ev_delay_sample_time = now;
+
+    _metrics.eventloop_delay_ms = diff.count();
+  }, true);
 
   if (_epoll_fd == -1) {
     LOG(FATAL) << "epoll_create1() failed in worker " << getWorkerId() << ": " << strerror(errno);

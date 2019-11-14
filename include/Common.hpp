@@ -27,4 +27,7 @@ static constexpr size_t WS_MAX_DATA_FRAME_SIZE = (1024 * 1000) * 8;
 // Hangup connection if control frame is larger than this.
 static constexpr size_t WS_MAX_CONTROL_FRAME_SIZE = 1024;
 
+// Delay metric sample rate.
+static constexpr unsigned int METRIC_DELAY_SAMPLE_RATE_MS = 5000;
+
 #endif // INCLUDE_COMMON_HPP_

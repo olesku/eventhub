@@ -6,13 +6,13 @@
 #include <string.h>
 #include <sys/socket.h>
 
+#include "jwt/json/json.hpp"
 #include <mutex>
 #include <string>
 #include <chrono>
 
 #include "Common.hpp"
 #include "Config.hpp"
-#include "Statistics.hpp"
 
 int stopEventhub = 0;
 
@@ -67,15 +67,45 @@ void Server::start() {
   _cur_worker = _connection_workers.begin();
   _connection_workers_lock.unlock();
 
-  _statistics.worker_count = numWorkerThreads;
-  _statistics.server_start_unixtime =
+  _metrics.worker_count = numWorkerThreads;
+  _metrics.server_start_unixtime =
     std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
 
   _redis.setPrefix(Config.getString("REDIS_PREFIX"));
 
+  // Sample Redis publish latency.
+  (*_cur_worker)->addTimer(METRIC_DELAY_SAMPLE_RATE_MS, [&](TimerCtx *ctx) {
+    try {
+      auto now =
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
+      _redis.publishMessage("$metrics$/system_unixtime", "0", to_string(now));
+    } catch(...) {}
+  }, true);
+
   RedisMsgCallback cb = [&](std::string pattern, std::string topic, std::string msg) {
+    // Calculate publish delay.
+    if (topic == "$metrics$/system_unixtime") {
+      try {
+        auto j = nlohmann::json::parse(msg);
+        auto ts = stol(static_cast<std::string>(j["message"]), nullptr, 10);
+
+        // TODO: Write helper function for getting the unixtime in ms.
+        auto now =
+          std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
+        auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::milliseconds(now) - std::chrono::milliseconds(ts));
+
+        _metrics.redis_publish_delay_ms = diff.count();
+        return;
+      } catch(...) {}
+
+      return;
+    }
+
+    // Ask the workers to publish the message to our clients.
     publish(topic, msg);
-    _statistics.publish_count++;
+    _metrics.publish_count++;
   };
 
   // Connect to redis.
@@ -85,7 +115,7 @@ void Server::start() {
   while (!stopEventhub) {
     try {
       if (reconnect) {
-        _statistics.redis_connection_fail_count++;
+        _metrics.redis_connection_fail_count++;
         std::this_thread::sleep_for(std::chrono::milliseconds(5000));
         reconnect = false;
         _redis.resetSubscribers();

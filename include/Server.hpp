@@ -8,7 +8,7 @@
 #include "ConnectionWorker.hpp"
 #include "Redis.hpp"
 #include "Worker.hpp"
-#include "Statistics.hpp"
+#include "metrics/Types.hpp"
 
 using namespace std;
 
@@ -32,7 +32,7 @@ private:
   WorkerGroup<Worker>::iterator _cur_worker;
   std::mutex _connection_workers_lock;
   Redis _redis;
-  statistics::Server _statistics;
+  metrics::ServerMetrics _metrics;
 };
 
 } // namespace eventhub

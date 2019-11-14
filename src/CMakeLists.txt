@@ -8,6 +8,7 @@ add_library( libeventhub
   websocket/Parser.cpp
   websocket/Handler.cpp
   websocket/Response.cpp
+  metrics/PrometheusRenderer.cpp
   Config.cpp
   RPCHandler.cpp
   Redis.cpp
