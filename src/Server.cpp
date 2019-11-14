@@ -13,10 +13,12 @@
 
 #include "Common.hpp"
 #include "Config.hpp"
+#include "metrics/Types.hpp"
 
 int stopEventhub = 0;
 
 namespace eventhub {
+using Metrics = metrics::Metrics;
 
 Server::Server(const string redisHost, int redisPort, const std::string redisPassword, int redisPoolSize)
     : _redis(redisHost, redisPort, redisPassword, redisPoolSize) {}
@@ -160,6 +162,14 @@ void Server::stop() {
 
 const int Server::getServerSocket() {
   return _server_socket;
+}
+
+const Metrics Server::getMetrics() {
+  metrics::Metrics m;
+
+  m.server_metrics = _metrics;
+
+  return m;
 }
 
 } // namespace eventhub

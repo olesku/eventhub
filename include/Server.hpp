@@ -25,6 +25,7 @@ public:
   Worker* getWorker();
   void publish(const std::string topicName, const std::string data);
   inline Redis& getRedis() { return _redis; }
+  const metrics::Metrics getMetrics();
 
 private:
   int _server_socket;

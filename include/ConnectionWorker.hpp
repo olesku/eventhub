@@ -46,6 +46,7 @@ private:
   void _addConnection(int fd, struct sockaddr_in* csin);
   void _removeConnection(ConnectionPtr conn);
   void _read(ConnectionPtr conn);
+  const metrics::WorkerMetrics getMetrics() { return _metrics; }
 
   void _workerMain();
 };
