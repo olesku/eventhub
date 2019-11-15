@@ -10,7 +10,7 @@ namespace metrics {
 
 class PrometheusRenderer {
 public:
-  static const std::string RenderMetrics(Metrics& metrics);
+  static const std::string RenderMetrics(AggregatedMetrics&& metrics);
 };
 
 } // namespace metrics

@@ -30,6 +30,7 @@ public:
   void addTimer(int64_t delay, std::function<void(TimerCtx* ctx)> callback, bool repeat = false);
   inline unsigned int getWorkerId() { return _workerId; }
   inline int getEpollFileDescriptor() { return _epoll_fd; }
+  const metrics::WorkerMetrics& getMetrics() { return _metrics; }
 
 private:
   unsigned int _workerId;
@@ -46,7 +47,6 @@ private:
   void _addConnection(int fd, struct sockaddr_in* csin);
   void _removeConnection(ConnectionPtr conn);
   void _read(ConnectionPtr conn);
-  const metrics::WorkerMetrics getMetrics() { return _metrics; }
 
   void _workerMain();
 };

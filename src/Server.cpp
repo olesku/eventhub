@@ -18,7 +18,6 @@
 int stopEventhub = 0;
 
 namespace eventhub {
-using Metrics = metrics::Metrics;
 
 Server::Server(const string redisHost, int redisPort, const std::string redisPassword, int redisPoolSize)
     : _redis(redisHost, redisPort, redisPassword, redisPoolSize) {}
@@ -75,6 +74,7 @@ void Server::start() {
 
   _redis.setPrefix(Config.getString("REDIS_PREFIX"));
 
+  // TODO: Move this to separate thread.
   // Sample Redis publish latency.
   (*_cur_worker)->addTimer(METRIC_DELAY_SAMPLE_RATE_MS, [&](TimerCtx *ctx) {
     try {
@@ -82,6 +82,7 @@ void Server::start() {
         std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
       _redis.publishMessage("$metrics$/system_unixtime", "0", to_string(now));
+
     } catch(...) {}
   }, true);
 
@@ -164,10 +165,26 @@ const int Server::getServerSocket() {
   return _server_socket;
 }
 
-const Metrics Server::getMetrics() {
-  metrics::Metrics m;
+metrics::AggregatedMetrics Server::getAggregatedMetrics() {
+  std::lock_guard<std::mutex> lock(_connection_workers_lock);
+  metrics::AggregatedMetrics m;
 
-  m.server_metrics = _metrics;
+  m.worker_count = _metrics.worker_count.load();
+  m.redis_publish_delay_ms = _metrics.redis_publish_delay_ms.load();
+  m.server_start_unixtime =  _metrics.server_start_unixtime.load();
+  m.publish_count = _metrics.publish_count.load();
+  m.redis_connection_fail_count = _metrics.redis_connection_fail_count.load();
+
+  for (auto& wrk : _connection_workers) {
+    const auto& wrkM = wrk->getMetrics();
+    m.current_connections_count += wrkM.current_connections_count.load();
+    m.total_connect_count += wrkM.total_connect_count.load();
+    m.total_disconnect_count += wrkM.total_disconnect_count.load();
+    m.eventloop_delay_ms += wrkM.eventloop_delay_ms.load();
+  }
+
+  // Calculate avg eventloop delay accross workers.
+  m.eventloop_delay_ms = (m.eventloop_delay_ms / _connection_workers.getWorkerList().size());
 
   return m;
 }
