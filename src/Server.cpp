@@ -6,11 +6,14 @@
 #include <string.h>
 #include <sys/socket.h>
 
+#include "jwt/json/json.hpp"
 #include <mutex>
 #include <string>
+#include <chrono>
 
 #include "Common.hpp"
 #include "Config.hpp"
+#include "metrics/Types.hpp"
 
 int stopEventhub = 0;
 
@@ -65,10 +68,47 @@ void Server::start() {
   _cur_worker = _connection_workers.begin();
   _connection_workers_lock.unlock();
 
+  _metrics.worker_count = numWorkerThreads;
+  _metrics.server_start_unixtime =
+    std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+
   _redis.setPrefix(Config.getString("REDIS_PREFIX"));
 
+  // TODO: Move this to separate thread.
+  // Sample Redis publish latency.
+  (*_cur_worker)->addTimer(METRIC_DELAY_SAMPLE_RATE_MS, [&](TimerCtx *ctx) {
+    try {
+      auto now =
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
+      _redis.publishMessage("$metrics$/system_unixtime", "0", to_string(now));
+
+    } catch(...) {}
+  }, true);
+
   RedisMsgCallback cb = [&](std::string pattern, std::string topic, std::string msg) {
+    // Calculate publish delay.
+    if (topic == "$metrics$/system_unixtime") {
+      try {
+        auto j = nlohmann::json::parse(msg);
+        auto ts = stol(static_cast<std::string>(j["message"]), nullptr, 10);
+
+        // TODO: Write helper function for getting the unixtime in ms.
+        auto now =
+          std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
+        auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::milliseconds(now) - std::chrono::milliseconds(ts));
+
+        _metrics.redis_publish_delay_ms = diff.count();
+        return;
+      } catch(...) {}
+
+      return;
+    }
+
+    // Ask the workers to publish the message to our clients.
     publish(topic, msg);
+    _metrics.publish_count++;
   };
 
   // Connect to redis.
@@ -78,6 +118,7 @@ void Server::start() {
   while (!stopEventhub) {
     try {
       if (reconnect) {
+        _metrics.redis_connection_fail_count++;
         std::this_thread::sleep_for(std::chrono::milliseconds(5000));
         reconnect = false;
         _redis.resetSubscribers();
@@ -122,6 +163,30 @@ void Server::stop() {
 
 const int Server::getServerSocket() {
   return _server_socket;
+}
+
+metrics::AggregatedMetrics Server::getAggregatedMetrics() {
+  std::lock_guard<std::mutex> lock(_connection_workers_lock);
+  metrics::AggregatedMetrics m;
+
+  m.worker_count = _metrics.worker_count.load();
+  m.redis_publish_delay_ms = _metrics.redis_publish_delay_ms.load();
+  m.server_start_unixtime =  _metrics.server_start_unixtime.load();
+  m.publish_count = _metrics.publish_count.load();
+  m.redis_connection_fail_count = _metrics.redis_connection_fail_count.load();
+
+  for (auto& wrk : _connection_workers) {
+    const auto& wrkM = wrk->getMetrics();
+    m.current_connections_count += wrkM.current_connections_count.load();
+    m.total_connect_count += wrkM.total_connect_count.load();
+    m.total_disconnect_count += wrkM.total_disconnect_count.load();
+    m.eventloop_delay_ms += wrkM.eventloop_delay_ms.load();
+  }
+
+  // Calculate avg eventloop delay accross workers.
+  m.eventloop_delay_ms = (m.eventloop_delay_ms / _connection_workers.getWorkerList().size());
+
+  return m;
 }
 
 } // namespace eventhub

@@ -8,6 +8,9 @@
 #include "HandlerContext.hpp"
 #include "TopicManager.hpp"
 #include "Util.hpp"
+#include "Server.hpp"
+#include "metrics/JsonRenderer.hpp"
+#include "metrics/PrometheusRenderer.hpp"
 #include "http/Handler.hpp"
 #include "http/Parser.hpp"
 #include "http/Response.hpp"
@@ -36,18 +39,36 @@ void Handler::HandleRequest(HandlerContext&& ctx, Parser* req, RequestState reqS
 }
 
 void Handler::_handlePath(HandlerContext& ctx, Parser* req) {
-  if (req->getPath().compare("/healthz") == 0) {
+  // Healthcheck endpoint.
+  if (req->getPath() == "/healthz") {
     Response resp;
     resp.setStatus(200);
-    resp.setHeader("Content-Type", "appliction/json");
+    resp.setHeader("Content-Type", "application/json");
+    resp.setHeader("Connection", "close");
     resp.setBody("{ \"status\": \"ok\" }\r\n");
     ctx.connection()->write(resp.get());
     ctx.connection()->shutdown();
     return;
   }
 
-  if (req->getPath().compare("/status") == 0) {
-    // TODO: implement status endpoint.
+  // Metrics endpoint.
+  if (req->getPath() == "/metrics" || req->getPath() == "/metrics/") {
+    Response resp;
+    std::string m;
+
+    if (req->getQueryString("format") == "json") {
+      m = metrics::JsonRenderer::RenderMetrics(ctx.server()->getAggregatedMetrics());
+      resp.setHeader("Content-Type", "application/json");
+    } else {
+      resp.setHeader("Content-Type", "text/plain");
+      m = metrics::PrometheusRenderer::RenderMetrics(ctx.server()->getAggregatedMetrics());
+    }
+
+    resp.setStatus(200);
+    resp.setHeader("Connection", "close");
+    resp.setBody(m);
+
+    ctx.connection()->write(resp.get());
     ctx.connection()->shutdown();
     return;
   }

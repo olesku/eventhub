@@ -8,6 +8,7 @@
 #include "ConnectionWorker.hpp"
 #include "Redis.hpp"
 #include "Worker.hpp"
+#include "metrics/Types.hpp"
 
 using namespace std;
 
@@ -24,6 +25,7 @@ public:
   Worker* getWorker();
   void publish(const std::string topicName, const std::string data);
   inline Redis& getRedis() { return _redis; }
+  metrics::AggregatedMetrics getAggregatedMetrics();
 
 private:
   int _server_socket;
@@ -31,6 +33,7 @@ private:
   WorkerGroup<Worker>::iterator _cur_worker;
   std::mutex _connection_workers_lock;
   Redis _redis;
+  metrics::ServerMetrics _metrics;
 };
 
 } // namespace eventhub

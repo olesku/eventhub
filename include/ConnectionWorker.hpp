@@ -5,10 +5,12 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <chrono>
 
 #include "Connection.hpp"
 #include "EventLoop.hpp"
 #include "TopicManager.hpp"
+#include "metrics/Types.hpp"
 #include "Worker.hpp"
 
 namespace eventhub {
@@ -28,6 +30,7 @@ public:
   void addTimer(int64_t delay, std::function<void(TimerCtx* ctx)> callback, bool repeat = false);
   inline unsigned int getWorkerId() { return _workerId; }
   inline int getEpollFileDescriptor() { return _epoll_fd; }
+  const metrics::WorkerMetrics& getMetrics() { return _metrics; }
 
 private:
   unsigned int _workerId;
@@ -37,6 +40,8 @@ private:
   ConnectionList _connection_list;
   std::mutex _connection_list_mutex;
   TopicManager _topic_manager;
+  metrics::WorkerMetrics _metrics;
+  std::chrono::high_resolution_clock::time_point _last_ev_delay_sample_time;
 
   void _acceptConnection();
   void _addConnection(int fd, struct sockaddr_in* csin);
