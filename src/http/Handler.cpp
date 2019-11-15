@@ -58,12 +58,13 @@ void Handler::_handlePath(HandlerContext& ctx, Parser* req) {
 
     if (req->getQueryString("format") == "json") {
       m = metrics::JsonRenderer::RenderMetrics(ctx.server()->getAggregatedMetrics());
+      resp.setHeader("Content-Type", "application/json");
     } else {
+      resp.setHeader("Content-Type", "text/plain");
       m = metrics::PrometheusRenderer::RenderMetrics(ctx.server()->getAggregatedMetrics());
     }
 
     resp.setStatus(200);
-    resp.setHeader("Content-Type", "application/json");
     resp.setHeader("Connection", "close");
     resp.setBody(m);
 
