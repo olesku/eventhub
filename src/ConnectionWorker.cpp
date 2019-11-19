@@ -25,6 +25,7 @@
 #include "websocket/Handler.hpp"
 #include "websocket/Parser.hpp"
 #include "websocket/Response.hpp"
+#include "Util.hpp"
 
 using namespace std;
 
@@ -191,15 +192,19 @@ void Worker::_workerMain() {
 
   LOG(INFO) << "Worker " << getWorkerId() << " started.";
 
-  // Sample eventloop delay every <METRIC_DELAY_SAMPLE_RATE_MS> and store it in our metrics.
-  _last_ev_delay_sample_time = chrono::high_resolution_clock::now();
-  _ev.addTimer(METRIC_DELAY_SAMPLE_RATE_MS, [&](TimerCtx *ctx) {
-    chrono::high_resolution_clock::time_point now = chrono::high_resolution_clock::now();
+  // Set initial eventloop delay sample start time.
+  _ev_delay_sample_start = Util::getMillisecondsSinceEpoch();
 
-    auto diff = chrono::duration_cast<chrono::milliseconds>(now - _last_ev_delay_sample_time - chrono::milliseconds(METRIC_DELAY_SAMPLE_RATE_MS));
-    _last_ev_delay_sample_time = now;
+  // Sample eventloop delay every <METRIC_DELAY_SAMPLE_RATE_MS> and store it in our metrics.
+  _ev.addTimer(METRIC_DELAY_SAMPLE_RATE_MS, [&](TimerCtx *ctx) {
+    auto diff = chrono::duration_cast<chrono::milliseconds>(
+      Util::getMillisecondsSinceEpoch() -
+      _ev_delay_sample_start -
+      chrono::milliseconds(METRIC_DELAY_SAMPLE_RATE_MS)
+    );
 
     _metrics.eventloop_delay_ms = diff.count();
+    _ev_delay_sample_start = Util::getMillisecondsSinceEpoch();
   }, true);
 
   if (_epoll_fd == -1) {

@@ -6,14 +6,16 @@
 #include <string.h>
 #include <sys/socket.h>
 
-#include "jwt/json/json.hpp"
 #include <mutex>
 #include <string>
 #include <chrono>
+#include <future>
 
+#include "jwt/json/json.hpp"
 #include "Common.hpp"
 #include "Config.hpp"
 #include "metrics/Types.hpp"
+#include "Util.hpp"
 
 int stopEventhub = 0;
 
@@ -69,36 +71,31 @@ void Server::start() {
   _connection_workers_lock.unlock();
 
   _metrics.worker_count = numWorkerThreads;
-  _metrics.server_start_unixtime =
-    std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+  _metrics.server_start_unixtime = Util::getMillisecondsSinceEpoch().count();
 
   _redis.setPrefix(Config.getString("REDIS_PREFIX"));
 
   // TODO: Move this to separate thread.
   // Sample Redis publish latency.
-  (*_cur_worker)->addTimer(METRIC_DELAY_SAMPLE_RATE_MS, [&](TimerCtx *ctx) {
+  /*(*_cur_worker)->addTimer(METRIC_DELAY_SAMPLE_RATE_MS, [&](TimerCtx *ctx) {
     try {
-      auto now =
-        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-
+      auto now = Util::getMillisecondsSinceEpoch().count();
       _redis.publishMessage("$metrics$/system_unixtime", "0", to_string(now));
 
     } catch(...) {}
-  }, true);
+  }, true);*/
+
+  std::async([&]{
+
+  });
 
   RedisMsgCallback cb = [&](std::string pattern, std::string topic, std::string msg) {
     // Calculate publish delay.
     if (topic == "$metrics$/system_unixtime") {
       try {
         auto j = nlohmann::json::parse(msg);
-        auto ts = stol(static_cast<std::string>(j["message"]), nullptr, 10);
-
-        // TODO: Write helper function for getting the unixtime in ms.
-        auto now =
-          std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-
-        auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::milliseconds(now) - std::chrono::milliseconds(ts));
-
+        auto ts = stol(static_cast<std::string>(j["message"]), nullptr, 10);;
+        auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(Util::getMillisecondsSinceEpoch() - std::chrono::milliseconds(ts));
         _metrics.redis_publish_delay_ms = diff.count();
         return;
       } catch(...) {}

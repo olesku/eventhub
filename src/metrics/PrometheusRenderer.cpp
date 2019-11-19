@@ -12,23 +12,6 @@
 namespace eventhub {
 namespace metrics {
 
-/*
-  unsigned long server_start_unixtime;
-  unsigned int worker_count;
-  unsigned long long publish_count;
-  unsigned int redis_connection_fail_count;
-  double redis_publish_delay_ms;
-
-  unsigned long current_connections_count;
-  unsigned long long total_connect_count;
-  unsigned long long total_disconnect_count;
-  unsigned int eventloop_delay_ms;
-
-  metric_name [
-  "{" label_name "=" `"` label_value `"` { "," label_name "=" `"` label_value `"` } [ "," ] "}"
-] value [ timestamp ]
-*/
-
 const std::string PrometheusRenderer::RenderMetrics(AggregatedMetrics&& metrics) {
   std::vector<std::pair<std::string, long long>> metricList = {
     { "worker_count", metrics.worker_count },
@@ -43,12 +26,16 @@ const std::string PrometheusRenderer::RenderMetrics(AggregatedMetrics&& metrics)
   };
 
   char h_buf[128] = {0};
+  std::stringstream ss;
 
   gethostname(h_buf, sizeof(h_buf));
 
-  std::stringstream ss;
   for (auto& m : metricList) {
-    ss << m.first << "{instance=\"" << h_buf << ":" << Config.getInt("LISTEN_PORT") << "\"" << "} " << m.second << "\n";
+    // Add prefix to metric key if set in configuration.
+    const std::string metricKey = !Config.getString("PROMETHEUS_METRIC_PREFIX").empty() ?
+                                    (Config.getString("PROMETHEUS_METRIC_PREFIX") + "_" +  m.first) : m.first;
+
+    ss << metricKey << "{instance=\"" << h_buf << ":" << Config.getInt("LISTEN_PORT") << "\"" << "} " << m.second << "\n";
   }
 
   return ss.str();

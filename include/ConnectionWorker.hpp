@@ -41,7 +41,7 @@ private:
   std::mutex _connection_list_mutex;
   TopicManager _topic_manager;
   metrics::WorkerMetrics _metrics;
-  std::chrono::high_resolution_clock::time_point _last_ev_delay_sample_time;
+  std::chrono::milliseconds _ev_delay_sample_start;
 
   void _acceptConnection();
   void _addConnection(int fd, struct sockaddr_in* csin);
