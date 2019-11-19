@@ -28,6 +28,7 @@ RPCMethod RPCHandler::getHandler(const std::string& methodName) {
       {"publish", _handlePublish},
       {"list", _handleList},
       {"history", _handleHistory},
+      {"ping" , _handlePing},
       {"disconnect", _handleDisconnect}};
 
   std::string methodNameLC = methodName;
@@ -251,13 +252,25 @@ void RPCHandler::_handleHistory(HandlerContext& ctx, jsonrpcpp::request_ptr req)
 }
 
 /**
+ * Send a pong to the client.
+ * @param ctx Client issuing request.
+ * @param req RPC request.
+ */
+void RPCHandler::_handlePing(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
+  nlohmann::json result;
+  result["pong"] = Util::getTimeSinceEpoch();
+
+  _sendSuccessResponse(ctx, req, result);
+}
+
+/**
  * Disconnect the client.
  * @param ctx Client issuing request.
  * @param req RPC request.
  */
 void RPCHandler::_handleDisconnect(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
   websocket::response::sendData(ctx.connection(), "", websocket::FrameType::CLOSE_FRAME);
-  ctx.connection()->isShutdown();
+  ctx.connection()->shutdown();
 }
 
 } // namespace eventhub

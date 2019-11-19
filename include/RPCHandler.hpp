@@ -31,6 +31,7 @@ private:
   static void _handlePublish(HandlerContext& hCtx, jsonrpcpp::request_ptr req);
   static void _handleList(HandlerContext& hCtx, jsonrpcpp::request_ptr req);
   static void _handleHistory(HandlerContext& hCtx, jsonrpcpp::request_ptr req);
+  static void _handlePing(HandlerContext& hCtx, jsonrpcpp::request_ptr req);
   static void _handleDisconnect(HandlerContext& hCtx, jsonrpcpp::request_ptr req);
 };
 
