@@ -1,16 +1,19 @@
-#include "Common.hpp"
-#include "Config.hpp"
-#include "Server.hpp"
-#include <iostream>
-#include <memory>
 #include <signal.h>
 #include <stdexcept>
 #include <stdio.h>
 #include <string>
 #include <time.h>
 
+#include <iostream>
+#include <memory>
+#include <atomic>
+
+#include "Common.hpp"
+#include "Config.hpp"
+#include "Server.hpp"
+
 using namespace std;
-extern int stopEventhub;
+extern atomic<bool> stopEventhub;
 
 void shutdown(int sigid) {
   LOG(INFO) << "Exiting.";

@@ -10,7 +10,7 @@ public:
   static const std::string base64Encode(const unsigned char* buffer, size_t length);
   static const std::string uriDecode(const std::string& str);
   static std::string& strToLower(std::string& s);
-  static std::chrono::milliseconds getMillisecondsSinceEpoch();
+  static int64_t getTimeSinceEpoch();
 
 private:
   Util() {}

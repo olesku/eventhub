@@ -6,6 +6,7 @@
 #include <mutex>
 #include <string>
 #include <chrono>
+#include <cstdint>
 
 #include "Connection.hpp"
 #include "EventLoop.hpp"
@@ -41,7 +42,7 @@ private:
   std::mutex _connection_list_mutex;
   TopicManager _topic_manager;
   metrics::WorkerMetrics _metrics;
-  std::chrono::milliseconds _ev_delay_sample_start;
+  int64_t _ev_delay_sample_start;
 
   void _acceptConnection();
   void _addConnection(int fd, struct sockaddr_in* csin);

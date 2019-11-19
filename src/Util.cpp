@@ -72,8 +72,8 @@ std::string& Util::strToLower(std::string& s) {
   return s;
 }
 
-std::chrono::milliseconds Util::getMillisecondsSinceEpoch() {
-  return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
+int64_t Util::getTimeSinceEpoch() {
+  return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
 } // namespace eventhub

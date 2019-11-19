@@ -10,6 +10,7 @@
 #include <string>
 #include <chrono>
 #include <future>
+#include <atomic>
 
 #include "jwt/json/json.hpp"
 #include "Common.hpp"
@@ -17,7 +18,7 @@
 #include "metrics/Types.hpp"
 #include "Util.hpp"
 
-int stopEventhub = 0;
+std::atomic<bool> stopEventhub{false};
 
 namespace eventhub {
 
@@ -71,22 +72,18 @@ void Server::start() {
   _connection_workers_lock.unlock();
 
   _metrics.worker_count = numWorkerThreads;
-  _metrics.server_start_unixtime = Util::getMillisecondsSinceEpoch().count();
+  _metrics.server_start_unixtime = Util::getTimeSinceEpoch();
 
   _redis.setPrefix(Config.getString("REDIS_PREFIX"));
 
-  // TODO: Move this to separate thread.
   // Sample Redis publish latency.
-  /*(*_cur_worker)->addTimer(METRIC_DELAY_SAMPLE_RATE_MS, [&](TimerCtx *ctx) {
-    try {
-      auto now = Util::getMillisecondsSinceEpoch().count();
-      _redis.publishMessage("$metrics$/system_unixtime", "0", to_string(now));
-
-    } catch(...) {}
-  }, true);*/
-
-  std::async([&]{
-
+  std::async([&](){
+    while(!stopEventhub) {
+      try {
+        _redis.publishMessage("$metrics$/system_unixtime", "0", to_string(Util::getTimeSinceEpoch()));
+        std::this_thread::sleep_for(std::chrono::milliseconds(METRIC_DELAY_SAMPLE_RATE_MS));
+      } catch(...) {}
+    }
   });
 
   RedisMsgCallback cb = [&](std::string pattern, std::string topic, std::string msg) {
@@ -95,8 +92,8 @@ void Server::start() {
       try {
         auto j = nlohmann::json::parse(msg);
         auto ts = stol(static_cast<std::string>(j["message"]), nullptr, 10);;
-        auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(Util::getMillisecondsSinceEpoch() - std::chrono::milliseconds(ts));
-        _metrics.redis_publish_delay_ms = diff.count();
+        auto diff = Util::getTimeSinceEpoch() - ts;
+        _metrics.redis_publish_delay_ms = (diff < 0) ? 0 : diff;
         return;
       } catch(...) {}
 

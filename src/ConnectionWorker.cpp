@@ -193,18 +193,15 @@ void Worker::_workerMain() {
   LOG(INFO) << "Worker " << getWorkerId() << " started.";
 
   // Set initial eventloop delay sample start time.
-  _ev_delay_sample_start = Util::getMillisecondsSinceEpoch();
+  _ev_delay_sample_start = Util::getTimeSinceEpoch();
 
   // Sample eventloop delay every <METRIC_DELAY_SAMPLE_RATE_MS> and store it in our metrics.
   _ev.addTimer(METRIC_DELAY_SAMPLE_RATE_MS, [&](TimerCtx *ctx) {
-    auto diff = chrono::duration_cast<chrono::milliseconds>(
-      Util::getMillisecondsSinceEpoch() -
-      _ev_delay_sample_start -
-      chrono::milliseconds(METRIC_DELAY_SAMPLE_RATE_MS)
-    );
+    const auto epoch = Util::getTimeSinceEpoch();
+    long diff = epoch - _ev_delay_sample_start - METRIC_DELAY_SAMPLE_RATE_MS;
 
-    _metrics.eventloop_delay_ms = diff.count();
-    _ev_delay_sample_start = Util::getMillisecondsSinceEpoch();
+    _metrics.eventloop_delay_ms = (diff < 0) ? 0 : diff;
+    _ev_delay_sample_start = Util::getTimeSinceEpoch();
   }, true);
 
   if (_epoll_fd == -1) {

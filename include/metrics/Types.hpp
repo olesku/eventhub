@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <atomic>
+#include <cstdint>
 
 namespace eventhub {
 namespace metrics {
@@ -11,7 +12,7 @@ struct WorkerMetrics {
   std::atomic<unsigned long> current_connections_count{0};
   std::atomic<unsigned long long> total_connect_count{0};
   std::atomic<unsigned long long> total_disconnect_count{0};
-  std::atomic<double> eventloop_delay_ms{0};
+  std::atomic<unsigned long> eventloop_delay_ms{0};
 };
 
 struct ServerMetrics {
@@ -19,7 +20,7 @@ struct ServerMetrics {
   std::atomic<unsigned int> worker_count{0};
   std::atomic<unsigned long long> publish_count{0};
   std::atomic<unsigned int> redis_connection_fail_count{0};
-  std::atomic<double> redis_publish_delay_ms{0};
+  std::atomic<unsigned long> redis_publish_delay_ms{0};
 };
 
 struct AggregatedMetrics {
@@ -38,12 +39,12 @@ struct AggregatedMetrics {
   unsigned int worker_count;
   unsigned long long publish_count;
   unsigned int redis_connection_fail_count;
-  double redis_publish_delay_ms;
+  unsigned long redis_publish_delay_ms;
 
   unsigned long current_connections_count;
   unsigned long long total_connect_count;
   unsigned long long total_disconnect_count;
-  unsigned int eventloop_delay_ms;
+  unsigned long eventloop_delay_ms;
 };
 
 } // statisics
