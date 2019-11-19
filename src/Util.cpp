@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <sstream>
 #include <string>
+#include <chrono>
 
 #include "Common.hpp"
 
@@ -70,4 +71,9 @@ std::string& Util::strToLower(std::string& s) {
                  [](unsigned char c) { return std::tolower(c); });
   return s;
 }
+
+std::chrono::milliseconds Util::getMillisecondsSinceEpoch() {
+  return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
+}
+
 } // namespace eventhub

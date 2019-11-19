@@ -47,6 +47,7 @@ int main(int argc, char** argv) {
     eventhub::Config.addInt("PING_INTERVAL", 30);
     eventhub::Config.addInt("WEBSOCKET_HANDSHAKE_TIMEOUT", 15);
     eventhub::Config.addBool("DISABLE_AUTH", false);
+    eventhub::Config.addString("PROMETHEUS_METRIC_PREFIX", "eventhub");
   } catch (std::exception& e) {
     LOG(ERROR) << "Error reading configuration: " << e.what();
     return 1;

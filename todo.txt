@@ -3,7 +3,4 @@
 * Remove uneccesarry logging.
 * Support deflate compression extension.
 * Implement pong timeouts.
-* Check out https://github.com/bsergean/autobahn-testsuite
 * UTF-8 validation.
-* Add CORS support.
-* Prometheus endpoint.
