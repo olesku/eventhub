@@ -77,6 +77,8 @@ const std::string Response::getStatusMsg(int statusCode) {
   switch (statusCode) {
     case 200:
       return "OK";
+    case 204:
+      return "No Content";
     case 100:
       return "Continue";
     case 101:
@@ -89,6 +91,8 @@ const std::string Response::getStatusMsg(int statusCode) {
       return "Forbidden";
     case 404:
       return "Not Found";
+    case 405:
+      return "Method not allowed";
     case 411:
       return "Length Required";
     case 413:

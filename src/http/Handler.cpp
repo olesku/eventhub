@@ -39,10 +39,30 @@ void Handler::HandleRequest(HandlerContext&& ctx, Parser* req, RequestState reqS
 }
 
 void Handler::_handlePath(HandlerContext& ctx, Parser* req) {
+  std::string method = req->getMethod();
+  Util::strToLower(method);
+
+  // Only allow get and options requests.
+  // Answer with CORS headers on options request.
+  if (method == "options") {
+    Response resp(204);
+    _setCorsHeaders(req, resp);
+    resp.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+    resp.setHeader("Connection", "close");
+    ctx.connection()->write(resp.get());
+    ctx.connection()->shutdown();
+  } else if (method != "get") {
+    Response resp(405, "<h1>405 Method not allowed</h1>\r\n");
+    resp.setHeader("Connection", "close");
+    ctx.connection()->write(resp.get());
+    ctx.connection()->shutdown();
+    return;
+  }
+
   // Healthcheck endpoint.
   if (req->getPath() == "/healthz") {
-    Response resp;
-    resp.setStatus(200);
+    Response resp(200);
+    _setCorsHeaders(req, resp);
     resp.setHeader("Content-Type", "application/json");
     resp.setHeader("Connection", "close");
     resp.setBody("{ \"status\": \"ok\" }\r\n");
@@ -53,8 +73,10 @@ void Handler::_handlePath(HandlerContext& ctx, Parser* req) {
 
   // Metrics endpoint.
   if (req->getPath() == "/metrics" || req->getPath() == "/metrics/") {
-    Response resp;
+    Response resp(200);
     std::string m;
+
+    _setCorsHeaders(req, resp);
 
     if (req->getQueryString("format") == "json") {
       m = metrics::JsonRenderer::RenderMetrics(ctx.server()->getAggregatedMetrics());
@@ -64,7 +86,6 @@ void Handler::_handlePath(HandlerContext& ctx, Parser* req) {
       m = metrics::PrometheusRenderer::RenderMetrics(ctx.server()->getAggregatedMetrics());
     }
 
-    resp.setStatus(200);
     resp.setHeader("Connection", "close");
     resp.setBody(m);
 
@@ -138,6 +159,16 @@ void Handler::_badRequest(HandlerContext& ctx, const std::string reason, int sta
   resp.setBody(body.str());
   ctx.connection()->write(resp.get());
   ctx.connection()->shutdown();
+}
+
+void Handler::_setCorsHeaders(Parser* req, Response& resp) {
+  const auto& origin = req->getHeader("Origin");
+
+  if (origin.empty()) {
+    resp.setHeader("Access-Control-Allow-Origin", "*");
+  } else {
+    resp.setHeader("Access-Control-Allow-Origin", origin);
+  }
 }
 
 } // namespace http
