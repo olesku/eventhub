@@ -49,11 +49,14 @@ void Handler::_handlePath(HandlerContext& ctx, Parser* req) {
     _setCorsHeaders(req, resp);
     resp.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
     resp.setHeader("Connection", "close");
+
     ctx.connection()->write(resp.get());
     ctx.connection()->shutdown();
+    return;
   } else if (method != "get") {
     Response resp(405, "<h1>405 Method not allowed</h1>\r\n");
     resp.setHeader("Connection", "close");
+
     ctx.connection()->write(resp.get());
     ctx.connection()->shutdown();
     return;
@@ -66,6 +69,7 @@ void Handler::_handlePath(HandlerContext& ctx, Parser* req) {
     resp.setHeader("Content-Type", "application/json");
     resp.setHeader("Connection", "close");
     resp.setBody("{ \"status\": \"ok\" }\r\n");
+
     ctx.connection()->write(resp.get());
     ctx.connection()->shutdown();
     return;
@@ -74,10 +78,10 @@ void Handler::_handlePath(HandlerContext& ctx, Parser* req) {
   // Metrics endpoint.
   if (req->getPath() == "/metrics" || req->getPath() == "/metrics/") {
     Response resp(200);
-    std::string m;
-
     _setCorsHeaders(req, resp);
+    resp.setHeader("Connection", "close");
 
+    std::string m;
     if (req->getQueryString("format") == "json") {
       m = metrics::JsonRenderer::RenderMetrics(ctx.server()->getAggregatedMetrics());
       resp.setHeader("Content-Type", "application/json");
@@ -86,7 +90,6 @@ void Handler::_handlePath(HandlerContext& ctx, Parser* req) {
       m = metrics::PrometheusRenderer::RenderMetrics(ctx.server()->getAggregatedMetrics());
     }
 
-    resp.setHeader("Connection", "close");
     resp.setBody(m);
 
     ctx.connection()->write(resp.get());
