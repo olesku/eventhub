@@ -76,16 +76,6 @@ void Server::start() {
 
   _redis.setPrefix(Config.getString("REDIS_PREFIX"));
 
-  // Sample Redis publish latency.
-  std::async([&](){
-    while(!stopEventhub) {
-      try {
-        _redis.publishMessage("$metrics$/system_unixtime", "0", to_string(Util::getTimeSinceEpoch()));
-        std::this_thread::sleep_for(std::chrono::milliseconds(METRIC_DELAY_SAMPLE_RATE_MS));
-      } catch(...) {}
-    }
-  });
-
   RedisMsgCallback cb = [&](std::string pattern, std::string topic, std::string msg) {
     // Calculate publish delay.
     if (topic == "$metrics$/system_unixtime") {
@@ -107,6 +97,16 @@ void Server::start() {
 
   // Connect to redis.
   _redis.psubscribe("*", cb);
+
+  // Sample Redis publish latency.
+  auto redisSamplerThread = std::thread([&](){
+    while(!stopEventhub) {
+      try {
+        _redis.publishMessage("$metrics$/system_unixtime", "0", to_string(Util::getTimeSinceEpoch()));
+        std::this_thread::sleep_for(std::chrono::milliseconds(METRIC_DELAY_SAMPLE_RATE_MS));
+      } catch(...) {}
+    }
+  });
 
   bool reconnect = false;
   while (!stopEventhub) {
@@ -132,6 +132,8 @@ void Server::start() {
       LOG(ERROR) << "Failed to read from redis: " << e.what() << ". Waiting 5 seconds before reconnect.";
     }
   }
+
+  redisSamplerThread.join();
 }
 
 Worker* Server::getWorker() {
