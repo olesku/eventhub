@@ -20,7 +20,7 @@ add_library( libeventhub
   Connection.cpp
   ConnectionWorker.cpp
   AccessController.cpp
-  kpoll.cpp
+  EpollWrapper.cpp
 )
 
 add_executable(eventhub main.cpp)

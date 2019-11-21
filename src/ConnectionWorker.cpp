@@ -7,7 +7,7 @@
 #ifdef __linux__
 # include <sys/epoll.h>
 #else
-# include "kpoll.h"
+# include "EpollWrapper.h"
 #endif
 #include <sys/socket.h>
 #include <unistd.h>
