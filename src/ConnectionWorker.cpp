@@ -4,7 +4,11 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <string.h>
-#include <sys/epoll.h>
+#ifdef __linux__
+# include <sys/epoll.h>
+#else
+# include "kpoll.h"
+#endif
 #include <sys/socket.h>
 #include <unistd.h>
 
