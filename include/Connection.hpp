@@ -3,7 +3,11 @@
 
 #include <netinet/in.h>
 #include <stdint.h>
-#include <sys/epoll.h>
+#ifdef __linux__
+# include <sys/epoll.h>
+#else
+# include "EpollWrapper.hpp"
+#endif
 #include <sys/socket.h>
 
 #include <ctime>

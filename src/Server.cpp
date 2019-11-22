@@ -48,7 +48,7 @@ void Server::start() {
   sin.sin_family = AF_INET;
   sin.sin_port   = htons(Config.getInt("LISTEN_PORT"));
 
-  LOG_IF(FATAL, (bind(_server_socket, (struct sockaddr*)&sin, sizeof(sin))) == -1) << "Could not bind server socket to port 8080";
+  LOG_IF(FATAL, (::bind(_server_socket, (struct sockaddr*)&sin, sizeof(sin))) == -1) << "Could not bind server socket to port 8080";
 
   LOG_IF(FATAL, listen(_server_socket, 0) == -1) << "Call to listen() failed.";
   LOG_IF(FATAL, fcntl(_server_socket, F_SETFL, O_NONBLOCK) == -1) << "fcntl O_NONBLOCK on serversocket failed.";
