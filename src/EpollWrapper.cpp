@@ -7,16 +7,19 @@
 #include <sys/select.h>
 #include <map>
 #include <mutex>
+#include <utility>
 
 #include <iostream>
 
 namespace {
-std::map<int, struct epoll_event*> _events;
+unsigned int epfd_index = 0;
+std::map<int, std::map<int, struct epoll_event*>> _events;
 std::mutex mutex;
 }
 
 int epoll_create1(int flags) {
-  return 0;
+  std::lock_guard<std::mutex> lock(mutex);
+  return epfd_index++;
 }
 
 int epoll_ctl(int epfd, int op, int fd,
@@ -24,9 +27,9 @@ int epoll_ctl(int epfd, int op, int fd,
   std::lock_guard<std::mutex> lock(mutex);
 
   if (op == EPOLL_CTL_DEL) {
-    _events.erase(fd);
+    _events[epfd].erase(fd);
   } else {
-    _events[fd] = event;
+    _events[epfd][fd] = event;
   }
 
   return 0;
@@ -43,7 +46,7 @@ int epoll_wait_select(int epfd, struct epoll_event *events,
 
   {
     std::lock_guard<std::mutex> lock(mutex);
-    for (auto it : _events) {
+    for (auto it : _events[epfd]) {
       auto fd = it.first;
       auto ev = it.second;
 
@@ -76,8 +79,8 @@ int epoll_wait_select(int epfd, struct epoll_event *events,
 
       if (readyToRead || readyToWrite || readyToErr) {
         std::lock_guard<std::mutex> lock(mutex);
-        auto it = _events.find(fd);
-        if (it != _events.end()) {
+        auto it = _events[epfd].find(fd);
+        if (it != _events[epfd].end()) {
           struct epoll_event *e = it->second;
 
           events[i].events = 0;
@@ -109,7 +112,7 @@ int epoll_wait_poll(int epfd, struct epoll_event *events,
   int nfds;
   {
     std::lock_guard<std::mutex> lock(mutex);
-    nfds = _events.size();
+    nfds = _events[epfd].size();
   }
 
   if (nfds == 0) return 0;
@@ -119,7 +122,7 @@ int epoll_wait_poll(int epfd, struct epoll_event *events,
   {
     std::lock_guard<std::mutex> lock(mutex);
     int i = 0;
-    for (auto it : _events) {
+    for (auto it : _events[epfd]) {
       auto fd = it.first;
       auto ev = it.second;
 
@@ -159,8 +162,8 @@ int epoll_wait_poll(int epfd, struct epoll_event *events,
         int fd = fds[j].fd;
 
         std::lock_guard<std::mutex> lock(mutex);
-        auto it = _events.find(fd);
-        if (it != _events.end()) {
+        auto it = _events[epfd].find(fd);
+        if (it != _events[epfd].end()) {
           struct epoll_event *e = it->second;
 
           events[i].events = 0;
@@ -193,7 +196,7 @@ int epoll_wait_poll(int epfd, struct epoll_event *events,
 int epoll_wait(int epfd, struct epoll_event *events,
                int maxevents, int timeout)
 {
-    return epoll_wait_select(epfd, events, maxevents, timeout);
+    return epoll_wait_poll(epfd, events, maxevents, timeout);
 }
 
 #endif
