@@ -7,7 +7,7 @@
 #ifdef __linux__
 # include <sys/epoll.h>
 #else
-# include "EpollWrapper.h"
+# include "EpollWrapper.hpp"
 #endif
 #include <sys/socket.h>
 #include <unistd.h>
@@ -45,7 +45,7 @@ Worker::~Worker() {
     close(_epoll_fd);
   }
 
-  _connection_list_mutex.lock();
+  std::lock_guard<std::mutex> lock(_connection_list_mutex);
 
   for (auto it = _connection_list.begin(); it != _connection_list.end();) {
     it = _connection_list.erase(it);

@@ -6,7 +6,7 @@
 #ifdef __linux__
 # include <sys/epoll.h>
 #else
-# include "EpollWrapper.h"
+# include "EpollWrapper.hpp"
 #endif
 #include <sys/socket.h>
 

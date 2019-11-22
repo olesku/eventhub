@@ -9,6 +9,10 @@ set(CMAKE_CXX_FLAGS "-std=c++14")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# To detect data race with thread sanitizer, uncomment those 2 lines
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread")
+# set(CMAKE_LD_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread")
+
 # Projects headers
 include_directories ("${PROJECT_SOURCE_DIR}/include")
 
