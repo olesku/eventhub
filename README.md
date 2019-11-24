@@ -8,7 +8,7 @@ It's written with focus on high performance and availability, and implements the
 
 <p align="center">
 <a href="./docs/images/grafana_dashboard.png">
-<img src="./docs/images/grafana_dashboard_thumb.png" /><
+<img src="./docs/images/grafana_dashboard_thumb.png" />
 </a>
 </p>
 
