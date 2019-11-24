@@ -101,8 +101,7 @@ docker pull quay.io/olesku/eventhub:latest
 docker run --rm -it -e DISABLE_AUTH=1 -e REDIS_HOST=my-redis-server.local -p 8080:8080 quay.io/olesku/eventhub:latest
 ```
 
-The repo also contains a [docker-compose](https://docs.docker.com/compose/) which will run both redis and eventhub for you.
-
+The repo also contains a [docker-compose](https://docs.docker.com/compose/) file which will run both redis and eventhub for you.
 To use that run ```docker-compose up```
 
 
@@ -134,7 +133,7 @@ It's using Redis for intercommunication, so the only thing you have to do is to 
 
 ## Metrics
 
-Metrics in Prometheus format is available at the `/metrics` endpoint.
+Runtime metrics in [Prometheus](https://prometheus.io/) format is available at the `/metrics` endpoint.
 JSON is available at `/metrics?format=json`
 
 # TLS/SSL
