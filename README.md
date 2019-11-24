@@ -6,10 +6,16 @@ Eventhub is a WebSocket message broker written in modern C++.
 
 It's written with focus on high performance and availability, and implements the [publish-subscribe pattern](https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern) and the concept of topics.
 
+<p align="center">
+<a href="./docs/images/grafana_dashboard.png">
+<img src="./docs/images/grafana_dashboard_thumb.png" /><
+</a>
+</p>
+
 # Concepts
 ## Topics
 
-A topic is a category or feed name to which records are published. Each topic can have as many subscribers and publishers as you desire. Every published record on a topic will get a distinct ID and be distributed to all clients that are subscribed to the topic or a topic pattern that matches.
+A topic is a category or feed name to which messages are published. Each topic can have as many subscribers and publishers as you desire. Every published message on a topic will get a distinct ID and be distributed to all clients that are subscribed to the topic or a topic pattern that matches.
 
 A topic is segmented into paths and can contain a-z, 0-9 and /.
 
@@ -32,7 +38,7 @@ Eventhub use the same layout for patterns as MQTT where ```+``` matches a single
 
 
 ## Eventlog
-Eventhub stores all published records into a log that can be requested by clients who want to get all events in or since a given time frame. For example if a client gets disconnected it can request this log to get all new events since the last event that was received.
+Eventhub stores all published messages into a log that can be requested by clients who want to get all events in or since a given time frame. For example if a client gets disconnected it can request this log to get all new events since the last event that was received.
 
 ## Authentication
 
@@ -95,6 +101,11 @@ docker pull quay.io/olesku/eventhub:latest
 docker run --rm -it -e DISABLE_AUTH=1 -e REDIS_HOST=my-redis-server.local -p 8080:8080 quay.io/olesku/eventhub:latest
 ```
 
+The repo also contains a [docker-compose](https://docs.docker.com/compose/) which will run both redis and eventhub for you.
+
+To use that run ```docker-compose up```
+
+
 ## Building yourself
 
 Required libraries:
@@ -119,6 +130,12 @@ make
 ## Clustering
 Eventhub has clustering capabilities, and it's easy to run multiple instances with the same datasources.
 It's using Redis for intercommunication, so the only thing you have to do is to configure each instance to use the same Redis server.
+
+
+## Metrics
+
+Metrics in Prometheus format is available at the `/metrics` endpoint.
+JSON is available at `/metrics?format=json`
 
 # TLS/SSL
 Right now Eventhub doesn't support this natively. If you want to use this you have to front it with a loadbalancer that does the TLS-termination. It has been tested with ELB/NLB/ALB on AWS and HAProxy and NGINX on-premise.
