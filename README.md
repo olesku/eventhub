@@ -6,10 +6,12 @@ Eventhub is a WebSocket message broker written in modern C++.
 
 It's written with focus on high performance and availability, and implements the [publish-subscribe pattern](https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern) and the concept of topics.
 
+![Preview](./docs/images/grafana_dashboard_thumb.png)
+
 # Concepts
 ## Topics
 
-A topic is a category or feed name to which records are published. Each topic can have as many subscribers and publishers as you desire. Every published record on a topic will get a distinct ID and be distributed to all clients that are subscribed to the topic or a topic pattern that matches.
+A topic is a category or feed name to which messages are published. Each topic can have as many subscribers and publishers as you desire. Every published message on a topic will get a distinct ID and be distributed to all clients that are subscribed to the topic or a topic pattern that matches.
 
 A topic is segmented into paths and can contain a-z, 0-9 and /.
 
@@ -32,7 +34,7 @@ Eventhub use the same layout for patterns as MQTT where ```+``` matches a single
 
 
 ## Eventlog
-Eventhub stores all published records into a log that can be requested by clients who want to get all events in or since a given time frame. For example if a client gets disconnected it can request this log to get all new events since the last event that was received.
+Eventhub stores all published messages into a log that can be requested by clients who want to get all events in or since a given time frame. For example if a client gets disconnected it can request this log to get all new events since the last event that was received.
 
 ## Authentication
 
