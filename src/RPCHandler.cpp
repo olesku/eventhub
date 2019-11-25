@@ -106,8 +106,8 @@ void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr re
     try {
       nlohmann::json result;
       auto& redis      = ctx.server()->getRedis();
-      size_t cacheSize = redis.getCache(topicName, sinceEvent, 0, TopicManager::isValidTopicFilter(topicName), result);
 
+      redis.getCache(topicName, sinceEvent, 0, TopicManager::isValidTopicFilter(topicName), result);
       for (auto& cacheItem : result) {
         _sendSuccessResponse(ctx, req, cacheItem);
       }

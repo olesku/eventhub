@@ -22,9 +22,6 @@ void shutdown(int sigid) {
 
 int main(int argc, char** argv) {
   struct sigaction sa;
-  time_t rawtime;
-  struct tm* info;
-  char buffer[80];
 
   FLAGS_logtostderr = 1;
   google::InitGoogleLogging(argv[0]);
