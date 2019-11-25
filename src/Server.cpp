@@ -123,7 +123,7 @@ void Server::start() {
       _redis.consume();
     }
 
-    catch (sw::redis::TimeoutError) {
+    catch (sw::redis::TimeoutError& e) {
       continue;
     }
 

@@ -69,8 +69,7 @@ void Worker::_acceptConnection() {
   memset(reinterpret_cast<char*>(&csin), '\0', sizeof(csin));
   clen = sizeof(csin);
 
-// Accept the connection.
-do_accept:
+  // Accept the connection.
   clientFd = accept(_server->getServerSocket(), (struct sockaddr*)&csin, &clen);
 
   if (clientFd == -1) {
@@ -81,7 +80,6 @@ do_accept:
 
       case EAGAIN:
         //DLOG(INFO) << "Accept EAGAIN";
-        //goto do_accept;
         break;
 
       default:
