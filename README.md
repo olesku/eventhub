@@ -62,10 +62,8 @@ Eventhub does not have a interface or API to generate these tokens for you yet. 
 # Clients
 * [Javascript (Browser/Node.js)](https://github.com/olesku/eventhub-jsclient)
 
-**Implementing your own client**
-
-Communication with the Eventhub happens over websocket using [JSONRPC](https://www.jsonrpc.org/specification) calls.
-Documentation for the protcol is not released yet, but work in process. When done you can use this documentation to implement a client yourself, but for now the easiest way is to use one of the existing clients.
+#### Implementing your own client
+Protocol specification for Eventhub is documented [here](./docs/protocol.md).
 
 # Running the server
 
