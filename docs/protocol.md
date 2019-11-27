@@ -1,24 +1,24 @@
 # Protocol specification
 Eventhub uses [JSON-RPC](http://www.jsonrpc.org/) over WebSocket as transport protocol.
 
-| RPC Call                            | Parameters     | Description |
+| RPC method                          | Parameters     | Description |
 |-------------------------------------|----------------|-------------|
-| [subscribe](##subscribe)           | *topic, since*    | Subscribe to a topic or pattern.
-| [publish](##publish)               | *topic, message*  | Publish to a topic.
-| [unsubscribe](##unsubscribe)       | *topic*           | Unsubscribe from a topic or pattern.
-| [unsubscribeall](##unsubscribeall) | *None*            | Unsubscribe from all current subscriptions.
-| [list](##list)                     | *None*            | List all current subscriptions.
-| [ping](##ping)                     | *None*            | Ping the server.
-| [disconect](##disconnect)          | *None*            | Disconnect from the server.
+| [subscribe](#subscribe)             | *topic, since*    | Subscribe to a topic or pattern.
+| [publish](#publish)                 | *topic, message*  | Publish to a topic.
+| [unsubscribe](#unsubscribe)         | *topic*           | Unsubscribe from a topic or pattern.
+| [unsubscribeall](#unsubscribeall)   | *None*            | Unsubscribe from all current subscriptions.
+| [list](#list)                       | *None*            | List all current subscriptions.
+| [ping](#ping)                       | *None*            | Ping the server.
+| [disconect](#disconnect)            | *None*            | Disconnect from the server.
 
 **Important:** Each request must have a unique `id` attribute as specified by JSON-RPC. It can be a number or a string.
 
-If you are implementing your own client I can suggest using the nice [websocat](https://github.com/vi/websocat) client for debugging and getting familiar with the protocol. This is using line-mode per default, so remember to send the request as a single line when using it.
+If you are implementing your own client I can recommend using the nice [websocat](https://github.com/vi/websocat) client for debugging and getting familiar with the protocol. It has built in jsonrpc support using the ```--jsonrpc``` flag. This is using line-mode per default, so remember to send the request as a single line when using it.
 
 ## Example requests
 ## subscribe
 
-*Request:*
+**Request:**
 ```json
 {
   "id": 1,
@@ -33,7 +33,7 @@ If you are implementing your own client I can suggest using the nice [websocat](
 
 *The `since` attribute can be set to a timestamp or a message id to get all events from the history log since that period. If unset or set to 0 no history will be requested.*
 
-*Confirmation response:*
+**Confirmation response:**
 ```json
 {
   "id": 1,
@@ -46,7 +46,7 @@ If you are implementing your own client I can suggest using the nice [websocat](
 }
 ```
 
-*Message received on subscribed topic/pattern response:*
+**Message received on subscribed topic/pattern response:**
 ```json
 {
   "id": 1,
@@ -64,7 +64,7 @@ All messages received on a subscribed topic or pattern will have the same `id` a
 
 ## publish
 
-*Request:*
+**Request:**
 ```json
 {
   "id": 2,
@@ -74,7 +74,7 @@ All messages received on a subscribed topic or pattern will have the same `id` a
 }
 ```
 
-*Response:*
+**Response:**
 ```json
 {
   "id": 2,
@@ -89,7 +89,7 @@ All messages received on a subscribed topic or pattern will have the same `id` a
 ```
 
 ## unsubscribe
-*Request:*
+**Request:**
 ```json
 {
   "id": 3,
@@ -99,7 +99,7 @@ All messages received on a subscribed topic or pattern will have the same `id` a
 }
 ```
 
-*Response:*
+**Response:**
 ```json
 {
   "id": 3,
@@ -111,7 +111,7 @@ All messages received on a subscribed topic or pattern will have the same `id` a
 ```
 
 ## unsubscribeall
-*Request:*
+**Request:**
 ```json
 {
   "id": 4,
@@ -121,7 +121,7 @@ All messages received on a subscribed topic or pattern will have the same `id` a
 }
 ```
 
-*Response:*
+**Response:**
 ```json
 {
   "id": 4,
@@ -133,7 +133,7 @@ All messages received on a subscribed topic or pattern will have the same `id` a
 ```
 
 ## list
-*Request:*
+**Request:**
 ```json
 {
   "id": 5,
@@ -143,7 +143,7 @@ All messages received on a subscribed topic or pattern will have the same `id` a
 }
 ```
 
-*Response:*
+**Response:**
 ```json
 {
   "id": 5,
@@ -156,7 +156,7 @@ All messages received on a subscribed topic or pattern will have the same `id` a
 
 ## ping
 
-*Request:*
+**Request:**
 ```json
 {
   "id": 6,
@@ -166,7 +166,7 @@ All messages received on a subscribed topic or pattern will have the same `id` a
 }
 ```
 
-*Response*: 
+**Response:**
 ```json
 {
   "id": 6,
@@ -180,7 +180,7 @@ All messages received on a subscribed topic or pattern will have the same `id` a
 Contents of the `pong` attribute is the server time since epoch in milliseconds.
 
 ## disconnect
-*Request:*
+**Request:**
 ```json
 {
   "id": 7,
