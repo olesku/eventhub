@@ -24,7 +24,7 @@ RPCMethod RPCHandler::getHandler(const std::string& methodName) {
   static RPCHandlerList handlers = {
       {"subscribe", _handleSubscribe},
       {"unsubscribe", _handleUnsubscribe},
-      {"unsubscribeAll", _handleUnsubscribeAll},
+      {"unsubscribeall", _handleUnsubscribeAll},
       {"publish", _handlePublish},
       {"list", _handleList},
       {"history", _handleHistory},
