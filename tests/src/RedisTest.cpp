@@ -27,12 +27,12 @@ TEST_CASE("Test redis", "[Redis") {
   }
 
   GIVEN("That we increase pub count for test/channel1") {
-    redis._redisInstance->hdel("eventhub_test.pub_count", "test/channel1");
+    redis._redisInstance->hdel("eventhub_test:pub_count", "test/channel1");
     redis.setPrefix("eventhub_test");
     redis._incrTopicPubCount("test/channel1");
 
     THEN("Hashentry eventhub_test.test/channel1 should be larger than 0") {
-      auto countStr = redis._redisInstance->hget("eventhub_test.pub_count", "test/channel1");
+      auto countStr = redis._redisInstance->hget("eventhub_test:pub_count", "test/channel1");
       int count     = 0;
 
       try {
@@ -90,7 +90,7 @@ TEST_CASE("Test redis", "[Redis") {
   GIVEN("That we publish 2 messages") {
     unsigned int msgRcvd = 0;
     redis.psubscribe("*", [&msgRcvd](std::string pattern, std::string topic, std::string msg) {
-      REQUIRE(pattern.compare("eventhub_test.*") == 0);
+      REQUIRE(pattern.compare("eventhub_test:*") == 0);
       REQUIRE((topic.compare("test/topic1") == 0 || topic.compare("test/topic2") == 0));
 
       msgRcvd++;
@@ -111,6 +111,22 @@ TEST_CASE("Test redis", "[Redis") {
 
       t.wait();
       REQUIRE(msgRcvd == 2);
+    }
+  }
+
+  GIVEN("That we get the next cache id") {
+    redis._redisInstance->hdel("eventhub_test:test/topic1:cache", "_idCnt");
+
+    THEN("It should equal to 1") {
+      auto id = redis._getNextCacheId("test/topic1");
+      REQUIRE(id == 1);
+    }
+
+    THEN("Each call should increment it by 1") {
+      for (auto i = 0; i < 10; i++) {
+        auto id = redis._getNextCacheId("test/topic1");
+        REQUIRE(id == i+1);
+      }
     }
   }
 }

@@ -19,14 +19,17 @@ using RedisMsgCallback = std::function<void(std::string pattern,
                                             std::string msg)>;
 
 class Redis {
-#define REDIS_PREFIX(key) (_prefix.length() > 0) ? _prefix + "." + key : key
+#define REDIS_PREFIX(key) std::string((_prefix.length() > 0) ? _prefix + ":" + key : key)
+#define REDIS_CACHE_SCORE_PATH(key) std::string(REDIS_PREFIX(key) + ":scores")
+#define REDIS_CACHE_DATA_PATH(key) std::string(REDIS_PREFIX(key) + ":cache")
+
 public:
   explicit Redis(const string host, int port = 6379, const string password = "", int poolSize = 5);
   ~Redis() {}
 
   void publishMessage(const string topic, const string id, const string payload);
   void psubscribe(const std::string pattern, RedisMsgCallback callback);
-  const std::string cacheMessage(const string topic, const string payload);
+  const std::string cacheMessage(const string topic, const string payload, double timestamp=0);
   size_t getCache(const string topicPattern, const string since, size_t limit, bool isPattern, nlohmann::json& result);
   void consume();
   void resetSubscribers();
@@ -40,6 +43,7 @@ private:
   std::mutex _publish_mtx;
   void _incrTopicPubCount(const string& topicName);
   vector<string> _getTopicsSeen(const string& topicPattern);
+  long long _getNextCacheId(const std::string topic);
 };
 
 } // namespace eventhub
