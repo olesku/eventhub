@@ -8,7 +8,7 @@ Each cache item has a separate unique ID that is generated using
 **Timestamp index**
 
 Each cache-entry is indexed in a sorted set using the messages timestamp as score.
-```ZSET PREFIX:topicName:scores timestamp data=MessageID```
+```ZSET PREFIX:topicName:scores timestamp MessageID```
 
 **Storage**
 
