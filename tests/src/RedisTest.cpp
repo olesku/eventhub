@@ -59,29 +59,32 @@ TEST_CASE("Test redis", "[Redis") {
   }
 
   GIVEN("If we cache some items") {
+    Config.del("DEFAULT_CACHE_TTL");
+    Config.addInt("DEFAULT_CACHE_TTL", 60);
+
     Config.del("MAX_CACHE_LENGTH");
     Config.addInt("MAX_CACHE_LENGTH", 1000);
 
-    redis.cacheMessage("test/channel1", "Test 1");
-    redis.cacheMessage("test/channel1", "Test 2");
-    redis.cacheMessage("test/channel1", "Test 3");
-    redis.cacheMessage("test/channel1", "Test 4");
+    redis.cacheMessage("test/channel1", "Test 1", 0, 0);
+    redis.cacheMessage("test/channel1", "Test 2", 0, 0);
+    redis.cacheMessage("test/channel1", "Test 3", 0, 0);
+    redis.cacheMessage("test/channel1", "Test 4", 0, 0);
 
-    redis.cacheMessage("test/channel2", "Test 5");
-    redis.cacheMessage("test/channel2", "Test 6");
-    redis.cacheMessage("test/channel2", "Test 7");
-    auto msgId = redis.cacheMessage("test/channel2", "Test 8");
+    redis.cacheMessage("test/channel2", "Test 5", 0, 0);
+    redis.cacheMessage("test/channel2", "Test 6", 0, 0);
+    redis.cacheMessage("test/channel2", "Test 7", 0, 0);
+    auto msgId = redis.cacheMessage("test/channel2", "Test 8", 0, 0);
 
     THEN("Cache size should be larger than 0 when requesting a matching pattern") {
       nlohmann::json j;
-      size_t cacheSize = redis.getCache("test/#", "0", 0, true, j);
+      size_t cacheSize = redis.getCache("test/#", 0, -1, true, j);
       REQUIRE(cacheSize > 0);
       REQUIRE(j.size() > 0);
     }
 
     THEN("Cache size should be larger than 0 when requesting the actual topic") {
       nlohmann::json j;
-      size_t cacheSize = redis.getCache("test/channel1", "0", 0, false, j);
+      size_t cacheSize = redis.getCache("test/channel1", 0, -1, false, j);
       REQUIRE(cacheSize > 0);
       REQUIRE(j.size() > 0);
     }
@@ -114,19 +117,12 @@ TEST_CASE("Test redis", "[Redis") {
     }
   }
 
-  GIVEN("That we get the next cache id") {
-    redis._redisInstance->hdel("eventhub_test:test/topic1:cache", "_idCnt");
+  GIVEN("That we send in 1000-1:10000 to _parseIdAndExpireAt") {
+    auto p = redis._parseIdAndExpireAt("1000-1:10000");
 
-    THEN("It should equal to 1") {
-      auto id = redis._getNextCacheId("test/topic1");
-      REQUIRE(id == 1);
-    }
-
-    THEN("Each call should increment it by 1") {
-      for (auto i = 0; i < 10; i++) {
-        auto id = redis._getNextCacheId("test/topic1");
-        REQUIRE(id == i+1);
-      }
+    THEN("We should get a pair with first element as 1000-1 and second as 10000") {
+      REQUIRE(p.first == "1000-1");
+      REQUIRE(p.second == 10000);
     }
   }
 }

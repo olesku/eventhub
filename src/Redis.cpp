@@ -6,6 +6,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <deque>
 
 #include "Config.hpp"
 #include "Util.hpp"
@@ -50,34 +51,60 @@ void Redis::publishMessage(const string topic, const string id, const string pay
   _redisInstance->publish(REDIS_PREFIX(topic), jsonData);
 }
 
-// Returns a unique ID.
-long long Redis::_getNextCacheId(const std::string topic) {
-  auto id = _redisInstance->hincrby(REDIS_CACHE_DATA_PATH(topic), "_idCnt", 1);
-  return id;
+// Returns a unique ID in the format <timeSinceEpoch>-<sequenceNo>.
+const std::string Redis::_getNextCacheId(const std::string topic) {
+  stringstream timestamp_ms;
+  timestamp_ms << (Util::getTimeSinceEpoch() / 1000);
+
+  auto id = _redisInstance->incr(REDIS_PREFIX(topic + ":" + timestamp_ms.str()));
+  _redisInstance->expire(REDIS_PREFIX(topic + ":" + timestamp_ms.str()), 1);
+
+  id--; // Start at 0.
+  timestamp_ms << "-" << id;
+
+  return timestamp_ms.str();
 }
 
-// CacheMessage cache a message.
-const std::string Redis::cacheMessage(const string topic, const string payload, double timestamp) {
-  stringstream cacheId;
-  cacheId << _getNextCacheId(topic);
+// Takes in a string in the form of <HSET-ID>-<ExpireAt> and returns
+// the id and expire time as a pair.
+const std::pair<std::string, int64_t> Redis::_parseIdAndExpireAt(const std::string& input) {
+  auto delimPos = input.find(':');
+  auto id = input.substr(0, delimPos);
+  auto expireAtStr = input.substr(delimPos+1, std::string::npos);
+  return {id, std::stol(expireAtStr, nullptr, 10)};
+}
+
+// Add a message to the cache.
+const std::string Redis::cacheMessage(const string topic, const string payload, long long timestamp, unsigned int ttl) {
+  auto cacheId = _getNextCacheId(topic);
 
   if (timestamp == 0) {
     timestamp = Util::getTimeSinceEpoch();
   }
 
-  _redisInstance->hset(REDIS_CACHE_DATA_PATH(topic), cacheId.str(), payload);
-  _redisInstance->zadd(REDIS_CACHE_SCORE_PATH(topic), cacheId.str(), timestamp);
+  if (ttl == 0) {
+    ttl = Config.getInt("DEFAULT_CACHE_TTL");
+  }
+
+  auto expireAt = (Util::getTimeSinceEpoch() / 1000) + ttl;
+  stringstream zKey;
+  zKey << cacheId << ":" << expireAt;
+
+  _redisInstance->hset(REDIS_CACHE_DATA_PATH(topic), cacheId, payload);
+  _redisInstance->zadd(REDIS_CACHE_SCORE_PATH(topic), zKey.str(), timestamp);
+
   _incrTopicPubCount(topic);
 
-  return cacheId.str();
+  return cacheId;
 }
 
 // GetCache returns all matching cached messages for topics matching topicPattern
 // @param since List all messages since Unix timestamp or message ID
 // @param limit Limit resultset to at most @limit elements.
-size_t Redis::getCache(const string topicPattern, const string since, size_t limit, bool isPattern, nlohmann::json& result) {
+size_t Redis::getCache(const string topicPattern, long long since, long long limit, bool isPattern, nlohmann::json& result) {
   std::vector<std::string> topics;
   result = nlohmann::json::array();
+  auto now = Util::getTimeSinceEpoch() / 1000;
 
   // Look up all matching topics in redis we get a request for a topic pattern
   // and request the eventlog for each of them.
@@ -92,17 +119,32 @@ size_t Redis::getCache(const string topicPattern, const string since, size_t lim
   }
 
   for (const auto topic : topics) {
+    // zcacheKeys is in format <hset-id>:<expireAtTimestamp>
+    std::deque<std::string> zcacheKeys;
+
+    // ZREVRANGEBYSCORE <path> +inf <since> limit 0 <limit>
+    // We use a front_inserter here and a back_inserter when retrieving the actual data from the HSET.
+    // We do this to reverse the order of returned items. We are interested in the newest cache items from <since> to <now>
+    // up to <limit> items, but we want the order to be from oldest to newest while ZREVRANGEBYSCORE gives us the opposite.
+    _redisInstance->zrevrangebyscore(REDIS_CACHE_SCORE_PATH(topic), sw::redis::LeftBoundedInterval<double>(since, sw::redis::BoundType::RIGHT_OPEN),
+            sw::redis::LimitOptions{0, limit}, std::front_inserter(zcacheKeys));
+
+    // Only look up keys that is not expired.
     std::vector<std::string> cacheKeys;
-    // TODO: Pass in since parameter (instead of 0).
-    _redisInstance->zrangebyscore(REDIS_CACHE_SCORE_PATH(topic), sw::redis::BoundedInterval<double>(0, Util::getTimeSinceEpoch(), sw::redis::BoundType::CLOSED),
-            std::back_inserter(cacheKeys));
+
+    for (auto zKey : zcacheKeys) {
+      auto p  = _parseIdAndExpireAt(zKey);
+      if (p.second >= now) {
+        cacheKeys.push_back(p.first);
+      }
+    }
 
     // No cache for this topic, go to the next one.
     if (cacheKeys.size() < 1) {
       continue;
     }
 
-     std::vector<sw::redis::OptionalString> cacheItems;
+    std::vector<sw::redis::OptionalString> cacheItems;
     _redisInstance->hmget(REDIS_CACHE_DATA_PATH(topic), cacheKeys.begin(), cacheKeys.end(), std::back_inserter(cacheItems));
 
     // If there is a mismatch between the length of the ZSET (timestamps) and the HSET (data)
@@ -125,12 +167,42 @@ size_t Redis::getCache(const string topicPattern, const string since, size_t lim
       j["topic"]   = topic;
       j["message"] = cacheItems[i].value();
       result.push_back(j);
-
-      LOG(INFO) << topic << ":cache[" << cacheKeys[i] << "] = " << cacheItems[i].value();
     }
   }
 
   return result.size();
+}
+
+// Delete expired items from the cache.
+size_t Redis::purgeExpiredCacheItems() {
+  std::vector<std::string> allTopics, cacheKeys;
+  std::vector<std::pair<std::string,std::string>> expiredItems;
+  auto now = Util::getTimeSinceEpoch() / 1000;
+
+  _redisInstance->hkeys(REDIS_PREFIX("pub_count"), std::back_inserter(allTopics));
+
+  for (auto topic : allTopics) {
+    _redisInstance->zrange(REDIS_CACHE_SCORE_PATH(topic), 0, -1, std::back_inserter(cacheKeys));
+
+    for (auto key : cacheKeys) {
+      auto p = _parseIdAndExpireAt(key);
+
+      if (p.second < now) {
+        expiredItems.push_back({topic, key});
+      }
+    }
+  }
+
+  for (auto exp : expiredItems) {
+    auto topic = exp.first;
+    auto key = exp.second;
+    auto p = _parseIdAndExpireAt(key);
+
+    _redisInstance->zrem(REDIS_CACHE_SCORE_PATH(topic), key);
+    _redisInstance->hdel(REDIS_CACHE_DATA_PATH(topic), p.first);
+  }
+
+  return expiredItems.size();
 }
 
 /*

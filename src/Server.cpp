@@ -71,6 +71,22 @@ void Server::start() {
   _cur_worker = _connection_workers.begin();
   _connection_workers_lock.unlock();
 
+
+  // Set up cronjob handler thread.
+  auto cronJobs = std::thread([&]() {
+    while(!stopEventhub) {
+      _ev.process();
+      auto delay = _ev.getNextTimerDelay();
+
+      // Sleep at most 100ms.
+      if (delay.count() > 100) {
+        delay = std::chrono::milliseconds(100);
+      }
+
+      std::this_thread::sleep_for(delay);
+    }
+  });
+
   _metrics.worker_count = numWorkerThreads;
   _metrics.server_start_unixtime = Util::getTimeSinceEpoch();
 
@@ -98,15 +114,20 @@ void Server::start() {
   // Connect to redis.
   _redis.psubscribe("*", cb);
 
-  // Sample Redis publish latency.
-  auto redisSamplerThread = std::thread([&](){
-    while(!stopEventhub) {
-      try {
-        _redis.publishMessage("$metrics$/system_unixtime", "0", to_string(Util::getTimeSinceEpoch()));
-        std::this_thread::sleep_for(std::chrono::milliseconds(METRIC_DELAY_SAMPLE_RATE_MS));
-      } catch(...) {}
-    }
-  });
+  // Add cache purge cronjob.
+  _ev.addTimer(CACHE_PURGER_INTERVAL_MS, [&](TimerCtx *ctx) {
+    try {
+      auto purgedItems = _redis.purgeExpiredCacheItems();
+      LOG(INFO) << "Purged " << purgedItems << " items.";
+    } catch(...) {}
+  }, true);
+
+  // Add redis publish latency sampler cronjob.
+   _ev.addTimer(METRIC_DELAY_SAMPLE_RATE_MS, [&](TimerCtx *ctx) {
+     try {
+      _redis.publishMessage("$metrics$/system_unixtime", "0", to_string(Util::getTimeSinceEpoch()));
+     } catch(...) {}
+   }, true);
 
   bool reconnect = false;
   while (!stopEventhub) {
@@ -133,7 +154,7 @@ void Server::start() {
     }
   }
 
-  redisSamplerThread.join();
+  cronJobs.join();
 }
 
 Worker* Server::getWorker() {
