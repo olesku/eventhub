@@ -9,6 +9,7 @@
 #include "Redis.hpp"
 #include "Worker.hpp"
 #include "metrics/Types.hpp"
+#include "EventLoop.hpp"
 
 using namespace std;
 
@@ -34,6 +35,7 @@ private:
   std::mutex _connection_workers_lock;
   Redis _redis;
   metrics::ServerMetrics _metrics;
+  EventLoop _ev;
 };
 
 } // namespace eventhub

@@ -4,19 +4,17 @@
 #include <memory>
 #include <mutex>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
+#include <deque>
 
 #include "Config.hpp"
+#include "Util.hpp"
 #include "TopicManager.hpp"
 #include "jwt/json/json.hpp"
 
 namespace eventhub {
 
-using XStreamAttrs = std::vector<std::pair<std::string, std::string>>;
-using XStreamItem  = std::pair<std::string, XStreamAttrs>;
-using XItemStream  = std::vector<XStreamItem>;
 using namespace std;
 
 Redis::Redis(const string host, int port, const string password, int poolSize) {
@@ -53,66 +51,162 @@ void Redis::publishMessage(const string topic, const string id, const string pay
   _redisInstance->publish(REDIS_PREFIX(topic), jsonData);
 }
 
-// CacheMessage caches a message for topic and payload into
-// the corresponding Redis XSTREAM.
-const std::string Redis::cacheMessage(const string topic, const string payload) {
-  XStreamAttrs attrs = {{topic, payload}};
-  auto id            = _redisInstance->xadd(REDIS_PREFIX(topic), "*", attrs.begin(), attrs.end());
-  _incrTopicPubCount(topic);
+// Returns a unique ID in the format <timeSinceEpoch>-<sequenceNo>.
+const std::string Redis::_getNextCacheId(const std::string topic) {
+  stringstream timestamp_ms;
+  timestamp_ms << (Util::getTimeSinceEpoch() / 1000);
 
-  if (Config.getInt("MAX_CACHE_LENGTH") > 0) {
-    _redisInstance->xtrim(REDIS_PREFIX(topic), Config.getInt("MAX_CACHE_LENGTH"), false);
+  auto id = _redisInstance->incr(REDIS_PREFIX(topic + ":" + timestamp_ms.str()));
+  _redisInstance->expire(REDIS_PREFIX(topic + ":" + timestamp_ms.str()), 1);
+
+  id--; // Start at 0.
+  timestamp_ms << "-" << id;
+
+  return timestamp_ms.str();
+}
+
+// Takes in a string in the form of <HSET-ID>-<ExpireAt> and returns
+// the id and expire time as a pair.
+const std::pair<std::string, int64_t> Redis::_parseIdAndExpireAt(const std::string& input) {
+  auto delimPos = input.find(':');
+  auto id = input.substr(0, delimPos);
+  auto expireAtStr = input.substr(delimPos+1, std::string::npos);
+  return {id, std::stol(expireAtStr, nullptr, 10)};
+}
+
+// Add a message to the cache.
+const std::string Redis::cacheMessage(const string topic, const string payload, long long timestamp, unsigned int ttl) {
+  auto cacheId = _getNextCacheId(topic);
+
+  if (timestamp == 0) {
+    timestamp = Util::getTimeSinceEpoch();
   }
 
-  return id;
+  if (ttl == 0) {
+    ttl = Config.getInt("DEFAULT_CACHE_TTL");
+  }
+
+  auto expireAt = (Util::getTimeSinceEpoch() / 1000) + ttl;
+  stringstream zKey;
+  zKey << cacheId << ":" << expireAt;
+
+  _redisInstance->hset(REDIS_CACHE_DATA_PATH(topic), cacheId, payload);
+  _redisInstance->zadd(REDIS_CACHE_SCORE_PATH(topic), zKey.str(), timestamp);
+
+  _incrTopicPubCount(topic);
+
+  return cacheId;
 }
 
 // GetCache returns all matching cached messages for topics matching topicPattern
 // @param since List all messages since Unix timestamp or message ID
 // @param limit Limit resultset to at most @limit elements.
-size_t Redis::getCache(const string topicPattern, const string since, size_t limit, bool isPattern, nlohmann::json& result) {
-  std::unordered_map<std::string, std::string> keys;
+size_t Redis::getCache(const string topicPattern, long long since, long long limit, bool isPattern, nlohmann::json& result) {
+  std::vector<std::string> topics;
   result = nlohmann::json::array();
+  auto now = Util::getTimeSinceEpoch() / 1000;
 
   // Look up all matching topics in redis we get a request for a topic pattern
   // and request the eventlog for each of them.
   if (isPattern) {
     for (auto& topic : _getTopicsSeen(topicPattern)) {
-       keys.insert(pair<std::string, std::string>(REDIS_PREFIX(topic), since));
+       topics.push_back(topic);
     }
   }
   // If it is a single topic then only look up eventlog for that.
   else {
-    keys.insert(pair<std::string, std::string>(REDIS_PREFIX(topicPattern), since));
+    topics.push_back(topicPattern);
   }
 
-  std::unordered_map<std::string, XItemStream> redisResult;
+  for (const auto topic : topics) {
+    // zcacheKeys is in format <hset-id>:<expireAtTimestamp>
+    std::deque<std::string> zcacheKeys;
 
-  if (keys.size() > 0) {
-    _redisInstance->xread(keys.begin(), keys.end(), limit, std::inserter(redisResult, redisResult.end()));
+    // ZREVRANGEBYSCORE <path> +inf <since> limit 0 <limit>
+    // We use a front_inserter here and a back_inserter when retrieving the actual data from the HSET.
+    // We do this to reverse the order of returned items. We are interested in the newest cache items from <since> to <now>
+    // up to <limit> items, but we want the order to be from oldest to newest while ZREVRANGEBYSCORE gives us the opposite.
+    _redisInstance->zrevrangebyscore(REDIS_CACHE_SCORE_PATH(topic), sw::redis::LeftBoundedInterval<double>(since, sw::redis::BoundType::RIGHT_OPEN),
+            sw::redis::LimitOptions{0, limit}, std::front_inserter(zcacheKeys));
+
+    // Only look up keys that is not expired.
+    std::vector<std::string> cacheKeys;
+
+    for (auto zKey : zcacheKeys) {
+      auto p  = _parseIdAndExpireAt(zKey);
+      if (p.second >= now) {
+        cacheKeys.push_back(p.first);
+      }
+    }
+
+    // No cache for this topic, go to the next one.
+    if (cacheKeys.size() < 1) {
+      continue;
+    }
+
+    std::vector<sw::redis::OptionalString> cacheItems;
+    _redisInstance->hmget(REDIS_CACHE_DATA_PATH(topic), cacheKeys.begin(), cacheKeys.end(), std::back_inserter(cacheItems));
+
+    // If there is a mismatch between the length of the ZSET (timestamps) and the HSET (data)
+    // for a given topic, something is messed up. In this case we perform purge of the cache for that topic.
+    if (cacheItems.size() != cacheKeys.size()) {
+      LOG(ERROR) << "ERROR: Missmatch between cache score set and cache data set for topic " << topic;
+      _redisInstance->del({REDIS_CACHE_DATA_PATH(topic), REDIS_CACHE_SCORE_PATH(topic)});
+      continue;
+    }
+
+    for (unsigned int i = 0; i < cacheItems.size(); i++) {
+      // Key returned from ZSET does not exist in the HSET anymore.
+      // continue on to the next key.
+      if (cacheItems[i].value().empty()) {
+        continue;
+      }
+
+      nlohmann::json j;
+      j["id"]      = cacheKeys[i];
+      j["topic"]   = topic;
+      j["message"] = cacheItems[i].value();
+      result.push_back(j);
+    }
   }
 
-  if (redisResult.size() > 0) {
-    for (auto& streamID : redisResult) {
-      for (auto& msgID : streamID.second) {
-        for (auto& keyVals : msgID.second) {
-          // auto& streamName = streamID.first;
-          nlohmann::json j;
-          j["id"]      = msgID.first;
-          j["topic"]   = keyVals.first;
-          j["message"] = keyVals.second;
+  return result.size();
+}
 
-          result.push_back(j);
-        }
+// Delete expired items from the cache.
+size_t Redis::purgeExpiredCacheItems() {
+  std::vector<std::string> allTopics, cacheKeys;
+  std::vector<std::pair<std::string,std::string>> expiredItems;
+  auto now = Util::getTimeSinceEpoch() / 1000;
+
+  _redisInstance->hkeys(REDIS_PREFIX("pub_count"), std::back_inserter(allTopics));
+
+  for (auto topic : allTopics) {
+    _redisInstance->zrange(REDIS_CACHE_SCORE_PATH(topic), 0, -1, std::back_inserter(cacheKeys));
+
+    for (auto key : cacheKeys) {
+      auto p = _parseIdAndExpireAt(key);
+
+      if (p.second < now) {
+        expiredItems.push_back({topic, key});
       }
     }
   }
 
-  return redisResult.size();
+  for (auto exp : expiredItems) {
+    auto topic = exp.first;
+    auto key = exp.second;
+    auto p = _parseIdAndExpireAt(key);
+
+    _redisInstance->zrem(REDIS_CACHE_SCORE_PATH(topic), key);
+    _redisInstance->hdel(REDIS_CACHE_DATA_PATH(topic), p.first);
+  }
+
+  return expiredItems.size();
 }
 
 /*
-  Accordding to redis++ documentation the library should handle reconnects itself.
+  According to redis++ documentation the library should handle reconnects itself.
   However, this proves not to be true for subscriber connections.
   So we have to trigger a reset and setup subscribers when we lose the server connection.
 */

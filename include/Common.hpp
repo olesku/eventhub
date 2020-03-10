@@ -30,4 +30,7 @@ static constexpr size_t WS_MAX_CONTROL_FRAME_SIZE = 1024;
 // Delay metric sample rate.
 static constexpr unsigned int METRIC_DELAY_SAMPLE_RATE_MS = 5000;
 
+// Cache purger interval.
+static constexpr unsigned int CACHE_PURGER_INTERVAL_MS = (60 * 1000);
+
 #endif // INCLUDE_COMMON_HPP_

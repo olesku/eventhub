@@ -8,6 +8,7 @@
 #include "TopicManager.hpp"
 #include "Util.hpp"
 #include "websocket/Response.hpp"
+#include "Config.hpp"
 
 #include <sstream>
 #include <stdexcept>
@@ -65,14 +66,27 @@ void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr re
   auto& accessController = ctx.connection()->getAccessController();
   auto params            = req->params();
   std::string topicName;
-  std::string sinceEvent;
+  unsigned long long since, limit;
   std::stringstream msg;
 
   try {
     topicName = params.get("topic").get<std::string>();
-    // TODO: Do some sinceEvent validation. Should only contain [0-9\-]+.
-    sinceEvent = params.get("sinceEvent").get<std::string>();
+  } catch (...) {}
+
+  try {
+    since = params.get("since").get<long long>();
   } catch (...) {
+    since = 0;
+  }
+
+  try {
+    limit = params.get("limit").get<long long>();
+  } catch (...) {
+    limit = Config.getInt("MAX_CACHE_REQUEST_LIMIT");
+  }
+
+  if (limit > (unsigned long long)Config.getInt("MAX_CACHE_REQUEST_LIMIT")) {
+    limit = Config.getInt("MAX_CACHE_REQUEST_LIMIT");
   }
 
   if (topicName.empty()) {
@@ -101,13 +115,13 @@ void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr re
 
   _sendSuccessResponse(ctx, req, result);
 
-  // Send cached events if sinceEvent is set.
-  if (!sinceEvent.empty()) {
+  // Send cached events if since is set.
+  if (since > 0) {
     try {
       nlohmann::json result;
       auto& redis      = ctx.server()->getRedis();
 
-      redis.getCache(topicName, sinceEvent, 0, TopicManager::isValidTopicFilter(topicName), result);
+      redis.getCache(topicName, since, limit, TopicManager::isValidTopicFilter(topicName), result);
       for (auto& cacheItem : result) {
         _sendSuccessResponse(ctx, req, cacheItem);
       }
@@ -172,6 +186,8 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
   std::string topicName;
   std::string message;
   std::stringstream msg;
+  long long timestamp;
+  unsigned int ttl;
 
   auto& accessController = ctx.connection()->getAccessController();
   auto params            = req->params();
@@ -200,8 +216,20 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
   }
 
   try {
+    timestamp = params.get("timestamp").get<long long>();
+  } catch (...) {
+    timestamp = 0;
+  }
+
+  try {
+    ttl       = params.get("ttl").get<unsigned int>();
+  } catch (...) {
+    ttl = 0;
+  }
+
+  try {
     auto& redis = ctx.server()->getRedis();
-    auto id     = redis.cacheMessage(topicName, message);
+    auto id     = redis.cacheMessage(topicName, message, timestamp, ttl);
 
     if (id.length() == 0) {
       msg << "Failed to cache message to Redis, discarding.";

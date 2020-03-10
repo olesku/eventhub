@@ -27,12 +27,12 @@ TEST_CASE("Test redis", "[Redis") {
   }
 
   GIVEN("That we increase pub count for test/channel1") {
-    redis._redisInstance->hdel("eventhub_test.pub_count", "test/channel1");
+    redis._redisInstance->hdel("eventhub_test:pub_count", "test/channel1");
     redis.setPrefix("eventhub_test");
     redis._incrTopicPubCount("test/channel1");
 
     THEN("Hashentry eventhub_test.test/channel1 should be larger than 0") {
-      auto countStr = redis._redisInstance->hget("eventhub_test.pub_count", "test/channel1");
+      auto countStr = redis._redisInstance->hget("eventhub_test:pub_count", "test/channel1");
       int count     = 0;
 
       try {
@@ -59,29 +59,32 @@ TEST_CASE("Test redis", "[Redis") {
   }
 
   GIVEN("If we cache some items") {
+    Config.del("DEFAULT_CACHE_TTL");
+    Config.addInt("DEFAULT_CACHE_TTL", 60);
+
     Config.del("MAX_CACHE_LENGTH");
     Config.addInt("MAX_CACHE_LENGTH", 1000);
 
-    redis.cacheMessage("test/channel1", "Test 1");
-    redis.cacheMessage("test/channel1", "Test 2");
-    redis.cacheMessage("test/channel1", "Test 3");
-    redis.cacheMessage("test/channel1", "Test 4");
+    redis.cacheMessage("test/channel1", "Test 1", 0, 0);
+    redis.cacheMessage("test/channel1", "Test 2", 0, 0);
+    redis.cacheMessage("test/channel1", "Test 3", 0, 0);
+    redis.cacheMessage("test/channel1", "Test 4", 0, 0);
 
-    redis.cacheMessage("test/channel2", "Test 5");
-    redis.cacheMessage("test/channel2", "Test 6");
-    redis.cacheMessage("test/channel2", "Test 7");
-    auto msgId = redis.cacheMessage("test/channel2", "Test 8");
+    redis.cacheMessage("test/channel2", "Test 5", 0, 0);
+    redis.cacheMessage("test/channel2", "Test 6", 0, 0);
+    redis.cacheMessage("test/channel2", "Test 7", 0, 0);
+    auto msgId = redis.cacheMessage("test/channel2", "Test 8", 0, 0);
 
     THEN("Cache size should be larger than 0 when requesting a matching pattern") {
       nlohmann::json j;
-      size_t cacheSize = redis.getCache("test/#", "0", 0, true, j);
+      size_t cacheSize = redis.getCache("test/#", 0, -1, true, j);
       REQUIRE(cacheSize > 0);
       REQUIRE(j.size() > 0);
     }
 
     THEN("Cache size should be larger than 0 when requesting the actual topic") {
       nlohmann::json j;
-      size_t cacheSize = redis.getCache("test/channel1", "0", 0, false, j);
+      size_t cacheSize = redis.getCache("test/channel1", 0, -1, false, j);
       REQUIRE(cacheSize > 0);
       REQUIRE(j.size() > 0);
     }
@@ -90,7 +93,7 @@ TEST_CASE("Test redis", "[Redis") {
   GIVEN("That we publish 2 messages") {
     unsigned int msgRcvd = 0;
     redis.psubscribe("*", [&msgRcvd](std::string pattern, std::string topic, std::string msg) {
-      REQUIRE(pattern.compare("eventhub_test.*") == 0);
+      REQUIRE(pattern.compare("eventhub_test:*") == 0);
       REQUIRE((topic.compare("test/topic1") == 0 || topic.compare("test/topic2") == 0));
 
       msgRcvd++;
@@ -111,6 +114,15 @@ TEST_CASE("Test redis", "[Redis") {
 
       t.wait();
       REQUIRE(msgRcvd == 2);
+    }
+  }
+
+  GIVEN("That we send in 1000-1:10000 to _parseIdAndExpireAt") {
+    auto p = redis._parseIdAndExpireAt("1000-1:10000");
+
+    THEN("We should get a pair with first element as 1000-1 and second as 10000") {
+      REQUIRE(p.first == "1000-1");
+      REQUIRE(p.second == 10000);
     }
   }
 }
