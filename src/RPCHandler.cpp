@@ -66,7 +66,7 @@ void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr re
   auto& accessController = ctx.connection()->getAccessController();
   auto params            = req->params();
   std::string topicName;
-  unsigned long long sinceEvent, limit;
+  unsigned long long since, limit;
   std::stringstream msg;
 
   try {
@@ -74,9 +74,9 @@ void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr re
   } catch (...) {}
 
   try {
-    sinceEvent = params.get("sinceEvent").get<long long>();
+    since = params.get("since").get<long long>();
   } catch (...) {
-    sinceEvent = 0;
+    since = 0;
   }
 
   try {
@@ -115,13 +115,13 @@ void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr re
 
   _sendSuccessResponse(ctx, req, result);
 
-  // Send cached events if sinceEvent is set.
-  if (sinceEvent > 0) {
+  // Send cached events if since is set.
+  if (since > 0) {
     try {
       nlohmann::json result;
       auto& redis      = ctx.server()->getRedis();
 
-      redis.getCache(topicName, sinceEvent, limit, TopicManager::isValidTopicFilter(topicName), result);
+      redis.getCache(topicName, since, limit, TopicManager::isValidTopicFilter(topicName), result);
       for (auto& cacheItem : result) {
         _sendSuccessResponse(ctx, req, cacheItem);
       }
