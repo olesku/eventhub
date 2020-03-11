@@ -31,14 +31,14 @@ void Handler::HandleRequest(HandlerContext&& ctx, ParserStatus parserStatus, Fra
       break;
 
     case ParserStatus::MAX_DATA_FRAME_SIZE_EXCEEDED:
-      spdlog::debug("Client {} exceeded max data frame size, hanging up.", ctx.connection()->getIP());
+      ::spdlog::debug("Client {} exceeded max data frame size, hanging up.", ctx.connection()->getIP());
       response::sendData(ctx.connection(), "", websocket::FrameType::CLOSE_FRAME);
       ctx.connection()->shutdown();
       return;
       break;
 
     case ParserStatus::MAX_CONTROL_FRAME_SIZE_EXCEEDED:
-      spdlog::debug("Client {} exceeded max control frame size, hanging up.", ctx.connection()->getIP());
+      ::spdlog::debug("Client {} exceeded max control frame size, hanging up.", ctx.connection()->getIP());
       response::sendData(ctx.connection(), "", websocket::FrameType::CLOSE_FRAME);
       ctx.connection()->shutdown();
       return;
@@ -82,7 +82,7 @@ void Handler::_handleTextFrame(HandlerContext& ctx, const std::string& data) {
   try {
     entity = parser.parse(data);
   } catch (std::exception& e) {
-    spdlog::debug("Failed to parse RPC request from '{}': {}.", ctx.connection()->getIP(), e.what());
+    ::spdlog::debug("Failed to parse RPC request from '{}': {}.", ctx.connection()->getIP(), e.what());
     response::sendData(ctx.connection(),
                        jsonrpcpp::Response(jsonrpcpp::InvalidRequestException("Invalid request")).to_json().dump(),
                        websocket::FrameType::TEXT_FRAME);
@@ -95,13 +95,13 @@ void Handler::_handleTextFrame(HandlerContext& ctx, const std::string& data) {
       auto handler = RPCHandler::getHandler(req->method());
       handler(ctx, req);
     } catch (std::exception& e) {
-      spdlog::debug("Invalid RPC method called by '{}': {}.", ctx.connection()->getIP(), e.what());
+      ::spdlog::debug("Invalid RPC method called by '{}': {}.", ctx.connection()->getIP(), e.what());
       response::sendData(ctx.connection(),
                          jsonrpcpp::Response(jsonrpcpp::MethodNotFoundException(*req)).to_json().dump(),
                          websocket::FrameType::TEXT_FRAME);
     }
   } else {
-    spdlog::debug("Invalid RPC request by {}.", ctx.connection()->getIP());
+    ::spdlog::debug("Invalid RPC request by {}.", ctx.connection()->getIP());
     response::sendData(ctx.connection(),
                        jsonrpcpp::Response(jsonrpcpp::InvalidRequestException("Invalid request")).to_json().dump(),
                        websocket::FrameType::TEXT_FRAME);
