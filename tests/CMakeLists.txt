@@ -11,7 +11,8 @@ add_executable(eventhub_tests
 )
 
 target_link_libraries(eventhub_tests libeventhub)
-target_link_libraries(eventhub_tests ${Glog_LIBRARIES})
+target_link_libraries(eventhub_tests fmt::fmt)
+target_link_libraries(eventhub_tests spdlog)
 target_link_libraries(eventhub_tests ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(eventhub_tests ${OPENSSL_LIBRARIES})
 

@@ -31,14 +31,14 @@ void Handler::HandleRequest(HandlerContext&& ctx, ParserStatus parserStatus, Fra
       break;
 
     case ParserStatus::MAX_DATA_FRAME_SIZE_EXCEEDED:
-      LOG(INFO) << "Client " << ctx.connection()->getIP() << " exceeded max data frame size, hanging up.";
+      spdlog::debug("Client {} exceeded max data frame size, hanging up.", ctx.connection()->getIP());
       response::sendData(ctx.connection(), "", websocket::FrameType::CLOSE_FRAME);
       ctx.connection()->shutdown();
       return;
       break;
 
     case ParserStatus::MAX_CONTROL_FRAME_SIZE_EXCEEDED:
-      LOG(INFO) << "Client " << ctx.connection()->getIP() << " exceeded max control frame size, hanging up.";
+      spdlog::debug("Client {} exceeded max control frame size, hanging up.", ctx.connection()->getIP());
       response::sendData(ctx.connection(), "", websocket::FrameType::CLOSE_FRAME);
       ctx.connection()->shutdown();
       return;
@@ -47,22 +47,18 @@ void Handler::HandleRequest(HandlerContext&& ctx, ParserStatus parserStatus, Fra
 
   switch (frameType) {
     case FrameType::TEXT_FRAME:
-      // response::sendData(ctx.connection(), data, FrameType::TEXT_FRAME);
       _handleTextFrame(ctx, data);
       break;
 
     case FrameType::BINARY_FRAME:
       // Not supported yet.
-      //DLOG(INFO) << "Client " << ctx.connection()->getIP() << " received a binary frame.";
       break;
 
     case FrameType::PING_FRAME:
-      //LOG(INFO) << "Got PING request from " << ctx.connection()->getIP();
       response::sendData(ctx.connection(), data, FrameType::PONG_FRAME);
       break;
 
     case FrameType::PONG_FRAME:
-      //LOG(INFO) << "Got PONG request from " << ctx.connection()->getIP();
       break;
 
     case FrameType::CLOSE_FRAME:
@@ -86,7 +82,7 @@ void Handler::_handleTextFrame(HandlerContext& ctx, const std::string& data) {
   try {
     entity = parser.parse(data);
   } catch (std::exception& e) {
-    DLOG(INFO) << "Failed to parse RPC request from " << ctx.connection()->getIP() << ": " << e.what();
+    spdlog::debug("Failed to parse RPC request from '{}': {}.", ctx.connection()->getIP(), e.what());
     response::sendData(ctx.connection(),
                        jsonrpcpp::Response(jsonrpcpp::InvalidRequestException("Invalid request")).to_json().dump(),
                        websocket::FrameType::TEXT_FRAME);
@@ -97,17 +93,15 @@ void Handler::_handleTextFrame(HandlerContext& ctx, const std::string& data) {
     auto req = dynamic_pointer_cast<jsonrpcpp::Request>(entity);
     try {
       auto handler = RPCHandler::getHandler(req->method());
-      //DLOG(INFO) << ctx.connection()->getIP() << ":";
-      //DLOG(INFO) << req->to_json().dump(2);
       handler(ctx, req);
     } catch (std::exception& e) {
-      DLOG(ERROR) << "Invalid RPC method called by " << ctx.connection()->getIP() << ": " << e.what();
+      spdlog::debug("Invalid RPC method called by '{}': {}.", ctx.connection()->getIP(), e.what());
       response::sendData(ctx.connection(),
                          jsonrpcpp::Response(jsonrpcpp::MethodNotFoundException(*req)).to_json().dump(),
                          websocket::FrameType::TEXT_FRAME);
     }
   } else {
-    DLOG(ERROR) << "Invalid RPC request by " << ctx.connection()->getIP();
+    spdlog::debug("Invalid RPC request by {}.", ctx.connection()->getIP());
     response::sendData(ctx.connection(),
                        jsonrpcpp::Response(jsonrpcpp::InvalidRequestException("Invalid request")).to_json().dump(),
                        websocket::FrameType::TEXT_FRAME);

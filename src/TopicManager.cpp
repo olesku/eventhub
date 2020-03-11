@@ -54,7 +54,7 @@ void TopicManager::deleteTopic(const std::string& topicFilter) {
 
   auto it = _topic_list.find(topicFilter);
   if (it == _topic_list.end()) {
-    LOG(ERROR) << "deleteTopic: " << topicFilter << " does not exist.";
+    spdlog::error("deleteTopic: {} does not exist.", topicFilter);
     return;
   }
 

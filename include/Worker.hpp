@@ -16,7 +16,7 @@ public:
     _stop_requested_future = _stop_requested.get_future();
   }
 
-  ~WorkerBase() {}
+  virtual ~WorkerBase() {}
 
   void run() {
     if (!_thread.joinable()) {

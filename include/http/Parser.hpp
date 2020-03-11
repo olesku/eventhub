@@ -40,7 +40,6 @@ public:
   void setCallback(ParserCallback callback);
 
 private:
-  int _http_minor_version;
   string _buf;
   int _bytes_read;
   int _bytes_read_prev;

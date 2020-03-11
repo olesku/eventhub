@@ -89,6 +89,7 @@ Eventhub is configured through [environment variables](https://en.wikipedia.org/
 |PROMETHEUS_METRIC_PREFIX     | Prometheus prefix                   | eventhub
 |DEFAULT_CACHE_TTL            | Default message TTL                 | 60
 |MAX_CACHE_REQUEST_LIMIT      | Default returned cache result limit | 1000
+|LOG_LEVEL                    | Log level to use                    | info
 
 ## Docker
 The easiest way is to use our docker image.
@@ -109,7 +110,8 @@ To use that run ```docker-compose up```
 ## Building yourself
 
 Required libraries:
-* [Glog](https://github.com/google/glog)
+* [Spdlog](https://github.com/gabime/spdlog)
+* [Fmt](https://github.com/fmtlib/fmt)
 * [Hiredis](https://github.com/redis/hiredis)
 * [Redis-plus-plus](https://github.com/sewenew/redis-plus-plus)
 * [OpenSSL](https://www.openssl.org/)

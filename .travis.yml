@@ -11,7 +11,8 @@ addons:
       - cmake-data
       - libhiredis-dev
       - libssl-dev
-      - libgoogle-glog-dev
+      - libfmt-dev
+      - libspdlog-dev
       - redis-server
 services:
   - redis-server

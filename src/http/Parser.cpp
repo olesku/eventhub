@@ -58,14 +58,12 @@ void Parser::parse(const char* data, int len) {
 
   // Parse error.
   if (pret == -1) {
-    //DLOG(ERROR) << "REQ_FAILED";
     _error_message = "REQ_FAILED: Parse failed.";
     return _callback(this, RequestState::REQ_FAILED);
   }
 
   // Request incomplete.
   if (pret == -2) {
-    //DLOG(INFO) << "REQ_INCOMPLETE";
     return _callback(this, RequestState::REQ_INCOMPLETE);
   }
 

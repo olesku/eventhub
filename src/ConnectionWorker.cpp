@@ -11,6 +11,7 @@
 #endif
 #include <sys/socket.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 #include <memory>
 #include <mutex>
@@ -51,7 +52,7 @@ Worker::~Worker() {
     it = _connection_list.erase(it);
   }
 
-  DLOG(INFO) << "Connection worker " << getWorkerId() << " destroyed.";
+  spdlog::debug("Connection worker {} shutting down.", getWorkerId());
 }
 
 void Worker::addTimer(int64_t delay, std::function<void(TimerCtx* ctx)> callback, bool repeat) {
@@ -75,15 +76,15 @@ void Worker::_acceptConnection() {
   if (clientFd == -1) {
     switch (errno) {
       case EMFILE:
-        LOG(ERROR) << "All connections available used. Cannot accept more connections.";
+        spdlog::error("All connections available used. Cannot accept more connections.");
         break;
 
       case EAGAIN:
-        //DLOG(INFO) << "Accept EAGAIN";
+        spdlog::trace("accept() returned EAGAIN.");
         break;
 
       default:
-        LOG(ERROR) << "Error accepting new connection: " << strerror(errno);
+        spdlog::error("Could not accept new connection: {}.", strerror(errno));
     }
 
     return;
@@ -107,12 +108,12 @@ void Worker::_addConnection(int fd, struct sockaddr_in* csin) {
   int ret                 = client->addToEpoll(connectionIterator, (EPOLLIN | EPOLLRDHUP | EPOLLHUP | EPOLLERR));
 
   if (ret == -1) {
-    LOG(WARNING) << "Could not add client to epoll: " << strerror(errno);
+    spdlog::warn("Could not add client to epoll: {}.", strerror(errno));
     _connection_list.erase(connectionIterator);
     return;
   }
 
-  //DLOG(INFO) << "Client " << fd << " accepted in worker " << getWorkerId();
+  spdlog::trace("Client {} accepted in worker {}", client->getIP(), getWorkerId());
   std::weak_ptr<Connection> wptrConnection(client);
 
   // Set up HTTP request callback.
@@ -135,11 +136,11 @@ void Worker::_addConnection(int fd, struct sockaddr_in* csin) {
   });
 
   // Disconnect client if successful websocket handshake hasn't occurred in 10 seconds.
-  addTimer(Config.getInt("WEBSOCKET_HANDSHAKE_TIMEOUT") * 1000, [this, wptrConnection](TimerCtx* ctx) {
+  addTimer(Config.getInt("WEBSOCKET_HANDSHAKE_TIMEOUT") * 1000, [wptrConnection](TimerCtx* ctx) {
     auto c = wptrConnection.lock();
 
     if (c && c->getState() != ConnectionState::WEBSOCKET) {
-      //DLOG(INFO) << "Client " << c->getIP() << " failed to handshake in " << Config.getInt("WEBSOCKET_HANDSHAKE_TIMEOUT") <<  " seconds. Removing.";
+      spdlog::trace("Client '{}' failed to handshake in {} seconds. Removing.", c->getIP(), Config.getInt("WEBSOCKET_HANDSHAKE_TIMEOUT"));
       c->shutdown();
     }
   });
@@ -155,7 +156,6 @@ void Worker::_addConnection(int fd, struct sockaddr_in* csin) {
         }
 
         if (c->getState() == ConnectionState::WEBSOCKET) {
-          //DLOG(INFO) << "Ping " << c->getIP();
           websocket::response::sendData(c, "", websocket::FrameType::PING_FRAME);
         }
 
@@ -192,7 +192,7 @@ void Worker::_workerMain() {
   struct epoll_event eventConnectionList[MAXEVENTS];
   struct epoll_event serverSocketEvent;
 
-  LOG(INFO) << "Worker " << getWorkerId() << " started.";
+  spdlog::debug("Worker {} started.", getWorkerId());
 
   // Set initial eventloop delay sample start time.
   _ev_delay_sample_start = Util::getTimeSinceEpoch();
@@ -207,7 +207,8 @@ void Worker::_workerMain() {
   }, true);
 
   if (_epoll_fd == -1) {
-    LOG(FATAL) << "epoll_create1() failed in worker " << getWorkerId() << ": " << strerror(errno);
+    spdlog::critical("epoll_create1() failed in worker {}: {}.", getWorkerId(), strerror(errno));
+    exit(1);
     return;
   }
 
@@ -215,8 +216,10 @@ void Worker::_workerMain() {
   serverSocketEvent.events  = EPOLLIN | EPOLLEXCLUSIVE;
   serverSocketEvent.data.fd = _server->getServerSocket();
 
-  LOG_IF(FATAL, epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, _server->getServerSocket(), &serverSocketEvent) == -1)
-      << "Failed to add serversocket to epoll in AcceptWorker " << getWorkerId();
+  if (epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, _server->getServerSocket(), &serverSocketEvent) == -1) {
+    spdlog::critical("Failed to add serversocket to epoll in AcceptWorker {}: {}", getWorkerId(), strerror(errno));
+    exit(1);
+  }
 
   while (!stopRequested()) {
     unsigned int timeout = EPOLL_MAX_TIMEOUT;
@@ -241,25 +244,25 @@ void Worker::_workerMain() {
 
       // Close socket if an error occurs.
       if (eventConnectionList[i].events & EPOLLERR) {
-        //DLOG(WARNING) << "Error occurred while reading data from client " << client->getIP() << ".";
+        spdlog::debug("Error occurred while reading data from client {}.", client->getIP());
         _removeConnection(client);
         continue;
       }
 
       if ((eventConnectionList[i].events & EPOLLHUP) || (eventConnectionList[i].events & EPOLLRDHUP)) {
-        //DLOG(WARNING) << "Client " << client->getIP() << " disconnected.";
+        spdlog::debug("Client {} disconnected.", client->getIP());
         _removeConnection(client);
         continue;
       }
 
       if (eventConnectionList[i].events & EPOLLOUT) {
-        //DLOG(INFO) << client->getIP() << ": EPOLLOUT, flushing send buffer.";
+        spdlog::debug("Client {}: EPOLLOUT, flushing send buffer.", client->getIP());
         client->flushSendBuffer();
         continue;
       }
 
       if (client->isShutdown()) {
-        DLOG(ERROR) << "Client " << client->getIP() << " is marked as shutdown, should be handled by EPOLL(RD)HUP, removing.";
+        spdlog::debug("Client {} is marked as shutdown, should be handled by EPOLL(RD)HUP, removing.", client->getIP());
         _removeConnection(client);
         continue;
       }

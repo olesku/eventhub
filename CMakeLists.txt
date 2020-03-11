@@ -5,9 +5,10 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 set(CMAKE_C_FLAGS "-Wall -ggdb")
 set(CMAKE_C_COMPILER "gcc")
 set(CMAKE_CXX_COMPILER "g++")
-set(CMAKE_CXX_FLAGS "-std=c++14 -Wall")
+set(CMAKE_CXX_FLAGS "-Wall -std=c++17 -DSPDLOG_FMT_EXTERNAL")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 
 # To detect data race with thread sanitizer, uncomment those 2 lines
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread")
@@ -16,9 +17,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Projects headers
 include_directories ("${PROJECT_SOURCE_DIR}/include")
 
-# Glog
-find_package(Glog REQUIRED)
-include_directories(${Glog_INCLUDE_PATH})
+# Fmt
+find_package(fmt REQUIRED)
+
+# Spdlog
+find_package(spdlog REQUIRED)
 
 # Threads
 find_package(Threads REQUIRED)

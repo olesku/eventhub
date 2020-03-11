@@ -9,7 +9,6 @@
 namespace eventhub {
 namespace websocket {
 static int parserOnDataBegin(void* userData, uint8_t frameType) {
-  //DLOG(INFO) << "on_data_begin";
   auto obj = static_cast<Parser*>(userData);
   obj->clearDataPayload();
   obj->setDataFrameType((FrameType)frameType);
@@ -17,14 +16,12 @@ static int parserOnDataBegin(void* userData, uint8_t frameType) {
 }
 
 static int parserOnDataPayload(void* userData, const char* buff, size_t len) {
-  //DLOG(INFO) << "on_data_payload: " << buff << " len: " << len;
   auto obj = static_cast<Parser*>(userData);
   obj->appendDataPayload(buff, len);
   return 0;
 }
 
 static int parserOnDataEnd(void* userData) {
-  //DLOG(INFO) << "on_data_end";
   auto obj = static_cast<Parser*>(userData);
   obj->callback(ParserStatus::PARSER_OK, obj->getDataFrameType(), obj->getDataPayload());
   return 0;
@@ -32,14 +29,12 @@ static int parserOnDataEnd(void* userData) {
 
 static int parserOnControlBegin(void* userData, uint8_t frameType) {
   auto obj = static_cast<Parser*>(userData);
-  //DLOG(INFO) << "on_control_begin";
   obj->clearControlPayload();
   obj->setControlFrameType((FrameType)frameType);
   return 0;
 }
 
 static int parserOnControlPayload(void* userData, const char* buff, size_t len) {
-  //DLOG(INFO) << "on_control_payload";
   auto obj = static_cast<Parser*>(userData);
   obj->appendControlPayload(buff, len);
   return 0;
@@ -48,7 +43,6 @@ static int parserOnControlPayload(void* userData, const char* buff, size_t len) 
 static int parserOnControlEnd(void* userData) {
   auto obj = static_cast<Parser*>(userData);
   obj->callback(ParserStatus::PARSER_OK, obj->getControlFrameType(), obj->getControlPayload());
-  //LOG(INFO) << "on_control_end";
   return 0;
 }
 

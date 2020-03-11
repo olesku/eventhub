@@ -35,18 +35,19 @@ public:
   size_t purgeExpiredCacheItems();
   void consume();
   void resetSubscribers();
-
   inline void setPrefix(const std::string& prefix) { _prefix = prefix; }
+  inline sw::redis::Redis* getRedisInstance() { return _redisInstance.get(); }
+
+  void _incrTopicPubCount(const string& topicName);
+  vector<string> _getTopicsSeen(const string& topicPattern);
+  const std::string _getNextCacheId(const std::string topic);
+  const std::pair<std::string, int64_t> _parseIdAndExpireAt(const std::string& input);
 
 private:
   std::unique_ptr<sw::redis::Redis> _redisInstance;
   std::unique_ptr<sw::redis::Subscriber> _redisSubscriber;
   std::string _prefix;
   std::mutex _publish_mtx;
-  void _incrTopicPubCount(const string& topicName);
-  vector<string> _getTopicsSeen(const string& topicPattern);
-  const std::string _getNextCacheId(const std::string topic);
-  const std::pair<std::string, int64_t> _parseIdAndExpireAt(const std::string& input);
 };
 
 } // namespace eventhub

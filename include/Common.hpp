@@ -1,10 +1,7 @@
 #ifndef INCLUDE_COMMON_HPP_
 #define INCLUDE_COMMON_HPP_
 
-#undef NDEBUG
-
-#include <glog/logging.h>
-
+#include <spdlog/spdlog.h>
 #include <algorithm>
 #include <cctype>
 #include <string>

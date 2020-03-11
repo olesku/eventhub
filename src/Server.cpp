@@ -5,6 +5,8 @@
 #include <signal.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <stdlib.h>
+#include <errno.h>
 
 #include <mutex>
 #include <string>
@@ -26,7 +28,7 @@ Server::Server(const string redisHost, int redisPort, const std::string redisPas
     : _redis(redisHost, redisPort, redisPassword, redisPoolSize) {}
 
 Server::~Server() {
-  DLOG(INFO) << "Server destructor.";
+  spdlog::trace("Server destructor called.");
   stop();
 }
 
@@ -36,7 +38,10 @@ void Server::start() {
 
   // Set up listening socket.
   _server_socket = socket(AF_INET, SOCK_STREAM, 0);
-  LOG_IF(FATAL, _server_socket == -1) << "Error creating listening socket.";
+  if (_server_socket == -1) {
+    spdlog::critical("Could not create server socket: {}.", strerror(errno));
+    exit(1);
+  }
 
   // Reuse port and address.
   int on = 1;
@@ -48,15 +53,25 @@ void Server::start() {
   sin.sin_family = AF_INET;
   sin.sin_port   = htons(Config.getInt("LISTEN_PORT"));
 
-  LOG_IF(FATAL, (::bind(_server_socket, (struct sockaddr*)&sin, sizeof(sin))) == -1) << "Could not bind server socket to port 8080";
+  if (::bind(_server_socket, (struct sockaddr*)&sin, sizeof(sin)) == -1) {
+    spdlog::critical("Could not bind server socket to port {}: {}.", Config.getInt("LISTEN_PORT"), strerror(errno));
+    exit(1);
+  }
 
-  LOG_IF(FATAL, listen(_server_socket, 0) == -1) << "Call to listen() failed.";
-  LOG_IF(FATAL, fcntl(_server_socket, F_SETFL, O_NONBLOCK) == -1) << "fcntl O_NONBLOCK on serversocket failed.";
+  if (listen(_server_socket, 0) == -1) {
+    spdlog::critical("Could not listen on server socket: {}", strerror(errno));
+    exit(1);
+  }
 
-  LOG(INFO) << "Listening on port " << Config.getInt("LISTEN_PORT") << ".";
+  if (fcntl(_server_socket, F_SETFL, O_NONBLOCK) == -1) {
+    spdlog::critical("Failed set nonblock mode on server socket: {}.", strerror(errno));
+    exit(1);
+  }
+
+  spdlog::info("Listening on port {}.", Config.getInt("LISTEN_PORT"));
 
   if (Config.getBool("DISABLE_AUTH")) {
-    LOG(INFO) << "WARNING: Server is running with DISABLE_AUTH=true. Everything is allowed by any client.";
+    spdlog::warn("WARNING: Server is running with DISABLE_AUTH=true. Everything is allowed by any client.");
   }
 
   // Start the connection workers.
@@ -117,8 +132,9 @@ void Server::start() {
   // Add cache purge cronjob.
   _ev.addTimer(CACHE_PURGER_INTERVAL_MS, [&](TimerCtx *ctx) {
     try {
+      spdlog::trace("Running cache purger.");
       auto purgedItems = _redis.purgeExpiredCacheItems();
-      LOG(INFO) << "Purged " << purgedItems << " items.";
+      spdlog::trace("Purged {} items.", purgedItems);
     } catch(...) {}
   }, true);
 
@@ -138,7 +154,7 @@ void Server::start() {
         reconnect = false;
         _redis.resetSubscribers();
         _redis.psubscribe("*", cb);
-        LOG(INFO) << "Connection to Redis regained.";
+        spdlog::info("Connection to Redis regained.");
       }
 
       _redis.consume();
@@ -150,7 +166,7 @@ void Server::start() {
 
     catch (sw::redis::Error& e) {
       reconnect = true;
-      LOG(ERROR) << "Failed to read from redis: " << e.what() << ". Waiting 5 seconds before reconnect.";
+      spdlog::error("Failed to read from redis: {} Waiting 5 seconds before reconnect.", e.what());
     }
   }
 

@@ -1,4 +1,3 @@
-
 add_library( libeventhub
   http/picohttpparser.c
   http/Parser.cpp
@@ -27,8 +26,9 @@ add_executable(eventhub main.cpp)
 
 target_link_libraries(eventhub libeventhub)
 target_link_libraries(eventhub ${CMAKE_THREAD_LIBS_INIT})
-target_link_libraries(eventhub ${Glog_LIBRARIES})
 target_link_libraries(eventhub ${OPENSSL_CRYPTO_LIBRARIES})
+target_link_libraries(eventhub fmt::fmt)
+target_link_libraries(eventhub spdlog)
 
 # Hiredis
 find_library(HIREDIS_LIB hiredis)
