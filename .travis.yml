@@ -30,7 +30,7 @@ jobs:
         make && \
         sudo make install && \
         cd ../.. && \
-        ldconfig
+        sudo ldconfig
     script: make
 
   - stage: "Build and push docker image to quay.io"
