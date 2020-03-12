@@ -33,7 +33,7 @@ int main(int argc, char** argv) {
 
   try {
     eventhub::Config.addString("LOG_LEVEL", "info");
-    eventhub::LOG->set_level(spdlog::level::from_str(eventhub::Config.getString("LOG_LEVEL")));
+    eventhub::Logger::getInstance().setLevel(eventhub::Config.getString("LOG_LEVEL"));
 
     eventhub::Config.addInt("LISTEN_PORT", 8080);
     eventhub::Config.addInt("WORKER_THREADS", 0);
