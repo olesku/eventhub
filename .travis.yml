@@ -30,7 +30,7 @@ jobs:
         make && \
         sudo make install && \
         cd ../.. && \
-        sudo ldconfig
+        find /usr -iname \*redis\*
     script: make
 
   - stage: "Build and push docker image to quay.io"
