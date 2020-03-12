@@ -1,6 +1,6 @@
 language: cpp
 compiler: gcc
-dist: eoan
+dist: bionic
 sudo: true
 addons:
   apt:

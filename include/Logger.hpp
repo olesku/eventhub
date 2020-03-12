@@ -3,7 +3,7 @@
 
 #include <memory>
 #include <spdlog/spdlog.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/sinks/stdout_sinks.h>
 
 #include "Config.hpp"
 
@@ -12,7 +12,7 @@ namespace eventhub {
 class Logger {
   public:
     Logger() {
-      _logger = spdlog::stdout_color_mt("eventhub");
+      _logger = spdlog::stdout_logger_mt("eventhub");
     }
 
     ~Logger() {}
