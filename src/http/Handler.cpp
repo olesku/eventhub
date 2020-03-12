@@ -1,6 +1,7 @@
 #include <string.h>
 
 #include <string>
+#include <sstream>
 
 #include "Common.hpp"
 #include "Config.hpp"

@@ -27,7 +27,6 @@ public:
 
 private:
   std::string _id;
-  uint64_t _n_messages_sent;
   TopicSubscriberList _subscriber_list;
   std::mutex _subscriber_lock;
 };

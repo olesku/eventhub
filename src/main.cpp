@@ -16,15 +16,12 @@ using namespace std;
 extern atomic<bool> stopEventhub;
 
 void shutdown(int sigid) {
-  LOG(INFO) << "Exiting.";
+  eventhub::LOG->info("Exiting.");
   stopEventhub = 1;
 }
 
 int main(int argc, char** argv) {
   struct sigaction sa;
-
-  FLAGS_logtostderr = 1;
-  google::InitGoogleLogging(argv[0]);
 
   sa.sa_handler = shutdown;
   sa.sa_flags   = 0;
@@ -35,6 +32,9 @@ int main(int argc, char** argv) {
   sigaction(SIGHUP, &sa, NULL);
 
   try {
+    eventhub::Config.addString("LOG_LEVEL", "info");
+    eventhub::Logger::getInstance().setLevel(eventhub::Config.getString("LOG_LEVEL"));
+
     eventhub::Config.addInt("LISTEN_PORT", 8080);
     eventhub::Config.addInt("WORKER_THREADS", 0);
     eventhub::Config.addString("JWT_SECRET", "eventhub_secret");
@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
     eventhub::Config.addBool("DISABLE_AUTH", false);
     eventhub::Config.addString("PROMETHEUS_METRIC_PREFIX", "eventhub");
   } catch (std::exception& e) {
-    LOG(ERROR) << "Error reading configuration: " << e.what();
+    eventhub::LOG->error("Error reading configuration: {}", e.what());
     return 1;
   }
 

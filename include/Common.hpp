@@ -1,13 +1,11 @@
 #ifndef INCLUDE_COMMON_HPP_
 #define INCLUDE_COMMON_HPP_
 
-#undef NDEBUG
-
-#include <glog/logging.h>
-
 #include <algorithm>
 #include <cctype>
 #include <string>
+
+#include "Logger.hpp"
 
 // How long to make epoll_wait sleep if there are no events, timers or jobs in the queue.
 static constexpr unsigned int EPOLL_MAX_TIMEOUT = 100;

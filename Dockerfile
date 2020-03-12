@@ -1,9 +1,11 @@
-FROM alpine:3.10
+FROM alpine:3.11
 
 RUN apk update && \
-    apk add g++ make cmake git openssl-dev hiredis-dev git && \
-    apk add --no-cache -X http://dl-cdn.alpinelinux.org/alpine/edge/community gflags-dev && \
-    apk add --no-cache -X http://dl-cdn.alpinelinux.org/alpine/edge/testing glog-dev
+    apk add gcc g++ make cmake git openssl-dev hiredis-dev git && \
+    apk add --no-cache -X http://dl-cdn.alpinelinux.org/alpine/edge/community spdlog && \
+    apk add --no-cache -X http://dl-cdn.alpinelinux.org/alpine/edge/community spdlog-dev && \
+    apk add --no-cache -X http://dl-cdn.alpinelinux.org/alpine/edge/community fmt-dev && \
+    apk add --no-cache -X http://dl-cdn.alpinelinux.org/alpine/edge/community fmt
 
 RUN mkdir -p /usr/src/redis-plus-plus && cd /usr/src/redis-plus-plus && \
     git clone https://github.com/sewenew/redis-plus-plus.git . && \
@@ -18,7 +20,7 @@ RUN mkdir -p build && cd build && \
     sed -i 's/clang++/g++/' ../CMakeLists.txt && \
     sed -i 's/clang/gcc/' ../CMakeLists.txt && \
     cmake -DSKIP_TESTS=1 .. && \
-    make && \
+    make -j && \
     strip eventhub && \
     cp -a eventhub /usr/bin/eventhub
 

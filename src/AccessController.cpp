@@ -63,7 +63,7 @@ bool AccessController::authenticate(const std::string& jwtToken, const std::stri
       throw std::invalid_argument("No publish or subscribe ACL defined in JWT token.");
     }
   } catch (std::exception& e) {
-    //DLOG(ERROR) << "Error in AccessController: " << e.what();
+    LOG->trace("Error in AccessController: ", e.what());
     return false;
   }
 

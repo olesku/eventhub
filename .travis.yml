@@ -11,7 +11,8 @@ addons:
       - cmake-data
       - libhiredis-dev
       - libssl-dev
-      - libgoogle-glog-dev
+      - libfmt-dev
+      - libspdlog-dev
       - redis-server
 services:
   - redis-server
@@ -23,12 +24,14 @@ jobs:
       - |
         git clone https://github.com/sewenew/redis-plus-plus.git && \
         cd redis-plus-plus && \
+        git checkout tags/1.1.1 && \
         mkdir compile && \
         cd compile && \
-        cmake -DCMAKE_BUILD_TYPE=Release .. && \
+        cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr .. && \
         make && \
         sudo make install && \
-        cd ../..
+        cd ../.. && \
+        find /usr -iname \*redis\*
     script: make
 
   - stage: "Build and push docker image to quay.io"
