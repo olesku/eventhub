@@ -36,7 +36,3 @@ target_link_libraries(eventhub ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(eventhub ${OPENSSL_CRYPTO_LIBRARIES})
 target_link_libraries(eventhub fmt::fmt)
 #target_link_libraries(eventhub spdlog)
-
-
-
-# Redis++ https://github.com/sewenew/redis-plus-plus

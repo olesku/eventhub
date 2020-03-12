@@ -24,6 +24,7 @@ jobs:
       - |
         git clone https://github.com/sewenew/redis-plus-plus.git && \
         cd redis-plus-plus && \
+        git checkout tags/1.1.1 && \
         mkdir compile && \
         cd compile && \
         cmake -DCMAKE_BUILD_TYPE=Release .. && \
