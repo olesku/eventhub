@@ -16,7 +16,7 @@ using namespace std;
 extern atomic<bool> stopEventhub;
 
 void shutdown(int sigid) {
-  spdlog::info("Exiting.");
+  eventhub::LOG->info("Exiting.");
   stopEventhub = 1;
 }
 
@@ -33,7 +33,7 @@ int main(int argc, char** argv) {
 
   try {
     eventhub::Config.addString("LOG_LEVEL", "info");
-    spdlog::set_level(spdlog::level::from_str(eventhub::Config.getString("LOG_LEVEL")));
+    eventhub::LOG->set_level(spdlog::level::from_str(eventhub::Config.getString("LOG_LEVEL")));
 
     eventhub::Config.addInt("LISTEN_PORT", 8080);
     eventhub::Config.addInt("WORKER_THREADS", 0);
@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
     eventhub::Config.addBool("DISABLE_AUTH", false);
     eventhub::Config.addString("PROMETHEUS_METRIC_PREFIX", "eventhub");
   } catch (std::exception& e) {
-    spdlog::error("Error reading configuration: {}", e.what());
+    eventhub::LOG->error("Error reading configuration: {}", e.what());
     return 1;
   }
 

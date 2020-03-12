@@ -49,7 +49,7 @@ void Topic::publish(const string& data) {
   }
 
   catch (std::exception& e) {
-    spdlog::debug("Invalid publish to {}: {}.", _id, e.what());
+    LOG->debug("Invalid publish to {}: {}.", _id, e.what());
     return;
   }
 }

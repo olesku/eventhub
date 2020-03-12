@@ -28,7 +28,7 @@ Server::Server(const string redisHost, int redisPort, const std::string redisPas
     : _redis(redisHost, redisPort, redisPassword, redisPoolSize) {}
 
 Server::~Server() {
-  spdlog::trace("Server destructor called.");
+  LOG->trace("Server destructor called.");
   stop();
 }
 
@@ -39,7 +39,7 @@ void Server::start() {
   // Set up listening socket.
   _server_socket = socket(AF_INET, SOCK_STREAM, 0);
   if (_server_socket == -1) {
-    spdlog::critical("Could not create server socket: {}.", strerror(errno));
+    LOG->critical("Could not create server socket: {}.", strerror(errno));
     exit(1);
   }
 
@@ -54,24 +54,24 @@ void Server::start() {
   sin.sin_port   = htons(Config.getInt("LISTEN_PORT"));
 
   if (::bind(_server_socket, (struct sockaddr*)&sin, sizeof(sin)) == -1) {
-    spdlog::critical("Could not bind server socket to port {}: {}.", Config.getInt("LISTEN_PORT"), strerror(errno));
+    LOG->critical("Could not bind server socket to port {}: {}.", Config.getInt("LISTEN_PORT"), strerror(errno));
     exit(1);
   }
 
   if (listen(_server_socket, 0) == -1) {
-    spdlog::critical("Could not listen on server socket: {}", strerror(errno));
+    LOG->critical("Could not listen on server socket: {}", strerror(errno));
     exit(1);
   }
 
   if (fcntl(_server_socket, F_SETFL, O_NONBLOCK) == -1) {
-    spdlog::critical("Failed set nonblock mode on server socket: {}.", strerror(errno));
+    LOG->critical("Failed set nonblock mode on server socket: {}.", strerror(errno));
     exit(1);
   }
 
-  spdlog::info("Listening on port {}.", Config.getInt("LISTEN_PORT"));
+  LOG->info("Listening on port {}.", Config.getInt("LISTEN_PORT"));
 
   if (Config.getBool("DISABLE_AUTH")) {
-    spdlog::warn("WARNING: Server is running with DISABLE_AUTH=true. Everything is allowed by any client.");
+    LOG->warn("WARNING: Server is running with DISABLE_AUTH=true. Everything is allowed by any client.");
   }
 
   // Start the connection workers.
@@ -132,9 +132,9 @@ void Server::start() {
   // Add cache purge cronjob.
   _ev.addTimer(CACHE_PURGER_INTERVAL_MS, [&](TimerCtx *ctx) {
     try {
-      spdlog::trace("Running cache purger.");
+      LOG->trace("Running cache purger.");
       auto purgedItems = _redis.purgeExpiredCacheItems();
-      spdlog::trace("Purged {} items.", purgedItems);
+      LOG->trace("Purged {} items.", purgedItems);
     } catch(...) {}
   }, true);
 
@@ -154,7 +154,7 @@ void Server::start() {
         reconnect = false;
         _redis.resetSubscribers();
         _redis.psubscribe("*", cb);
-        spdlog::info("Connection to Redis regained.");
+        LOG->info("Connection to Redis regained.");
       }
 
       _redis.consume();
@@ -166,7 +166,7 @@ void Server::start() {
 
     catch (sw::redis::Error& e) {
       reconnect = true;
-      spdlog::error("Failed to read from redis: {} Waiting 5 seconds before reconnect.", e.what());
+      LOG->error("Failed to read from redis: {} Waiting 5 seconds before reconnect.", e.what());
     }
   }
 

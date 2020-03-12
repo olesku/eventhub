@@ -126,7 +126,7 @@ void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr re
         _sendSuccessResponse(ctx, req, cacheItem);
       }
     } catch (std::exception& e) {
-      spdlog::error("Redis error while looking up cache: {}.", e.what());
+      LOG->error("Redis error while looking up cache: {}.", e.what());
     }
   }
 }
@@ -247,7 +247,7 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
 
     _sendSuccessResponse(ctx, req, result);
   } catch (std::exception& e) {
-    spdlog::error("Redis error while publishing message: {}.", e.what());
+    LOG->error("Redis error while publishing message: {}.", e.what());
     msg << "Redis error while publishing message: " << e.what();
     _sendInvalidParamsError(ctx, req, msg.str());
   }
@@ -276,7 +276,7 @@ void RPCHandler::_handleList(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
  * @param req RPC request.
  */
 void RPCHandler::_handleHistory(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
-  spdlog::trace("handleHistory: {}", req->to_json().dump(2));
+  LOG->trace("handleHistory: {}", req->to_json().dump(2));
 }
 
 /**

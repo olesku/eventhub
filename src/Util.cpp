@@ -43,7 +43,7 @@ const std::string Util::uriDecode(const std::string& str) {
       // throw error if string is invalid and doesn't have 2 char after,
       // or if it has non-hex chars here (courtesy GitHub @scinart)
       if (i + 2 >= n || !isxdigit(*(i + 1)) || !isxdigit(*(i + 2))) {
-        spdlog::trace("urlDecode: Invalid percent-encoding in string: '{}'.", str);
+        LOG->trace("urlDecode: Invalid percent-encoding in string: '{}'.", str);
         return "";
       }
 
@@ -57,7 +57,7 @@ const std::string Util::uriDecode(const std::string& str) {
       i += 2;
     } else {
       std::ostringstream msg;
-      spdlog::trace("urlDecode: Unexpected character in string: {} ({}).", static_cast<int>(c), c);
+      LOG->trace("urlDecode: Unexpected character in string: {} ({}).", static_cast<int>(c), c);
       return "";
     }
   }
