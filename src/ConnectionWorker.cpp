@@ -250,7 +250,6 @@ void Worker::_workerMain() {
       }
 
       if ((eventConnectionList[i].events & EPOLLHUP) || (eventConnectionList[i].events & EPOLLRDHUP)) {
-        LOG->debug("Client {} disconnected.", client->getIP());
         _removeConnection(client);
         continue;
       }

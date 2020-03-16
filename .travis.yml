@@ -30,8 +30,7 @@ jobs:
         cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr .. && \
         make && \
         sudo make install && \
-        cd ../.. && \
-        find /usr -iname \*redis\*
+        cd ../..
     script: make
 
   - stage: "Build and push docker image to quay.io"

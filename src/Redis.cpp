@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 #include <deque>
+#include <fmt/format.h>
 
 #include "Common.hpp"
 #include "Config.hpp"
@@ -89,11 +90,10 @@ const std::string Redis::cacheMessage(const string topic, const string payload, 
   }
 
   auto expireAt = (Util::getTimeSinceEpoch() / 1000) + ttl;
-  stringstream zKey;
-  zKey << cacheId << ":" << expireAt;
+  auto zKey = fmt::format("{}:{}", cacheId, expireAt);
 
   _redisInstance->hset(REDIS_CACHE_DATA_PATH(topic), cacheId, payload);
-  _redisInstance->zadd(REDIS_CACHE_SCORE_PATH(topic), zKey.str(), timestamp);
+  _redisInstance->zadd(REDIS_CACHE_SCORE_PATH(topic), zKey, timestamp);
 
   _incrTopicPubCount(topic);
 

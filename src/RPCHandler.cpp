@@ -107,6 +107,7 @@ void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr re
   }
 
   ctx.connection()->subscribe(topicName, req->id());
+  LOG->debug("{} - SUBSCRIBE {}", ctx.connection()->getIP(), topicName);
 
   nlohmann::json result;
   result["action"] = "subscribe";
@@ -238,6 +239,7 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
     }
 
     redis.publishMessage(topicName, id, message);
+    LOG->debug("{} - PUBLISH {}", ctx.connection()->getIP(), topicName);
 
     nlohmann::json result;
     result["action"] = "publish";

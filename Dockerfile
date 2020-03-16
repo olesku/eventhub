@@ -25,8 +25,8 @@ RUN mkdir -p build && cd build && \
     cp -a eventhub /usr/bin/eventhub
 
 WORKDIR /tmp
-RUN rm -rf /usr/src/eventhub && \
-    apk del g++ make cmake git
+RUN rm -rf /usr/src/eventhub /usr/src/redis-plus-plus && \
+    apk del gcc g++ make cmake git
 
 RUN addgroup -S eventhub && \
     adduser -S -G eventhub -H -h /tmp -s /bin/false eventhub
