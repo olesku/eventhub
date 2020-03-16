@@ -31,7 +31,8 @@ public:
   void publishMessage(const string topic, const string id, const string payload);
   void psubscribe(const std::string pattern, RedisMsgCallback callback);
   const std::string cacheMessage(const string topic, const string payload, long long timestamp=0, unsigned int ttl=0);
-  size_t getCache(const string topicPattern, long long since, long long limit, bool isPattern, nlohmann::json& result);
+  size_t getCacheSince(const string topicPattern, long long since, long long limit, bool isPattern, nlohmann::json& result);
+  size_t getCacheSinceId(const string topicPattern, const string sinceId, long long limit, bool isPattern, nlohmann::json& result);
   size_t purgeExpiredCacheItems();
   void consume();
   void resetSubscribers();
@@ -40,7 +41,7 @@ public:
 
   void _incrTopicPubCount(const string& topicName);
   vector<string> _getTopicsSeen(const string& topicPattern);
-  const std::string _getNextCacheId(const std::string topic);
+  const std::string _getNextCacheId(const std::string topic, long long timestamp);
   const std::pair<std::string, int64_t> _parseIdAndExpireAt(const std::string& input);
 
 private:

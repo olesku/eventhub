@@ -55,9 +55,9 @@ void Redis::publishMessage(const string topic, const string id, const string pay
 }
 
 // Returns a unique ID in the format <timeSinceEpoch>-<sequenceNo>.
-const std::string Redis::_getNextCacheId(const std::string topic) {
+const std::string Redis::_getNextCacheId(const std::string topic, long long timestamp) {
   stringstream timestamp_ms;
-  timestamp_ms << (Util::getTimeSinceEpoch() / 1000);
+  timestamp_ms << timestamp;
 
   auto id = _redisInstance->incr(REDIS_PREFIX(topic + ":" + timestamp_ms.str()));
   _redisInstance->expire(REDIS_PREFIX(topic + ":" + timestamp_ms.str()), 1);
@@ -79,17 +79,17 @@ const std::pair<std::string, int64_t> Redis::_parseIdAndExpireAt(const std::stri
 
 // Add a message to the cache.
 const std::string Redis::cacheMessage(const string topic, const string payload, long long timestamp, unsigned int ttl) {
-  auto cacheId = _getNextCacheId(topic);
-
   if (timestamp == 0) {
     timestamp = Util::getTimeSinceEpoch();
   }
+
+  auto cacheId = _getNextCacheId(topic, timestamp);
 
   if (ttl == 0) {
     ttl = Config.getInt("DEFAULT_CACHE_TTL");
   }
 
-  auto expireAt = (Util::getTimeSinceEpoch() / 1000) + ttl;
+  auto expireAt = Util::getTimeSinceEpoch() + (ttl * 1000);
   auto zKey = fmt::format("{}:{}", cacheId, expireAt);
 
   _redisInstance->hset(REDIS_CACHE_DATA_PATH(topic), cacheId, payload);
@@ -103,10 +103,10 @@ const std::string Redis::cacheMessage(const string topic, const string payload, 
 // GetCache returns all matching cached messages for topics matching topicPattern
 // @param since List all messages since Unix timestamp or message ID
 // @param limit Limit resultset to at most @limit elements.
-size_t Redis::getCache(const string topicPattern, long long since, long long limit, bool isPattern, nlohmann::json& result) {
+size_t Redis::getCacheSince(const string topicPattern, long long since, long long limit, bool isPattern, nlohmann::json& result) {
   std::vector<std::string> topics;
   result = nlohmann::json::array();
-  auto now = Util::getTimeSinceEpoch() / 1000;
+  auto now = Util::getTimeSinceEpoch();
 
   // Look up all matching topics in redis we get a request for a topic pattern
   // and request the eventlog for each of them.
@@ -175,11 +175,64 @@ size_t Redis::getCache(const string topicPattern, long long since, long long lim
   return result.size();
 }
 
+// Get cached messages after a given message ID.
+size_t Redis::getCacheSinceId(const string topicPattern, const string sinceId, long long limit, bool isPattern, nlohmann::json& result) {
+  result = nlohmann::json::array();
+
+  try {
+      // First get the timestamp part of the sinceId.
+    auto hyphenPos = sinceId.find_first_of('-');
+    if (hyphenPos == std::string::npos || hyphenPos == 0) {
+      return 0;
+    }
+
+    auto tsStr = sinceId.substr(0, hyphenPos);
+    auto timestamp = std::stol(tsStr, nullptr, 10);
+
+    if (timestamp == 0) {
+      return 0;
+    }
+
+    // Then request the cache since that timestamp.
+    if (getCacheSince(topicPattern, timestamp, limit, isPattern, result) == 0) {
+      return 0;
+    }
+
+    // Find the iterator / position of sinceId in the returned results
+    // since we want to remove this and only return the following elements.
+    auto sinceIdIterator = result.begin();
+    bool sinceIdInResult = false;
+    while(sinceIdIterator != result.end()) {
+      if ((*sinceIdIterator++)["id"] == sinceId) {
+        sinceIdInResult = true;
+        break;
+      }
+    }
+
+    // The only returned element in the cache was sinceId.
+    if (sinceIdInResult && sinceIdIterator == result.end()) {
+      return 0;
+    }
+
+    // Remove entries up to and including sinceId.
+    if (sinceIdInResult) {
+      for (auto it = result.begin(); it != sinceIdIterator && it != result.end(); it++) {
+        it = result.erase(it);
+      }
+    }
+  } catch(...) {
+    return 0;
+  }
+
+  return result.size();
+}
+
+
 // Delete expired items from the cache.
 size_t Redis::purgeExpiredCacheItems() {
   std::vector<std::string> allTopics, cacheKeys;
   std::vector<std::pair<std::string,std::string>> expiredItems;
-  auto now = Util::getTimeSinceEpoch() / 1000;
+  auto now = Util::getTimeSinceEpoch();
 
   _redisInstance->hkeys(REDIS_PREFIX("pub_count"), std::back_inserter(allTopics));
 

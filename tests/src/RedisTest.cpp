@@ -3,7 +3,9 @@
 #include "catch.hpp"
 #include "jwt/json/json.hpp"
 #include <future>
+#include <vector>
 
+#include "Util.hpp"
 #include "Redis.hpp"
 
 using namespace std;
@@ -75,14 +77,14 @@ TEST_CASE("Test redis", "[Redis") {
 
     THEN("Cache size should be larger than 0 when requesting a matching pattern") {
       nlohmann::json j;
-      size_t cacheSize = redis.getCache("test/#", 0, -1, true, j);
+      size_t cacheSize = redis.getCacheSince("test/#", 0, -1, true, j);
       REQUIRE(cacheSize > 0);
       REQUIRE(j.size() > 0);
     }
 
     THEN("Cache size should be larger than 0 when requesting the actual topic") {
       nlohmann::json j;
-      size_t cacheSize = redis.getCache("test/channel1", 0, -1, false, j);
+      size_t cacheSize = redis.getCacheSince("test/channel1", 0, -1, false, j);
       REQUIRE(cacheSize > 0);
       REQUIRE(j.size() > 0);
     }
@@ -121,6 +123,33 @@ TEST_CASE("Test redis", "[Redis") {
     THEN("We should get a pair with first element as 1000-1 and second as 10000") {
       REQUIRE(p.first == "1000-1");
       REQUIRE(p.second == 10000);
+    }
+  }
+
+  GIVEN("That we want to get cached elements since a given message id")  {
+    nlohmann::json res;
+    std::vector<std::string> cacheIds;
+
+    auto firstId = redis.cacheMessage("test/topic1", "31337");
+    for (unsigned int i = 0; i < 10; i++) {
+      cacheIds.push_back(redis.cacheMessage("test/topic1", "31337"));
+    }
+
+    THEN("We should get the expected results back") {
+      redis.getCacheSinceId("test/topic1", firstId, 100, false, res);
+
+      unsigned int i = 0;
+      for (auto item : res) {
+        REQUIRE(cacheIds[i] == item["id"]);
+        i++;
+      }
+
+      REQUIRE(i == 10);
+
+      i = 0;
+      for (auto item : res) {
+        i++;
+      }
     }
   }
 }
