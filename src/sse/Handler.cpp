@@ -27,7 +27,7 @@ void Handler::HandleRequest(HandlerContext& ctx, http::Parser* req) {
     LOG->info("Invalid SSE path: {}", path);
     ctx.connection()->shutdown();
   } else {
-    http::Response resp(200);
+    http::Response resp(200, ":ok\n\n");
     resp.setHeader("Content-Type", "text/event-stream");
     ctx.connection()->write(resp.get());
     ctx.connection()->setState(ConnectionState::SSE);
