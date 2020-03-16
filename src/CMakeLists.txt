@@ -7,6 +7,8 @@ add_library( core
   websocket/Parser.cpp
   websocket/Handler.cpp
   websocket/Response.cpp
+  sse/Handler.cpp
+  sse/Response.cpp
   metrics/PrometheusRenderer.cpp
   metrics/JsonRenderer.cpp
   Config.cpp

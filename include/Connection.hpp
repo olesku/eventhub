@@ -38,7 +38,8 @@ class Topic;
 
 enum class ConnectionState {
   HTTP,
-  WEBSOCKET
+  WEBSOCKET,
+  SSE
 };
 
 struct TopicSubscription {

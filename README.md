@@ -84,7 +84,7 @@ Eventhub is configured through [environment variables](https://en.wikipedia.org/
 |REDIS_POOL_SIZE              | Number of Redis connections to use  | 5
 |MAX_CACHE_LENGTH             | Maximum records to store in eventlog| 1000 (0 means no limit)
 |PING_INTERVAL                | Websocket ping interval             | 30
-|WEBSOCKET_HANDSHAKE_TIMEOUT  | Client handshake timeout            | 15
+|HANDSHAKE_TIMEOUT            | Client handshake timeout            | 15
 |DISABLE_AUTH                 | Disable client authentication       | false
 |PROMETHEUS_METRIC_PREFIX     | Prometheus prefix                   | eventhub
 |DEFAULT_CACHE_TTL            | Default message TTL                 | 60
