@@ -8,6 +8,7 @@
 #include "Connection.hpp"
 #include "websocket/Response.hpp"
 #include "websocket/Types.hpp"
+#include "sse/Response.hpp"
 
 using namespace std;
 
@@ -42,9 +43,13 @@ void Topic::publish(const string& data) {
         continue;
       }
 
-      websocket::response::sendData(c,
-                                    jsonrpcpp::Response(subscriber.second, jsonData).to_json().dump(),
-                                    websocket::FrameType::TEXT_FRAME);
+      if (c->getState() == ConnectionState::WEBSOCKET) {
+        websocket::response::sendData(c,
+                                      jsonrpcpp::Response(subscriber.second, jsonData).to_json().dump(),
+                                      websocket::FrameType::TEXT_FRAME);
+      } else if (c->getState() == ConnectionState::SSE) {
+        sse::response::sendEvent(c, jsonData["id"], jsonData["topic"], jsonData["message"], "");
+      }
     }
   }
 

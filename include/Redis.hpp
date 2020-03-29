@@ -41,7 +41,7 @@ public:
 
   void _incrTopicPubCount(const string& topicName);
   vector<string> _getTopicsSeen(const string& topicPattern);
-  const std::string _getNextCacheId(const std::string topic, long long timestamp);
+  const std::string _getNextCacheId(long long timestamp);
   const std::pair<std::string, int64_t> _parseIdAndExpireAt(const std::string& input);
 
 private:
