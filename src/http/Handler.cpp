@@ -159,12 +159,6 @@ bool Handler::_websocketHandshake(HandlerContext& ctx, Parser* req) {
   return true;
 }
 
-bool Handler::_handleSSEClient(HandlerContext& ctx, Parser* req) {
-  ctx.connection()->setState(ConnectionState::SSE);
-
-  return true;
-}
-
 void Handler::_badRequest(HandlerContext& ctx, const std::string reason, int statusCode) {
   Response resp;
   std::stringstream body;
