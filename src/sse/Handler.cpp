@@ -24,7 +24,7 @@ void Handler::HandleRequest(HandlerContext& ctx, http::Parser* req) {
   auto& accessController = conn->getAccessController();
 
   auto path = Util::uriDecode(req->getPath());
-  auto lastEventId = req->getQueryString("lastEventId");
+  auto lastEventId = req->getHeader("Last-Event-ID");
   auto sinceStr = req->getQueryString("since");
   auto limitStr = req->getQueryString("limit");
   long long limit = Config.getInt("MAX_CACHE_REQUEST_LIMIT");
@@ -44,6 +44,11 @@ void Handler::HandleRequest(HandlerContext& ctx, http::Parser* req) {
     return;
   }
 
+  // Get last-event-id.
+  if (!req->getQueryString("lastEventId").empty()) {
+    lastEventId = req->getQueryString("lastEventId");
+  }
+
   // Parse limit parameter.
   if (!limitStr.empty()) {
     try {
@@ -60,7 +65,6 @@ void Handler::HandleRequest(HandlerContext& ctx, http::Parser* req) {
   conn->subscribe(path, 0);
 
   // Send cache if requested.
-  // TODO: Validate lastEventId before querying Redis.
   nlohmann::json result;
   if (!lastEventId.empty()) {
     try {
@@ -74,7 +78,7 @@ void Handler::HandleRequest(HandlerContext& ctx, http::Parser* req) {
   }
 
   for (const auto& cacheItem : result) {
-    response::sendEvent(conn, cacheItem["id"], cacheItem["topic"], cacheItem["message"], "");
+    response::sendEvent(conn, cacheItem["id"], cacheItem["message"]);
   }
 }
 

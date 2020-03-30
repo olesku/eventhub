@@ -179,9 +179,9 @@ std::pair<long long, long long> _splitIdAndSeq(const string cacheId) {
   }
 
   auto tsStr = cacheId.substr(0, hyphenPos);
-  auto timestamp = std::stoll(tsStr, nullptr, 10);
+  auto timestamp = std::stoull(tsStr, nullptr, 10);
   auto seqStr = cacheId.substr(hyphenPos+1, std::string::npos);
-  auto seq = std::stoll(seqStr, nullptr, 10);
+  auto seq = std::stoull(seqStr, nullptr, 10);
 
   return {timestamp, seq};
 }
@@ -208,7 +208,6 @@ size_t Redis::getCacheSinceId(const string topicPattern, const string sinceId, l
       long long elm_Timestamp, elm_seqNo;
       const auto elm_id = static_cast<std::string>((*it)["id"]);
       std::tie(elm_Timestamp, elm_seqNo) = _splitIdAndSeq(elm_id);
-      LOG->info("ID: {} Timestamp: {} Seq: {}", elm_id, elm_Timestamp, elm_seqNo);
 
       if (elm_Timestamp == timestamp && elm_seqNo <= seqNo) {
         it = result.erase(it);

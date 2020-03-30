@@ -17,7 +17,10 @@ namespace response {
 
 void ok(ConnectionPtr conn) {
   http::Response resp(200, ":ok\n\n");
+  resp.setHeader("Access-Control-Allow-Headers", "Accept, Cache-Control, X-Requested-With, Last-Event-ID");
   resp.setHeader("Access-Control-Allow-Origin", "*");
+  resp.setHeader("Cache-Control", "no-cache");
+  resp.setHeader("Connection", "close");
   resp.setHeader("Content-Type", "text/event-stream");
   conn->write(resp.get());
 }
@@ -26,8 +29,15 @@ void sendPing(ConnectionPtr conn) {
   conn->write(":\n\n");
 }
 
-void sendEvent(ConnectionPtr conn, const std::string& id, const std::string& topic, const std::string& message, const std::string& event) {
-  const auto data = fmt::format("id: {}\nevent: {}\ndata: {}\n\n", id, (event.empty() ? topic : event), message);
+void sendEvent(ConnectionPtr conn, const std::string& id, const std::string& message, const std::string event) {
+  std::string data;
+
+  if (event.empty()) {
+    data = fmt::format("id: {}\ndata: {}\n\n", id, message);
+  } else {
+    data = fmt::format("id: {}\nevent: {}\ndata: {}\n\n", id, event, message);
+  }
+
   conn->write(data);
 }
 

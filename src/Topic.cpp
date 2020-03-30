@@ -48,7 +48,7 @@ void Topic::publish(const string& data) {
                                       jsonrpcpp::Response(subscriber.second, jsonData).to_json().dump(),
                                       websocket::FrameType::TEXT_FRAME);
       } else if (c->getState() == ConnectionState::SSE) {
-        sse::response::sendEvent(c, jsonData["id"], jsonData["topic"], jsonData["message"], "");
+        sse::response::sendEvent(c, jsonData["id"], jsonData["message"]);
       }
     }
   }
