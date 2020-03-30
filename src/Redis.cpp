@@ -206,12 +206,11 @@ size_t Redis::getCacheSinceId(const string topicPattern, const string sinceId, l
     // Remove entries with equal timestamp and same or lower sequence id.
     for (auto it = result.begin(); it != result.end(); it++) {
       long long elm_Timestamp, elm_seqNo;
-      const auto elm_id = (*it)["id"];
+      const auto elm_id = static_cast<std::string>((*it)["id"]);
       std::tie(elm_Timestamp, elm_seqNo) = _splitIdAndSeq(elm_id);
       LOG->info("ID: {} Timestamp: {} Seq: {}", elm_id, elm_Timestamp, elm_seqNo);
 
       if (elm_Timestamp == timestamp && elm_seqNo <= seqNo) {
-        LOG->info("Removing {}", elm_id);
         it = result.erase(it);
       }
     }
