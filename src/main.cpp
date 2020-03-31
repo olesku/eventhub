@@ -45,7 +45,7 @@ int main(int argc, char** argv) {
     eventhub::Config.addInt("REDIS_POOL_SIZE", 5);
     eventhub::Config.addInt("MAX_CACHE_LENGTH", 1000);
     eventhub::Config.addInt("PING_INTERVAL", 30);
-    eventhub::Config.addInt("WEBSOCKET_HANDSHAKE_TIMEOUT", 15);
+    eventhub::Config.addInt("HANDSHAKE_TIMEOUT", 15);
     eventhub::Config.addInt("DEFAULT_CACHE_TTL", 60);
     eventhub::Config.addInt("MAX_CACHE_REQUEST_LIMIT", 1000);
     eventhub::Config.addBool("DISABLE_AUTH", false);

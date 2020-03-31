@@ -15,6 +15,7 @@
 #include "http/Handler.hpp"
 #include "http/Parser.hpp"
 #include "http/Response.hpp"
+#include "sse/Handler.hpp"
 
 using namespace std;
 
@@ -115,7 +116,14 @@ void Handler::_handlePath(HandlerContext& ctx, Parser* req) {
     return;
   }
 
-  _websocketHandshake(ctx, req);
+  if (req->getHeader("accept") == "text/event-stream") {
+    sse::Handler::HandleRequest(ctx, req);
+  } else if (req->getHeader("upgrade") == "websocket") {
+    _websocketHandshake(ctx, req);
+  } else {
+    _badRequest(ctx, "Invalid request.");
+    return;
+  }
 }
 
 bool Handler::_websocketHandshake(HandlerContext& ctx, Parser* req) {

@@ -55,17 +55,14 @@ void Redis::publishMessage(const string topic, const string id, const string pay
 }
 
 // Returns a unique ID in the format <timeSinceEpoch>-<sequenceNo>.
-const std::string Redis::_getNextCacheId(const std::string topic, long long timestamp) {
-  stringstream timestamp_ms;
-  timestamp_ms << timestamp;
+const std::string Redis::_getNextCacheId(long long timestamp) {
+  const auto idKey = REDIS_PREFIX(fmt::format("id:{}", timestamp));
 
-  auto id = _redisInstance->incr(REDIS_PREFIX(topic + ":" + timestamp_ms.str()));
-  _redisInstance->expire(REDIS_PREFIX(topic + ":" + timestamp_ms.str()), 1);
-
+  auto id = _redisInstance->incr(idKey);
+  _redisInstance->expire(idKey, 1);
   id--; // Start at 0.
-  timestamp_ms << "-" << id;
 
-  return timestamp_ms.str();
+  return fmt::format("{}-{}", timestamp, id);
 }
 
 // Takes in a string in the form of <HSET-ID>-<ExpireAt> and returns
@@ -83,7 +80,7 @@ const std::string Redis::cacheMessage(const string topic, const string payload, 
     timestamp = Util::getTimeSinceEpoch();
   }
 
-  auto cacheId = _getNextCacheId(topic, timestamp);
+  auto cacheId = _getNextCacheId(timestamp);
 
   if (ttl == 0) {
     ttl = Config.getInt("DEFAULT_CACHE_TTL");
@@ -175,19 +172,27 @@ size_t Redis::getCacheSince(const string topicPattern, long long since, long lon
   return result.size();
 }
 
+std::pair<long long, long long> _splitIdAndSeq(const string cacheId) {
+  auto hyphenPos = cacheId.find_first_of('-');
+  if (hyphenPos == std::string::npos || hyphenPos == 0) {
+    throw invalid_argument("Invalid cache id.");
+  }
+
+  auto tsStr = cacheId.substr(0, hyphenPos);
+  auto timestamp = std::stoull(tsStr, nullptr, 10);
+  auto seqStr = cacheId.substr(hyphenPos+1, std::string::npos);
+  auto seq = std::stoull(seqStr, nullptr, 10);
+
+  return {timestamp, seq};
+}
+
 // Get cached messages after a given message ID.
 size_t Redis::getCacheSinceId(const string topicPattern, const string sinceId, long long limit, bool isPattern, nlohmann::json& result) {
   result = nlohmann::json::array();
 
   try {
-      // First get the timestamp part of the sinceId.
-    auto hyphenPos = sinceId.find_first_of('-');
-    if (hyphenPos == std::string::npos || hyphenPos == 0) {
-      return 0;
-    }
-
-    auto tsStr = sinceId.substr(0, hyphenPos);
-    auto timestamp = std::stol(tsStr, nullptr, 10);
+    long long timestamp, seqNo;
+    std::tie(timestamp, seqNo) = _splitIdAndSeq(sinceId);
 
     if (timestamp == 0) {
       return 0;
@@ -198,25 +203,13 @@ size_t Redis::getCacheSinceId(const string topicPattern, const string sinceId, l
       return 0;
     }
 
-    // Find the iterator / position of sinceId in the returned results
-    // since we want to remove this and only return the following elements.
-    auto sinceIdIterator = result.begin();
-    bool sinceIdInResult = false;
-    while(sinceIdIterator != result.end()) {
-      if ((*sinceIdIterator++)["id"] == sinceId) {
-        sinceIdInResult = true;
-        break;
-      }
-    }
+    // Remove entries with equal timestamp and same or lower sequence id.
+    for (auto it = result.begin(); it != result.end(); it++) {
+      long long elm_Timestamp, elm_seqNo;
+      const auto elm_id = static_cast<std::string>((*it)["id"]);
+      std::tie(elm_Timestamp, elm_seqNo) = _splitIdAndSeq(elm_id);
 
-    // The only returned element in the cache was sinceId.
-    if (sinceIdInResult && sinceIdIterator == result.end()) {
-      return 0;
-    }
-
-    // Remove entries up to and including sinceId.
-    if (sinceIdInResult) {
-      for (auto it = result.begin(); it != sinceIdIterator && it != result.end(); it++) {
+      if (elm_Timestamp == timestamp && elm_seqNo <= seqNo) {
         it = result.erase(it);
       }
     }

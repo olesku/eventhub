@@ -30,6 +30,7 @@
 #include "websocket/Handler.hpp"
 #include "websocket/Parser.hpp"
 #include "websocket/Response.hpp"
+#include "sse/Response.hpp"
 #include "Util.hpp"
 
 using namespace std;
@@ -136,11 +137,11 @@ void Worker::_addConnection(int fd, struct sockaddr_in* csin) {
   });
 
   // Disconnect client if successful websocket handshake hasn't occurred in 10 seconds.
-  addTimer(Config.getInt("WEBSOCKET_HANDSHAKE_TIMEOUT") * 1000, [wptrConnection](TimerCtx* ctx) {
+  addTimer(Config.getInt("HANDSHAKE_TIMEOUT") * 1000, [wptrConnection](TimerCtx* ctx) {
     auto c = wptrConnection.lock();
 
-    if (c && c->getState() != ConnectionState::WEBSOCKET) {
-      LOG->trace("Client {} failed to handshake in {} seconds. Removing.", c->getIP(), Config.getInt("WEBSOCKET_HANDSHAKE_TIMEOUT"));
+    if (c && c->getState() != ConnectionState::WEBSOCKET && c->getState() != ConnectionState::SSE) {
+      LOG->trace("Client {} failed to handshake in {} seconds. Removing.", c->getIP(), Config.getInt("HANDSHAKE_TIMEOUT"));
       c->shutdown();
     }
   });
@@ -157,6 +158,8 @@ void Worker::_addConnection(int fd, struct sockaddr_in* csin) {
 
         if (c->getState() == ConnectionState::WEBSOCKET) {
           websocket::response::sendData(c, "", websocket::FrameType::PING_FRAME);
+        } else if (c->getState() == ConnectionState::SSE) {
+          sse::response::sendPing(c);
         }
 
         // TODO: Disconnect client if lastPong was Config.getPingInterval() * 1000 * 3 ago.
