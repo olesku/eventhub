@@ -98,6 +98,7 @@ TEST_CASE("isFilterMatched", "[topic_manager]") {
   SHOULD_MATCH("temperature/+/sensor1", "temperature/kitchen/sensor1");
   SHOULD_MATCH("temperature/#", "temperature/kitchen/sensor1");
   SHOULD_MATCH("temperature/kitchen/#", "temperature/kitchen/sensor1");
+  SHOULD_MATCH("temperature/kitchen/#", "temperature/kitchen");
   SHOULD_MATCH("#", "temperature/kitchen/sensor1");
 
   SHOULD_NOT_MATCH("temperature/kitchen/sensor1", "temperature/kitchen/sensor2");
