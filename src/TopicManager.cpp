@@ -159,35 +159,54 @@ bool TopicManager::isValidTopicOrFilter(const std::string& topic) {
 * @returns true if it matches, false otherwise.
 */
 bool TopicManager::isFilterMatched(const std::string& filterName, const string& topicName) {
+  // Loop through filterName and topicName one character at the time.
   for (auto fnIt = filterName.begin(), tnIt = topicName.begin();
        tnIt != topicName.end(); fnIt++, tnIt++) {
+
+    // We reached the end of our filter without a match.
     if (fnIt == filterName.end()) {
       return false;
     }
 
+    // We have reached the end of the topic.
     if (tnIt + 1 == topicName.end() && fnIt + 1 != filterName.end()) {
+      // Match the root topic in addition to every subtopic
+      // when we have a match-all (#) on that path.
+      // Example: topic/foo/# should also match topic/foo.
+      if ((fnIt+2 != filterName.end() && fnIt+3 == filterName.end()) &&
+            *(fnIt+1) == '/' && *(fnIt+2) == '#') {
+        return true;
+      }
+
       return false;
     }
 
+    // Filter character at current pos matches topicName character.
     if (*fnIt == *tnIt) {
       continue;
     }
 
+    // If we hit a + in the filter we should increment the pos of
+    // the topicName until we match a '/'.
     if (*fnIt == '+') {
-      for (; tnIt != topicName.end() && *(tnIt + 1) != '/'; tnIt++)
-        ;
+      for (; tnIt != topicName.end() && *(tnIt + 1) != '/'; tnIt++);
+      // If we reached the end of the topicName before we found a '/'
+      // it means we don't have a match.
       if (tnIt == topicName.end())
         return false;
       continue;
     }
 
-    if (*fnIt == '#') {
+    // We matched up until now and the filter ends with a '#'
+    // which means we should match.
+    if (*fnIt == '#' && fnIt+1 == filterName.end()) {
       break;
     }
 
     return false;
   }
 
+  // We have a match.
   return true;
 }
 } // namespace eventhub
