@@ -7,7 +7,7 @@
 
 Eventhub is a WebSocket message broker written in modern C++.
 
-It's written with focus on high performance and availability, and implements the [publish-subscribe pattern](https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern) and the concept of topics.
+It is written with focus on high performance and availability, and implements the [publish-subscribe pattern](https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern) and the concept of topics.
 
 <p align="center">
 <a href="./docs/images/grafana_dashboard.png">
