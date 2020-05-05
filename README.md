@@ -1,3 +1,6 @@
+<p>
+<img src="./docs/images/logo.png" />
+</p>
 # Eventhub: Pub/sub over WebSockets server
 [![Build Status](https://travis-ci.com/olesku/eventhub.svg?branch=master)](https://travis-ci.com/olesku/eventhub)
 [![Docker Repository on Quay](https://quay.io/repository/olesku/eventhub/status "Docker Repository on Quay")](https://quay.io/repository/olesku/eventhub)
