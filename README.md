@@ -1,5 +1,5 @@
 <p>
-<img src="./docs/images/logo.png" />
+<img width="308" height="85" src="./docs/images/logo.png" />
 </p>
 
 # Eventhub: Pub/sub over WebSockets server
