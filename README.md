@@ -17,7 +17,7 @@ It's written with focus on high performance and availability, and implements the
 
 A topic is a category or feed name to which messages are published. Each topic can have as many subscribers and publishers as you desire. Every published message on a topic will get a distinct ID and be distributed to all clients that are subscribed to the topic or a topic pattern that matches.
 
-A topic is segmented into paths and can contain a-z, 0-9 and /.
+A topic is segmented into paths and can contain a-Z, 0-9 and /.
 
 ### Examples ###
 * ```myTopic```
