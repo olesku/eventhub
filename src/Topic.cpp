@@ -3,12 +3,16 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <stdlib.h>
 
 #include "Common.hpp"
+#include "EventLoop.hpp"
 #include "Connection.hpp"
 #include "websocket/Response.hpp"
 #include "websocket/Types.hpp"
 #include "sse/Response.hpp"
+#include "ConnectionWorker.hpp"
+#include "Config.hpp"
 
 using namespace std;
 
@@ -43,17 +47,23 @@ void Topic::publish(const string& data) {
         continue;
       }
 
-      if (c->getState() == ConnectionState::WEBSOCKET) {
-        websocket::response::sendData(c,
-                                      jsonrpcpp::Response(subscriber.second, jsonData).to_json().dump(),
-                                      websocket::FrameType::TEXT_FRAME);
-      } else if (c->getState() == ConnectionState::SSE) {
-        sse::response::sendEvent(c, jsonData["id"], jsonData["message"]);
+      int64_t delay = Config.getInt("MAX_RAND_PUBLISH_SPREAD_DELAY");
+      if (delay > 0) {
+        delay = rand() % delay;
       }
-    }
-  }
 
-  catch (std::exception& e) {
+      c->getWorker()->addTimer(delay, [c, subscriber, jsonData](TimerCtx* ctx) {
+        if (c->getState() == ConnectionState::WEBSOCKET) {
+          websocket::response::sendData(c,
+                                        jsonrpcpp::Response(subscriber.second, jsonData).to_json().dump(),
+                                        websocket::FrameType::TEXT_FRAME);
+        } else if (c->getState() == ConnectionState::SSE) {
+          sse::response::sendEvent(c, jsonData["id"], jsonData["message"]);
+        }
+      });
+    }
+
+  } catch (std::exception& e) {
     LOG->debug("Invalid publish to {}: {}.", _id, e.what());
     return;
   }

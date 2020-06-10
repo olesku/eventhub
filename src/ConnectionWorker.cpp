@@ -147,21 +147,22 @@ void Worker::_addConnection(int fd, struct sockaddr_in* csin) {
   });
 
   // Send a websocket PING frame to the client every Config.getPingInterval() second.
-  addTimer(
-      Config.getInt("PING_INTERVAL") * 1000, [wptrConnection](TimerCtx* ctx) {
+  unsigned int initialPingDelay = (rand() % Config.getInt("PING_INTERVAL")) * 1000;
+  addTimer(initialPingDelay, [wptrConnection](TimerCtx* ctx) {
         auto c = wptrConnection.lock();
 
         if (!c || c->isShutdown()) {
           ctx->repeat = false;
           return;
         }
-
+        LOG->info("PING");
         if (c->getState() == ConnectionState::WEBSOCKET) {
           websocket::response::sendData(c, "", websocket::FrameType::PING_FRAME);
         } else if (c->getState() == ConnectionState::SSE) {
           sse::response::sendPing(c);
         }
 
+        ctx->repeat_delay = std::chrono::milliseconds(Config.getInt("PING_INTERVAL") * 1000);
         // TODO: Disconnect client if lastPong was Config.getPingInterval() * 1000 * 3 ago.
       },
       true);

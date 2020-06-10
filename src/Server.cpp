@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <time.h>
 
 #include <mutex>
 #include <string>
@@ -73,6 +74,8 @@ void Server::start() {
   if (Config.getBool("DISABLE_AUTH")) {
     LOG->warn("WARNING: Server is running with DISABLE_AUTH=true. Everything is allowed by any client.");
   }
+
+   srand (time(NULL));
 
   // Start the connection workers.
   _connection_workers_lock.lock();
