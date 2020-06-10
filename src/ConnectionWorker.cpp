@@ -155,7 +155,7 @@ void Worker::_addConnection(int fd, struct sockaddr_in* csin) {
           ctx->repeat = false;
           return;
         }
-        LOG->info("PING");
+
         if (c->getState() == ConnectionState::WEBSOCKET) {
           websocket::response::sendData(c, "", websocket::FrameType::PING_FRAME);
         } else if (c->getState() == ConnectionState::SSE) {
