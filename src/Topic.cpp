@@ -37,6 +37,8 @@ void Topic::publish(const string& data) {
   std::lock_guard<std::mutex> lock(_subscriber_lock);
   nlohmann::json jsonData;
 
+  unsigned int publish_delay_max = Config.getInt("MAX_RAND_PUBLISH_SPREAD_DELAY");
+
   try {
     jsonData = nlohmann::json::parse(data);
 
@@ -60,8 +62,7 @@ void Topic::publish(const string& data) {
       // If MAX_RAND_PUBLISH_SPREAD_DELAY is set then we
       // delay each publish with RANDOM % MAX_RAND_PUBLISH_SPREAD_DELAY (calculated per-client).
       // We implement this feature to prevent thundering herd issues.
-      int64_t delay = Config.getInt("MAX_RAND_PUBLISH_SPREAD_DELAY");
-      delay = delay > 0 ? (rand() % delay) : 0;
+      int64_t delay = publish_delay_max > 0 ? (rand() % publish_delay_max) : 0;
 
       if (delay > 0) {
         c->getWorker()->addTimer(delay, [doPublish](TimerCtx* ctx) {
