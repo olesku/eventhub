@@ -50,6 +50,7 @@ int main(int argc, char** argv) {
     eventhub::Config.addInt("MAX_CACHE_REQUEST_LIMIT", 1000);
     eventhub::Config.addBool("DISABLE_AUTH", false);
     eventhub::Config.addString("PROMETHEUS_METRIC_PREFIX", "eventhub");
+    eventhub::Config.addInt("MAX_RAND_PUBLISH_SPREAD_DELAY", 0);
   } catch (std::exception& e) {
     eventhub::LOG->error("Error reading configuration: {}", e.what());
     return 1;
