@@ -3,12 +3,16 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <stdlib.h>
 
 #include "Common.hpp"
+#include "EventLoop.hpp"
 #include "Connection.hpp"
 #include "websocket/Response.hpp"
 #include "websocket/Types.hpp"
 #include "sse/Response.hpp"
+#include "ConnectionWorker.hpp"
+#include "Config.hpp"
 
 using namespace std;
 
@@ -52,6 +56,8 @@ void Topic::publish(const string& data) {
   std::lock_guard<std::mutex> lock(_subscriber_lock);
   nlohmann::json jsonData;
 
+  unsigned int publish_delay_max = Config.getInt("MAX_RAND_PUBLISH_SPREAD_DELAY");
+
   try {
     jsonData = nlohmann::json::parse(data);
 
@@ -62,14 +68,6 @@ void Topic::publish(const string& data) {
         continue;
       }
 
-<<<<<<< HEAD
-      if (c->getState() == ConnectionState::WEBSOCKET) {
-        websocket::response::sendData(c,
-                                      jsonrpcpp::Response(subscriber.second, jsonData).to_json().dump(),
-                                      websocket::FrameType::TEXT_FRAME);
-      } else if (c->getState() == ConnectionState::SSE) {
-        sse::response::sendEvent(c, jsonData["id"], jsonData["message"]);
-=======
       // If MAX_RAND_PUBLISH_SPREAD_DELAY is set then we
       // delay each publish with RANDOM % MAX_RAND_PUBLISH_SPREAD_DELAY (calculated per-client).
       // We implement this feature to prevent thundering herd issues.
@@ -82,12 +80,10 @@ void Topic::publish(const string& data) {
       } else {
         // No delay is set, publish right away.
         _doPublish(subscriber.first, subscriber.second, jsonData);
->>>>>>> 70cef26... Fix race condition.
       }
     }
-  }
 
-  catch (std::exception& e) {
+  } catch (std::exception& e) {
     LOG->debug("Invalid publish to {}: {}.", _id, e.what());
     return;
   }
