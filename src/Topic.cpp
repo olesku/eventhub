@@ -47,15 +47,7 @@ void Topic::publish(const string& data) {
         continue;
       }
 
-      // If MAX_RAND_PUBLISH_SPREAD_DELAY is set then we
-      // delay each publish with RANDOM % MAX_RAND_PUBLISH_SPREAD_DELAY (calculated per-client).
-      // This is supported to prevent thundering herd issues a
-      int64_t delay = Config.getInt("MAX_RAND_PUBLISH_SPREAD_DELAY");
-      if (delay > 0) {
-        delay = rand() % delay;
-      }
-
-      c->getWorker()->addTimer(delay, [c, subscriber, jsonData](TimerCtx* ctx) {
+      auto doPublish = [c, subscriber, jsonData]() {
         if (c->getState() == ConnectionState::WEBSOCKET) {
           websocket::response::sendData(c,
                                         jsonrpcpp::Response(subscriber.second, jsonData).to_json().dump(),
@@ -63,7 +55,22 @@ void Topic::publish(const string& data) {
         } else if (c->getState() == ConnectionState::SSE) {
           sse::response::sendEvent(c, jsonData["id"], jsonData["message"]);
         }
-      });
+      };
+
+      // If MAX_RAND_PUBLISH_SPREAD_DELAY is set then we
+      // delay each publish with RANDOM % MAX_RAND_PUBLISH_SPREAD_DELAY (calculated per-client).
+      // We implement this feature to prevent thundering herd issues.
+      int64_t delay = Config.getInt("MAX_RAND_PUBLISH_SPREAD_DELAY");
+      delay = delay > 0 ? (rand() % delay) : 0;
+
+      if (delay > 0) {
+        c->getWorker()->addTimer(delay, [doPublish](TimerCtx* ctx) {
+          doPublish();
+        });
+      } else {
+        // No delay is set, publish right away.
+        doPublish();
+      }
     }
 
   } catch (std::exception& e) {
