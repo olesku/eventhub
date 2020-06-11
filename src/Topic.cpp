@@ -47,6 +47,9 @@ void Topic::publish(const string& data) {
         continue;
       }
 
+      // If MAX_RAND_PUBLISH_SPREAD_DELAY is set then we
+      // delay each publish with RANDOM % MAX_RAND_PUBLISH_SPREAD_DELAY (calculated per-client).
+      // This is supported to prevent thundering herd issues a
       int64_t delay = Config.getInt("MAX_RAND_PUBLISH_SPREAD_DELAY");
       if (delay > 0) {
         delay = rand() % delay;

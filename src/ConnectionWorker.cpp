@@ -147,6 +147,8 @@ void Worker::_addConnection(int fd, struct sockaddr_in* csin) {
   });
 
   // Send a websocket PING frame to the client every Config.getPingInterval() second.
+  // The first PING is sent after RANDOM % pingInterval seconds to prevent
+  // thundering-herd issues.
   unsigned int initialPingDelay = (rand() % Config.getInt("PING_INTERVAL")) * 1000;
   addTimer(initialPingDelay, [wptrConnection](TimerCtx* ctx) {
         auto c = wptrConnection.lock();
@@ -162,6 +164,7 @@ void Worker::_addConnection(int fd, struct sockaddr_in* csin) {
           sse::response::sendPing(c);
         }
 
+        // Set ping interval to PING_INTERVAL seconds.
         ctx->repeat_delay = std::chrono::milliseconds(Config.getInt("PING_INTERVAL") * 1000);
         // TODO: Disconnect client if lastPong was Config.getPingInterval() * 1000 * 3 ago.
       },
