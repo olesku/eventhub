@@ -26,6 +26,25 @@ TopicSubscriberList::iterator Topic::addSubscriber(ConnectionPtr conn, const jso
 }
 
 /**
+ * Helper function for publish()
+*/
+void Topic::_doPublish(ConnectionWeakPtr c, const jsonrpcpp::Id jsonRpcId, const nlohmann::json jsonData) {
+  auto conn = c.lock();
+
+  if (!conn || conn->isShutdown()) {
+        return;
+  }
+
+  if (conn->getState() == ConnectionState::WEBSOCKET) {
+    websocket::response::sendData(conn,
+                                    jsonrpcpp::Response(jsonRpcId, jsonData).to_json().dump(),
+                                    websocket::FrameType::TEXT_FRAME);
+  } else if (conn->getState() == ConnectionState::SSE) {
+      sse::response::sendEvent(conn, jsonData["id"], jsonData["message"]);
+  }
+}
+
+/**
  * Publish a message to this topic.
  * @param data Message to publish.
  */
@@ -43,12 +62,27 @@ void Topic::publish(const string& data) {
         continue;
       }
 
+<<<<<<< HEAD
       if (c->getState() == ConnectionState::WEBSOCKET) {
         websocket::response::sendData(c,
                                       jsonrpcpp::Response(subscriber.second, jsonData).to_json().dump(),
                                       websocket::FrameType::TEXT_FRAME);
       } else if (c->getState() == ConnectionState::SSE) {
         sse::response::sendEvent(c, jsonData["id"], jsonData["message"]);
+=======
+      // If MAX_RAND_PUBLISH_SPREAD_DELAY is set then we
+      // delay each publish with RANDOM % MAX_RAND_PUBLISH_SPREAD_DELAY (calculated per-client).
+      // We implement this feature to prevent thundering herd issues.
+      int64_t delay = publish_delay_max > 0 ? (rand() % publish_delay_max) : 0;
+
+      if (delay > 0) {
+        c->getWorker()->addTimer(delay, [subscriber, jsonData](TimerCtx* ctx) {
+          _doPublish(subscriber.first, subscriber.second, jsonData);
+        });
+      } else {
+        // No delay is set, publish right away.
+        _doPublish(subscriber.first, subscriber.second, jsonData);
+>>>>>>> 70cef26... Fix race condition.
       }
     }
   }
