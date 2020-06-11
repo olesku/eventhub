@@ -76,24 +76,23 @@ Protocol specification for Eventhub is documented [here](./docs/protocol.md).
 Eventhub is configured through [environment variables](https://en.wikipedia.org/wiki/Environment_variable).
 
 |Environment variable         |Description                          |Default value           |
-|-----------------------------|---------------------------------------|------------------------|
-|LISTEN_PORT                  | Port to listen on                     | 8080
-|WORKER_THREADS               | Number of workers                     | 0 (number of cpu cores)
-|JWT_SECRET                   | JWT Token secret                      | eventhub_secret
-|REDIS_HOST                   | Redis host                            | 127.0.0.1
-|REDIS_PORT                   | Redis port                            | 6379
-|REDIS_PASSWORD               | Redis password                        | None
-|REDIS_PREFIX                 | Prefix to use for all redis keys      | eventhub
-|REDIS_POOL_SIZE              | Number of Redis connections to use    | 5
-|MAX_CACHE_LENGTH             | Maximum records to store in eventlog  | 1000 (0 means no limit)
-|PING_INTERVAL                | Websocket ping interval               | 30
-|HANDSHAKE_TIMEOUT            | Client handshake timeout              | 15
-|DISABLE_AUTH                 | Disable client authentication         | false
-|PROMETHEUS_METRIC_PREFIX     | Prometheus prefix                     | eventhub
-|DEFAULT_CACHE_TTL            | Default message TTL                   | 60
-|MAX_CACHE_REQUEST_LIMIT      | Default returned cache result limit   | 1000
-|LOG_LEVEL                    | Log level to use                      | info
-|MAX_RAND_PUBLISH_SPREAD_DELAY| Add random delay to each publish (ms) | 0
+|-----------------------------|-------------------------------------|------------------------|
+|LISTEN_PORT                  | Port to listen on                   | 8080
+|WORKER_THREADS               | Number of workers                   | 0 (number of cpu cores)
+|JWT_SECRET                   | JWT Token secret                    | eventhub_secret
+|REDIS_HOST                   | Redis host                          | 127.0.0.1
+|REDIS_PORT                   | Redis port                          | 6379
+|REDIS_PASSWORD               | Redis password                      | None
+|REDIS_PREFIX                 | Prefix to use for all redis keys    | eventhub
+|REDIS_POOL_SIZE              | Number of Redis connections to use  | 5
+|MAX_CACHE_LENGTH             | Maximum records to store in eventlog| 1000 (0 means no limit)
+|PING_INTERVAL                | Websocket ping interval             | 30
+|HANDSHAKE_TIMEOUT            | Client handshake timeout            | 15
+|DISABLE_AUTH                 | Disable client authentication       | false
+|PROMETHEUS_METRIC_PREFIX     | Prometheus prefix                   | eventhub
+|DEFAULT_CACHE_TTL            | Default message TTL                 | 60
+|MAX_CACHE_REQUEST_LIMIT      | Default returned cache result limit | 1000
+|LOG_LEVEL                    | Log level to use                    | info
 
 ## Docker
 The easiest way is to use our docker image.
