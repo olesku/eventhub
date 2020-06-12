@@ -19,10 +19,16 @@ TEST_CASE("isValidTopicFilter", "[topic_manager]") {
     REQUIRE(TopicManager::isValidTopicFilter("test/topic1/") == false);
   }
 
-  SECTION("Topic filter cannot include both # and + at the same time.") {
-    REQUIRE(TopicManager::isValidTopicFilter("test/+/#") == false);
+  SECTION("A # in a topic filter must always be at the end") {
+    REQUIRE(TopicManager::isValidTopicFilter("#") == true);
+    REQUIRE(TopicManager::isValidTopicFilter("foo/bar/#") == true);
     REQUIRE(TopicManager::isValidTopicFilter("test/#/+") == false);
     REQUIRE(TopicManager::isValidTopicFilter("#+") == false);
+    REQUIRE(TopicManager::isValidTopicFilter("test/#/topic") == false);
+  }
+
+  SECTION("A combination of + and # is allowed.") {
+    REQUIRE(TopicManager::isValidTopicFilter("test/+/#") == true);
   }
 
   SECTION("Topic filter cannot include illegal characters") {
@@ -30,15 +36,20 @@ TEST_CASE("isValidTopicFilter", "[topic_manager]") {
     REQUIRE(TopicManager::isValidTopicFilter(illegalChars) == false);
   }
 
-  SECTION("+ is only valid in within two separators /+/") {
-    REQUIRE(TopicManager::isValidTopicFilter("test/+") == false);
-    REQUIRE(TopicManager::isValidTopicFilter("test/+/te+st") == false);
-    REQUIRE(TopicManager::isValidTopicFilter("+") == false);
+  SECTION("+ is only valid at the start, in between two separators /+/ or at the end.") {
+    REQUIRE(TopicManager::isValidTopicFilter("+") == true);
+    REQUIRE(TopicManager::isValidTopicFilter("+/test") == true);
+    REQUIRE(TopicManager::isValidTopicFilter("+/test") == true);
     REQUIRE(TopicManager::isValidTopicFilter("temperature/+/sensor1") == true);
+    REQUIRE(TopicManager::isValidTopicFilter("test/+") == true);
+    REQUIRE(TopicManager::isValidTopicFilter("test/+/te+st") == false);
+    //REQUIRE(TopicManager::isValidTopicFilter("+/") == false);
   }
 
   SECTION("# must be preceded by a / if it's not the only filter.") {
     REQUIRE(TopicManager::isValidTopicFilter("test#") == false);
+    REQUIRE(TopicManager::isValidTopicFilter("test/#") == true);
+    REQUIRE(TopicManager::isValidTopicFilter("test/#/topic") == false);
     REQUIRE(TopicManager::isValidTopicFilter("test/#") == true);
   }
 
@@ -100,6 +111,11 @@ TEST_CASE("isFilterMatched", "[topic_manager]") {
   SHOULD_MATCH("temperature/kitchen/#", "temperature/kitchen/sensor1");
   SHOULD_MATCH("temperature/kitchen/#", "temperature/kitchen");
   SHOULD_MATCH("#", "temperature/kitchen/sensor1");
+  SHOULD_MATCH("v1/+/events/+/supporters/baz", "v1/foo/events/bar/supporters/baz");
+  SHOULD_MATCH("v1/+/events/+/supporters/+", "v1/foo/events/bar/supporters/baz");
+  SHOULD_MATCH("v1/+/events/+/supporters/+", "v1/foo/events/bar/supporters/baz");
+  SHOULD_MATCH("+", "foobar");
+  SHOULD_MATCH("v1/+/#", "v1/baz/foo/bar");
 
   SHOULD_NOT_MATCH("temperature/kitchen/sensor1", "temperature/kitchen/sensor2");
   SHOULD_NOT_MATCH("temperature/+/sensor1", "temperature/livingroom/#");
@@ -112,7 +128,8 @@ TEST_CASE("isFilterMatched", "[topic_manager]") {
   SHOULD_NOT_MATCH("test1/test222222222", "test1/test");
   SHOULD_NOT_MATCH("test1/foobar", "test1/foo");
   SHOULD_NOT_MATCH("test1/foo", "test1/foobar");
-  SHOULD_NOT_MATCH("test1/++++", "test1/test");
+  SHOULD_NOT_MATCH("test1/+/test", "test1/test");
+  SHOULD_NOT_MATCH("+", "foobar/baz");
 
   SECTION("Should match") {
     for (auto p : should_match) {

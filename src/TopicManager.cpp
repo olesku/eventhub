@@ -109,13 +109,14 @@ bool TopicManager::isValidTopicFilter(const std::string& filterName) {
     return false;
   }
 
-  // Cannot contain + and # at the same time.
-  if (filterName.find('+') != std::string::npos && filterName.find('#') != std::string::npos) {
+  // A filter must contain either + or #.
+  auto hashBangPos = filterName.find('#');
+  if (filterName.find('+') == std::string::npos && hashBangPos == std::string::npos) {
     return false;
   }
 
-  // Must contain either + or #.
-  if (filterName.find('+') == std::string::npos && filterName.find('#') == std::string::npos) {
+  // A # must always be at the end.
+  if (hashBangPos != std::string::npos && (hashBangPos+1) != filterName.length()) {
     return false;
   }
 
@@ -124,7 +125,7 @@ bool TopicManager::isValidTopicFilter(const std::string& filterName) {
       return false;
     }
 
-    if (*it == '+' && ((it - 1) == filterName.begin() || (it + 1) == filterName.end() || *(it + 1) != '/' || *(it - 1) != '/')) {
+    if (*it == '+' && (it+1) != filterName.end() && ((*(it + 1) != '/' || (*(it - 1) != '/' && (it) != filterName.begin() )))) {
       return false;
     }
 
@@ -192,7 +193,9 @@ bool TopicManager::isFilterMatched(const std::string& filterName, const string& 
       for (; tnIt != topicName.end() && *(tnIt + 1) != '/'; tnIt++);
       // If we reached the end of the topicName before we found a '/'
       // it means we don't have a match.
-      if (tnIt == topicName.end())
+      if (tnIt == topicName.end() && fnIt+1 == filterName.end())
+        return true;
+      else if (tnIt == topicName.end())
         return false;
       continue;
     }
