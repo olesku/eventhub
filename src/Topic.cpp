@@ -3,12 +3,16 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <stdlib.h>
 
 #include "Common.hpp"
+#include "EventLoop.hpp"
 #include "Connection.hpp"
 #include "websocket/Response.hpp"
 #include "websocket/Types.hpp"
 #include "sse/Response.hpp"
+#include "ConnectionWorker.hpp"
+#include "Config.hpp"
 
 using namespace std;
 
@@ -26,12 +30,33 @@ TopicSubscriberList::iterator Topic::addSubscriber(ConnectionPtr conn, const jso
 }
 
 /**
+ * Helper function for publish()
+*/
+void Topic::_doPublish(ConnectionWeakPtr c, const jsonrpcpp::Id jsonRpcId, const nlohmann::json jsonData) {
+  auto conn = c.lock();
+
+  if (!conn || conn->isShutdown()) {
+        return;
+  }
+
+  if (conn->getState() == ConnectionState::WEBSOCKET) {
+    websocket::response::sendData(conn,
+                                    jsonrpcpp::Response(jsonRpcId, jsonData).to_json().dump(),
+                                    websocket::FrameType::TEXT_FRAME);
+  } else if (conn->getState() == ConnectionState::SSE) {
+      sse::response::sendEvent(conn, jsonData["id"], jsonData["message"]);
+  }
+}
+
+/**
  * Publish a message to this topic.
  * @param data Message to publish.
  */
 void Topic::publish(const string& data) {
   std::lock_guard<std::mutex> lock(_subscriber_lock);
   nlohmann::json jsonData;
+
+  unsigned int publish_delay_max = Config.getInt("MAX_RAND_PUBLISH_SPREAD_DELAY");
 
   try {
     jsonData = nlohmann::json::parse(data);
@@ -43,17 +68,22 @@ void Topic::publish(const string& data) {
         continue;
       }
 
-      if (c->getState() == ConnectionState::WEBSOCKET) {
-        websocket::response::sendData(c,
-                                      jsonrpcpp::Response(subscriber.second, jsonData).to_json().dump(),
-                                      websocket::FrameType::TEXT_FRAME);
-      } else if (c->getState() == ConnectionState::SSE) {
-        sse::response::sendEvent(c, jsonData["id"], jsonData["message"]);
+      // If MAX_RAND_PUBLISH_SPREAD_DELAY is set then we
+      // delay each publish with RANDOM % MAX_RAND_PUBLISH_SPREAD_DELAY (calculated per-client).
+      // We implement this feature to prevent thundering herd issues.
+      int64_t delay = publish_delay_max > 0 ? (rand() % publish_delay_max) : 0;
+
+      if (delay > 0) {
+        c->getWorker()->addTimer(delay, [subscriber, jsonData](TimerCtx* ctx) {
+          _doPublish(subscriber.first, subscriber.second, jsonData);
+        });
+      } else {
+        // No delay is set, publish right away.
+        _doPublish(subscriber.first, subscriber.second, jsonData);
       }
     }
-  }
 
-  catch (std::exception& e) {
+  } catch (std::exception& e) {
     LOG->debug("Invalid publish to {}: {}.", _id, e.what());
     return;
   }
