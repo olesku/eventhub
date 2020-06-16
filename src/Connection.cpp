@@ -270,8 +270,4 @@ std::vector<std::string> Connection::listSubscriptions() {
   return subscriptionList;
 }
 
-Worker* Connection::getWorker() {
-  return _worker;
-}
-
 } // namespace eventhub

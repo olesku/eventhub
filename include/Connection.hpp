@@ -62,7 +62,6 @@ public:
   ConnectionState setState(ConnectionState newState);
   ConnectionState getState();
   AccessController& getAccessController();
-  Worker* getWorker();
   ConnectionListIterator getConnectionListIterator();
   ConnectionPtr getSharedPtr();
   const std::string getIP();

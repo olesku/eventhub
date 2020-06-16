@@ -29,7 +29,6 @@ private:
   std::string _id;
   TopicSubscriberList _subscriber_list;
   std::mutex _subscriber_lock;
-  static void _doPublish(ConnectionWeakPtr c, const jsonrpcpp::Id jsonRpcId, const nlohmann::json jsonData);
 };
 
 }; // namespace eventhub
