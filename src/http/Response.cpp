@@ -97,6 +97,8 @@ const std::string Response::getStatusMsg(int statusCode) {
       return "Length Required";
     case 413:
       return "Request Entity Too Large";
+    case 501:
+      return "Not Implemented";
   }
 
   return "OK";

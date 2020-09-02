@@ -117,6 +117,11 @@ void Handler::_handlePath(HandlerContext& ctx, Parser* req) {
   }
 
   if (req->getHeader("accept") == "text/event-stream") {
+    if (!Config.getBool("ENABLE_SSE")) {
+      _badRequest(ctx, "SSE is not enabled in this setup.", 501);
+      return;
+    }
+
     sse::Handler::HandleRequest(ctx, req);
   } else if (req->getHeader("upgrade") == "websocket") {
     _websocketHandshake(ctx, req);

@@ -82,6 +82,12 @@ const std::string Redis::cacheMessage(const string topic, const string payload, 
 
   auto cacheId = _getNextCacheId(timestamp);
 
+  // Do not cache message if cache functionality is disabled.
+  if (!Config.getBool("ENABLE_CACHE")) {
+    return cacheId;
+  }
+
+
   if (ttl == 0) {
     ttl = Config.getInt("DEFAULT_CACHE_TTL");
   }
@@ -103,6 +109,12 @@ const std::string Redis::cacheMessage(const string topic, const string payload, 
 size_t Redis::getCacheSince(const string topicPattern, long long since, long long limit, bool isPattern, nlohmann::json& result) {
   std::vector<std::string> topics;
   result = nlohmann::json::array();
+
+  // If cache is not enabled simply return an empty set.
+  if (!Config.getBool("ENABLE_CACHE")) {
+    return 0;
+  }
+
   auto now = Util::getTimeSinceEpoch();
 
   // Look up all matching topics in redis we get a request for a topic pattern
@@ -190,6 +202,11 @@ std::pair<long long, long long> _splitIdAndSeq(const string cacheId) {
 size_t Redis::getCacheSinceId(const string topicPattern, const string sinceId, long long limit, bool isPattern, nlohmann::json& result) {
   result = nlohmann::json::array();
 
+  // If cache is not enabled simply return an empty set.
+  if (!Config.getBool("ENABLE_CACHE")) {
+    return 0;
+  }
+
   try {
     long long timestamp, seqNo;
     std::tie(timestamp, seqNo) = _splitIdAndSeq(sinceId);
@@ -223,21 +240,28 @@ size_t Redis::getCacheSinceId(const string topicPattern, const string sinceId, l
 
 // Delete expired items from the cache.
 size_t Redis::purgeExpiredCacheItems() {
-  std::vector<std::string> allTopics, cacheKeys;
+  std::vector<std::string> allTopics;
   std::vector<std::pair<std::string,std::string>> expiredItems;
   auto now = Util::getTimeSinceEpoch();
 
   _redisInstance->hkeys(REDIS_PREFIX("pub_count"), std::back_inserter(allTopics));
 
   for (auto topic : allTopics) {
+    std::vector<std::string> cacheKeys;
     _redisInstance->zrange(REDIS_CACHE_SCORE_PATH(topic), 0, -1, std::back_inserter(cacheKeys));
 
-    for (auto key : cacheKeys) {
-      auto p = _parseIdAndExpireAt(key);
+    if (!cacheKeys.empty()) {
+      for (auto key : cacheKeys) {
+        auto p = _parseIdAndExpireAt(key);
 
-      if (p.second < now) {
-        expiredItems.push_back({topic, key});
+        if (p.second < now) {
+          expiredItems.push_back({topic, key});
+        }
       }
+    } else {
+        // Remove topic from pub_count if it has no more cached
+        // elements left.
+       _redisInstance->hdel(REDIS_PREFIX("pub_count"), topic);
     }
   }
 

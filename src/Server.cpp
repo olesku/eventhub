@@ -129,14 +129,16 @@ void Server::start() {
   // Connect to redis.
   _redis.psubscribe("*", cb);
 
-  // Add cache purge cronjob.
-  _ev.addTimer(CACHE_PURGER_INTERVAL_MS, [&](TimerCtx *ctx) {
-    try {
-      LOG->trace("Running cache purger.");
-      auto purgedItems = _redis.purgeExpiredCacheItems();
-      LOG->trace("Purged {} items.", purgedItems);
-    } catch(...) {}
-  }, true);
+  // Add cache purge cronjob if cache functionality is enabled.
+  if (Config.getBool("ENABLE_CACHE")) {
+    _ev.addTimer(CACHE_PURGER_INTERVAL_MS, [&](TimerCtx *ctx) {
+      try {
+        LOG->debug("Running cache purger.");
+        auto purgedItems = _redis.purgeExpiredCacheItems();
+        LOG->debug("Purged {} items.", purgedItems);
+      } catch(...) {}
+    }, true);
+  }
 
   // Add redis publish latency sampler cronjob.
    _ev.addTimer(METRIC_DELAY_SAMPLE_RATE_MS, [&](TimerCtx *ctx) {

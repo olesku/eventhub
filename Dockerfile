@@ -9,7 +9,7 @@ RUN apk update && \
 
 RUN mkdir -p /usr/src/redis-plus-plus && cd /usr/src/redis-plus-plus && \
     git clone https://github.com/sewenew/redis-plus-plus.git . && \
-    git checkout tags/1.1.1 && \
+    git checkout tags/1.1.2 && \
     mkdir compile && cd compile && cmake -DCMAKE_BUILD_TYPE=Release .. && \
     make && make install
 

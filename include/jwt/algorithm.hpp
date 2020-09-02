@@ -34,21 +34,21 @@ SOFTWARE.
 #include <memory>
 #include <system_error>
 
-#include <openssl/bio.h>
 #include <openssl/bn.h>
-#include <openssl/buffer.h>
-#include <openssl/ecdsa.h>
+#include <openssl/bio.h>
+#include <openssl/pem.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
+#include <openssl/ecdsa.h>
+#include <openssl/buffer.h>
 #include <openssl/opensslv.h>
-#include <openssl/pem.h>
 
 #include "jwt/assertions.hpp"
-#include "jwt/base64.hpp"
-#include "jwt/config.hpp"
-#include "jwt/error_codes.hpp"
 #include "jwt/exceptions.hpp"
 #include "jwt/string_view.hpp"
+#include "jwt/error_codes.hpp"
+#include "jwt/base64.hpp"
+#include "jwt/config.hpp"
 
 namespace jwt {
 
@@ -57,12 +57,12 @@ using sign_result_t = std::pair<std::string, std::error_code>;
 /// The result type of verification function
 using verify_result_t = std::pair<bool, std::error_code>;
 /// The function pointer type for the signing function
-using sign_func_t = sign_result_t (*)(const jwt::string_view key,
-                                      const jwt::string_view data);
+using sign_func_t   = sign_result_t (*) (const jwt::string_view key,
+                                         const jwt::string_view data);
 /// The function pointer type for the verifying function
-using verify_func_t = verify_result_t (*)(const jwt::string_view key,
-                                          const jwt::string_view head,
-                                          const jwt::string_view jwt_sign);
+using verify_func_t = verify_result_t (*) (const jwt::string_view key,
+                                           const jwt::string_view head,
+                                           const jwt::string_view jwt_sign);
 
 namespace algo {
 
@@ -76,8 +76,10 @@ namespace algo {
 /**
  * HS256 algorithm.
  */
-struct HS256 {
-  const EVP_MD* operator()() noexcept {
+struct HS256
+{
+  const EVP_MD* operator()() noexcept
+  {
     return EVP_sha256();
   }
 };
@@ -85,8 +87,10 @@ struct HS256 {
 /**
  * HS384 algorithm.
  */
-struct HS384 {
-  const EVP_MD* operator()() noexcept {
+struct HS384
+{
+  const EVP_MD* operator()() noexcept
+  {
     return EVP_sha384();
   }
 };
@@ -94,8 +98,10 @@ struct HS384 {
 /**
  * HS512 algorithm.
  */
-struct HS512 {
-  const EVP_MD* operator()() noexcept {
+struct HS512
+{
+  const EVP_MD* operator()() noexcept
+  {
     return EVP_sha512();
   }
 };
@@ -103,8 +109,10 @@ struct HS512 {
 /**
  * NONE algorithm.
  */
-struct NONE {
-  void operator()() noexcept {
+struct NONE
+{
+  void operator()() noexcept
+  {
     return;
   }
 };
@@ -112,10 +120,12 @@ struct NONE {
 /**
  * RS256 algorithm.
  */
-struct RS256 {
+struct RS256
+{
   static const int type = EVP_PKEY_RSA;
 
-  const EVP_MD* operator()() noexcept {
+  const EVP_MD* operator()() noexcept
+  {
     return EVP_sha256();
   }
 };
@@ -123,10 +133,12 @@ struct RS256 {
 /**
  * RS384 algorithm.
  */
-struct RS384 {
+struct RS384
+{
   static const int type = EVP_PKEY_RSA;
 
-  const EVP_MD* operator()() noexcept {
+  const EVP_MD* operator()() noexcept
+  {
     return EVP_sha384();
   }
 };
@@ -134,10 +146,12 @@ struct RS384 {
 /**
  * RS512 algorithm.
  */
-struct RS512 {
+struct RS512
+{
   static const int type = EVP_PKEY_RSA;
 
-  const EVP_MD* operator()() noexcept {
+  const EVP_MD* operator()() noexcept
+  {
     return EVP_sha512();
   }
 };
@@ -145,10 +159,12 @@ struct RS512 {
 /**
  * ES256 algorithm.
  */
-struct ES256 {
+struct ES256
+{
   static const int type = EVP_PKEY_EC;
 
-  const EVP_MD* operator()() noexcept {
+  const EVP_MD* operator()() noexcept
+  {
     return EVP_sha256();
   }
 };
@@ -156,10 +172,12 @@ struct ES256 {
 /**
  * ES384 algorithm.
  */
-struct ES384 {
+struct ES384
+{
   static const int type = EVP_PKEY_EC;
 
-  const EVP_MD* operator()() noexcept {
+  const EVP_MD* operator()() noexcept
+  {
     return EVP_sha384();
   }
 };
@@ -167,20 +185,24 @@ struct ES384 {
 /**
  * ES512 algorithm.
  */
-struct ES512 {
+struct ES512
+{
   static const int type = EVP_PKEY_EC;
 
-  const EVP_MD* operator()() noexcept {
+  const EVP_MD* operator()() noexcept
+  {
     return EVP_sha512();
   }
 };
 
 } //END Namespace algo
 
+
 /**
  * JWT signing algorithm types.
  */
-enum class algorithm {
+enum class algorithm
+{
   NONE = 0,
   HS256,
   HS384,
@@ -195,38 +217,27 @@ enum class algorithm {
   TERM,
 };
 
+
 /**
  * Convert the algorithm enum class type to
  * its stringified form.
  */
-inline jwt::string_view alg_to_str(SCOPED_ENUM algorithm alg) noexcept {
+inline jwt::string_view alg_to_str(SCOPED_ENUM algorithm alg) noexcept
+{
   switch (alg) {
-    case algorithm::HS256:
-      return "HS256";
-    case algorithm::HS384:
-      return "HS384";
-    case algorithm::HS512:
-      return "HS512";
-    case algorithm::RS256:
-      return "RS256";
-    case algorithm::RS384:
-      return "RS384";
-    case algorithm::RS512:
-      return "RS512";
-    case algorithm::ES256:
-      return "ES256";
-    case algorithm::ES384:
-      return "ES384";
-    case algorithm::ES512:
-      return "ES512";
-    case algorithm::TERM:
-      return "TERM";
-    case algorithm::NONE:
-      return "NONE";
-    case algorithm::UNKN:
-      return "UNKN";
-    default:
-      assert(0 && "Unknown Algorithm");
+    case algorithm::HS256: return "HS256";
+    case algorithm::HS384: return "HS384";
+    case algorithm::HS512: return "HS512";
+    case algorithm::RS256: return "RS256";
+    case algorithm::RS384: return "RS384";
+    case algorithm::RS512: return "RS512";
+    case algorithm::ES256: return "ES256";
+    case algorithm::ES384: return "ES384";
+    case algorithm::ES512: return "ES512";
+    case algorithm::TERM:  return "TERM";
+    case algorithm::NONE:  return "none";
+    case algorithm::UNKN:  return "UNKN";
+    default:               assert (0 && "Unknown Algorithm");
   };
   return "UNKN";
   JWT_NOT_REACHED("Code not reached");
@@ -236,30 +247,20 @@ inline jwt::string_view alg_to_str(SCOPED_ENUM algorithm alg) noexcept {
  * Convert stringified algorithm to enum class.
  * The string comparison is case insesitive.
  */
-inline SCOPED_ENUM algorithm str_to_alg(const jwt::string_view alg) noexcept {
-  if (!alg.length())
-    return algorithm::NONE;
+inline SCOPED_ENUM algorithm str_to_alg(const jwt::string_view alg) noexcept
+{
+  if (!alg.length()) return algorithm::UNKN;
 
-  if (!strcasecmp(alg.data(), "none"))
-    return algorithm::NONE;
-  if (!strcasecmp(alg.data(), "hs256"))
-    return algorithm::HS256;
-  if (!strcasecmp(alg.data(), "hs384"))
-    return algorithm::HS384;
-  if (!strcasecmp(alg.data(), "hs512"))
-    return algorithm::HS512;
-  if (!strcasecmp(alg.data(), "rs256"))
-    return algorithm::RS256;
-  if (!strcasecmp(alg.data(), "rs384"))
-    return algorithm::RS384;
-  if (!strcasecmp(alg.data(), "rs512"))
-    return algorithm::RS512;
-  if (!strcasecmp(alg.data(), "es256"))
-    return algorithm::ES256;
-  if (!strcasecmp(alg.data(), "es384"))
-    return algorithm::ES384;
-  if (!strcasecmp(alg.data(), "es512"))
-    return algorithm::ES512;
+  if (!strcasecmp(alg.data(), "none"))  return algorithm::NONE;
+  if (!strcasecmp(alg.data(), "HS256")) return algorithm::HS256;
+  if (!strcasecmp(alg.data(), "HS384")) return algorithm::HS384;
+  if (!strcasecmp(alg.data(), "HS512")) return algorithm::HS512;
+  if (!strcasecmp(alg.data(), "RS256")) return algorithm::RS256;
+  if (!strcasecmp(alg.data(), "RS384")) return algorithm::RS384;
+  if (!strcasecmp(alg.data(), "RS512")) return algorithm::RS512;
+  if (!strcasecmp(alg.data(), "ES256")) return algorithm::ES256;
+  if (!strcasecmp(alg.data(), "ES384")) return algorithm::ES384;
+  if (!strcasecmp(alg.data(), "ES512")) return algorithm::ES512;
 
   return algorithm::UNKN;
 
@@ -268,54 +269,56 @@ inline SCOPED_ENUM algorithm str_to_alg(const jwt::string_view alg) noexcept {
 
 /**
  */
-inline void bio_deletor(BIO* ptr) {
-  if (ptr)
-    BIO_free_all(ptr);
+inline void bio_deletor(BIO* ptr)
+{
+  if (ptr) BIO_free_all(ptr);
 }
 
 /**
  */
-inline void evp_md_ctx_deletor(EVP_MD_CTX* ptr) {
-  if (ptr)
-    EVP_MD_CTX_destroy(ptr);
+inline void evp_md_ctx_deletor(EVP_MD_CTX* ptr)
+{
+  if (ptr) EVP_MD_CTX_destroy(ptr);
 }
 
 /**
  */
-inline void ec_key_deletor(EC_KEY* ptr) {
-  if (ptr)
-    EC_KEY_free(ptr);
+inline void ec_key_deletor(EC_KEY* ptr)
+{
+  if (ptr) EC_KEY_free(ptr);
 }
 
 /**
  */
-inline void ec_sig_deletor(ECDSA_SIG* ptr) {
-  if (ptr)
-    ECDSA_SIG_free(ptr);
+inline void ec_sig_deletor(ECDSA_SIG* ptr)
+{
+  if (ptr) ECDSA_SIG_free(ptr);
 }
 
 /**
  */
-inline void ev_pkey_deletor(EVP_PKEY* ptr) {
-  if (ptr)
-    EVP_PKEY_free(ptr);
+inline void ev_pkey_deletor(EVP_PKEY* ptr)
+{
+  if (ptr) EVP_PKEY_free(ptr);
 }
 
 /// Useful typedefs
 using bio_deletor_t = decltype(&bio_deletor);
-using BIO_uptr      = std::unique_ptr<BIO, bio_deletor_t>;
+using BIO_uptr = std::unique_ptr<BIO, bio_deletor_t>;
 
 using evp_mdctx_deletor_t = decltype(&evp_md_ctx_deletor);
-using EVP_MDCTX_uptr      = std::unique_ptr<EVP_MD_CTX, evp_mdctx_deletor_t>;
+using EVP_MDCTX_uptr = std::unique_ptr<EVP_MD_CTX, evp_mdctx_deletor_t>;
 
 using eckey_deletor_t = decltype(&ec_key_deletor);
-using EC_KEY_uptr     = std::unique_ptr<EC_KEY, eckey_deletor_t>;
+using EC_KEY_uptr = std::unique_ptr<EC_KEY, eckey_deletor_t>;
 
 using ecsig_deletor_t = decltype(&ec_sig_deletor);
-using EC_SIG_uptr     = std::unique_ptr<ECDSA_SIG, ecsig_deletor_t>;
+using EC_SIG_uptr = std::unique_ptr<ECDSA_SIG, ecsig_deletor_t>;
 
 using evpkey_deletor_t = decltype(&ev_pkey_deletor);
-using EC_PKEY_uptr     = std::unique_ptr<EVP_PKEY, evpkey_deletor_t>;
+using EC_PKEY_uptr = std::unique_ptr<EVP_PKEY, evpkey_deletor_t>;
+
+
 
 /**
  * OpenSSL HMAC based signature and verfication.
@@ -327,7 +330,8 @@ using EC_PKEY_uptr     = std::unique_ptr<EVP_PKEY, evpkey_deletor_t>;
  * details of that class as well.
  */
 template <typename Hasher>
-struct HMACSign {
+struct HMACSign
+{
   /// The type of Hashing algorithm
   using hasher_type = Hasher;
 
@@ -344,7 +348,8 @@ struct HMACSign {
    *    Any allocation failure will result in jwt::MemoryAllocationException
    *    being thrown.
    */
-  static sign_result_t sign(const jwt::string_view key, const jwt::string_view data) {
+  static sign_result_t sign(const jwt::string_view key, const jwt::string_view data)
+  {
     std::string sign;
     sign.resize(EVP_MAX_MD_SIZE);
     std::error_code ec{};
@@ -363,7 +368,7 @@ struct HMACSign {
     }
 
     sign.resize(len);
-    return {std::move(sign), ec};
+    return { std::move(sign), ec };
   }
 
   /**
@@ -380,7 +385,7 @@ struct HMACSign {
    *  Returns:
    *    verify_result_t
    *    verify_result_t::first set to true if verification succeeds.
-   *    false otherwise. 
+   *    false otherwise.
    *    verify_result_t::second set to relevant error if verification fails.
    *
    *  Exceptions:
@@ -389,6 +394,7 @@ struct HMACSign {
    */
   static verify_result_t
   verify(const jwt::string_view key, const jwt::string_view head, const jwt::string_view sign);
+
 };
 
 /**
@@ -399,44 +405,50 @@ struct HMACSign {
  * PEM based algorithms.
  *
  * The signing and verification APIs are
- * basically no-op except that they would 
+ * basically no-op except that they would
  * set the relevant error code.
  *
- * NOTE: error_code would be set in the case 
+ * NOTE: error_code would be set in the case
  * of usage of NONE algorithm.
  * Users of this API are expected to check for
  * the case explicitly.
  */
 template <>
-struct HMACSign<algo::NONE> {
+struct HMACSign<algo::NONE>
+{
   using hasher_type = algo::NONE;
 
   /**
    * Basically a no-op. Sets the error code to NoneAlgorithmUsed.
    */
-  static sign_result_t sign(const jwt::string_view key, const jwt::string_view data) {
+  static sign_result_t sign(const jwt::string_view key, const jwt::string_view data)
+  {
     (void)key;
     (void)data;
     std::error_code ec{};
     ec = AlgorithmErrc::NoneAlgorithmUsed;
 
-    return {std::string{}, ec};
+    return { std::string{}, ec };
   }
 
   /**
    * Basically a no-op. Sets the error code to NoneAlgorithmUsed.
    */
   static verify_result_t
-  verify(const jwt::string_view key, const jwt::string_view head, const jwt::string_view sign) {
+  verify(const jwt::string_view key, const jwt::string_view head, const jwt::string_view sign)
+  {
     (void)key;
     (void)head;
     (void)sign;
     std::error_code ec{};
     ec = AlgorithmErrc::NoneAlgorithmUsed;
 
-    return {true, ec};
+    return { true, ec };
   }
+
 };
+
+
 
 /**
  * OpenSSL PEM based signature and verfication.
@@ -448,7 +460,8 @@ struct HMACSign<algo::NONE> {
  * See that for more details.
  */
 template <typename Hasher>
-struct PEMSign {
+struct PEMSign
+{
 public:
   /// The type of Hashing algorithm
   using hasher_type = Hasher;
@@ -465,26 +478,25 @@ public:
    *  Any allocation failure would be thrown out as
    *  jwt::MemoryAllocationException.
    */
-  static sign_result_t sign(const jwt::string_view key, const jwt::string_view data) {
+  static sign_result_t sign(const jwt::string_view key, const jwt::string_view data)
+  {
     std::error_code ec{};
 
     std::string ii{data.data(), data.length()};
 
     EC_PKEY_uptr pkey{load_key(key, ec), ev_pkey_deletor};
-    if (ec)
-      return {std::string{}, ec};
+    if (ec) return { std::string{}, ec };
 
     //TODO: Use stack string here ?
     std::string sign = evp_digest(pkey.get(), data, ec);
 
-    if (ec)
-      return {std::string{}, ec};
+    if (ec) return { std::string{}, ec };
 
     if (Hasher::type == EVP_PKEY_EC) {
       sign = public_key_ser(pkey.get(), sign, ec);
     }
 
-    return {std::move(sign), ec};
+    return { std::move(sign), ec };
   }
 
   /**
@@ -493,6 +505,7 @@ public:
   verify(const jwt::string_view key, const jwt::string_view head, const jwt::string_view sign);
 
 private:
+
   /*!
    */
   static EVP_PKEY* load_key(const jwt::string_view key, std::error_code& ec);
@@ -512,18 +525,17 @@ private:
 
   /**
    */
-  static void ECDSA_SIG_get0(const ECDSA_SIG* sig, const BIGNUM** pr, const BIGNUM** ps) {
-    if (pr != nullptr)
-      *pr = sig->r;
-    if (ps != nullptr)
-      *ps = sig->s;
+  static void ECDSA_SIG_get0(const ECDSA_SIG* sig, const BIGNUM** pr, const BIGNUM** ps)
+  {
+    if (pr != nullptr) *pr = sig->r;
+    if (ps != nullptr) *ps = sig->s;
   };
 
   /**
    */
-  static int ECDSA_SIG_set0(ECDSA_SIG* sig, BIGNUM* r, BIGNUM* s) {
-    if (r == nullptr || s == nullptr)
-      return 0;
+  static int ECDSA_SIG_set0(ECDSA_SIG* sig, BIGNUM* r, BIGNUM* s)
+  {
+    if (r == nullptr || s == nullptr) return 0;
 
     BN_clear_free(sig->r);
     BN_clear_free(sig->s);
@@ -539,5 +551,6 @@ private:
 } // END namespace jwt
 
 #include "jwt/impl/algorithm.ipp"
+
 
 #endif
