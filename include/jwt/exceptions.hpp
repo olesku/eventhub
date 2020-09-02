@@ -32,18 +32,21 @@ namespace jwt {
  * Exception for allocation related failures in the 
  * OpenSSL C APIs.
  */
-class MemoryAllocationException final : public std::bad_alloc {
+class MemoryAllocationException final: public std::bad_alloc
+{
 public:
   /**
    * Construct MemoryAllocationException from a
    * string literal.
    */
   template <size_t N>
-  MemoryAllocationException(const char (&msg)[N])
-      : msg_(&msg[0]) {
+  MemoryAllocationException(const char(&msg)[N])
+    : msg_(&msg[0])
+  {
   }
 
-  virtual const char* what() const noexcept override {
+  virtual const char* what() const noexcept override
+  {
     return msg_;
   }
 
@@ -55,24 +58,28 @@ private:
  * Exception thrown for failures in OpenSSL
  * APIs while signing.
  */
-class SigningError : public std::runtime_error {
+class SigningError : public std::runtime_error
+{
 public:
   /**
    */
   SigningError(std::string msg)
-      : std::runtime_error(std::move(msg)) {
+    : std::runtime_error(std::move(msg))
+  {
   }
 };
 
 /**
  * Exception thrown for decode related errors.
  */
-class DecodeError : public std::runtime_error {
+class DecodeError: public std::runtime_error
+{
 public:
   /**
    */
   DecodeError(std::string msg)
-      : std::runtime_error(std::move(msg)) {
+    : std::runtime_error(std::move(msg))
+  {
   }
 };
 
@@ -80,12 +87,14 @@ public:
  * A derived decode error for signature format
  * error.
  */
-class SignatureFormatError final : public DecodeError {
+class SignatureFormatError final : public DecodeError
+{
 public:
   /**
    */
   SignatureFormatError(std::string msg)
-      : DecodeError(std::move(msg)) {
+    : DecodeError(std::move(msg))
+  {
   }
 };
 
@@ -93,26 +102,31 @@ public:
  * A derived decode error for Key argument not present
  * error. Only thrown if the algorithm set is not NONE.
  */
-class KeyNotPresentError final : public DecodeError {
+class KeyNotPresentError final : public DecodeError
+{
 public:
   /**
    */
   KeyNotPresentError(std::string msg)
-      : DecodeError(std::move(msg)) {
+    : DecodeError(std::move(msg))
+  {
   }
 };
+
 
 /**
  * Base class exception for all kinds of verification errors.
  * Verification errors are thrown only when the verify
  * decode parameter is set to true.
  */
-class VerificationError : public std::runtime_error {
+class VerificationError : public std::runtime_error
+{
 public:
   /**
    */
   VerificationError(std::string msg)
-      : std::runtime_error(std::move(msg)) {
+    : std::runtime_error(std::move(msg))
+  {
   }
 };
 
@@ -121,12 +135,14 @@ public:
  * Thrown when the algorithm decoded in the header
  * is incorrect.
  */
-class InvalidAlgorithmError final : public VerificationError {
+class InvalidAlgorithmError final: public VerificationError
+{
 public:
   /**
    */
   InvalidAlgorithmError(std::string msg)
-      : VerificationError(std::move(msg)) {
+    : VerificationError(std::move(msg))
+  {
   }
 };
 
@@ -135,12 +151,14 @@ public:
  * Thrown when the token is expired at the
  * time of decoding.
  */
-class TokenExpiredError final : public VerificationError {
+class TokenExpiredError final: public VerificationError
+{
 public:
   /**
    */
   TokenExpiredError(std::string msg)
-      : VerificationError(std::move(msg)) {
+    : VerificationError(std::move(msg))
+  {
   }
 };
 
@@ -149,12 +167,14 @@ public:
  * Thrown when the issuer claim does not match
  * with the one provided as part of decode argument.
  */
-class InvalidIssuerError final : public VerificationError {
+class InvalidIssuerError final: public VerificationError
+{
 public:
   /**
    */
   InvalidIssuerError(std::string msg)
-      : VerificationError(std::move(msg)) {
+    : VerificationError(std::move(msg))
+  {
   }
 };
 
@@ -163,12 +183,14 @@ public:
  * Thrown when the audience claim does not match
  * with the one provided as part of decode argument.
  */
-class InvalidAudienceError final : public VerificationError {
+class InvalidAudienceError final: public VerificationError
+{
 public:
   /**
    */
   InvalidAudienceError(std::string msg)
-      : VerificationError(std::move(msg)) {
+    : VerificationError(std::move(msg))
+  {
   }
 };
 
@@ -177,12 +199,14 @@ public:
  * Thrown when the subject claim does not match
  * with the one provided as part of decode argument.
  */
-class InvalidSubjectError final : public VerificationError {
+class InvalidSubjectError final: public VerificationError
+{
 public:
   /**
    */
   InvalidSubjectError(std::string msg)
-      : VerificationError(std::move(msg)) {
+    : VerificationError(std::move(msg))
+  {
   }
 };
 
@@ -191,12 +215,14 @@ public:
  * Thrown when verify_iat parameter is passed to
  * decode and IAT is not present.
  */
-class InvalidIATError final : public VerificationError {
+class InvalidIATError final: public VerificationError
+{
 public:
   /**
    */
   InvalidIATError(std::string msg)
-      : VerificationError(std::move(msg)) {
+    : VerificationError(std::move(msg))
+  {
   }
 };
 
@@ -205,12 +231,14 @@ public:
  * Thrown when validate_jti is asked for
  * in decode and jti claim is not present.
  */
-class InvalidJTIError final : public VerificationError {
+class InvalidJTIError final: public VerificationError
+{
 public:
   /**
    */
   InvalidJTIError(std::string msg)
-      : VerificationError(std::move(msg)) {
+    : VerificationError(std::move(msg))
+  {
   }
 };
 
@@ -219,12 +247,14 @@ public:
  * Thrown when the token is decoded at a time before
  * as specified in the `nbf` claim.
  */
-class ImmatureSignatureError final : public VerificationError {
+class ImmatureSignatureError final: public VerificationError
+{
 public:
   /**
    */
   ImmatureSignatureError(std::string msg)
-      : VerificationError(std::move(msg)) {
+    : VerificationError(std::move(msg))
+  {
   }
 };
 
@@ -232,12 +262,14 @@ public:
  * Derived from VerificationError.
  * Thrown when the signature does not match in the verification process.
  */
-class InvalidSignatureError final : public VerificationError {
+class InvalidSignatureError final: public VerificationError
+{
 public:
   /**
    */
   InvalidSignatureError(std::string msg)
-      : VerificationError(std::move(msg)) {
+    : VerificationError(std::move(msg))
+  {
   }
 };
 
@@ -246,12 +278,14 @@ public:
  * Thrown when there type expectation mismatch
  * while verifying the values of registered claim names.
  */
-class TypeConversionError final : public VerificationError {
+class TypeConversionError final: public VerificationError
+{
 public:
   /**
    */
   TypeConversionError(std::string msg)
-      : VerificationError(std::move(msg)) {
+    : VerificationError(std::move(msg))
+  {
   }
 };
 

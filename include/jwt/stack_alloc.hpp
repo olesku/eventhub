@@ -30,35 +30,40 @@
  * https://howardhinnant.github.io/short_alloc.h
  */
 
-#include <cassert>
 #include <cstddef>
+#include <cassert>
 
 namespace jwt {
 
 /*
  */
 template <
-    /// Size of the stack allocated byte buffer.
-    size_t N,
-    /// The alignment required for the buffer.
-    size_t alignment = alignof(std::max_align_t)>
-class Arena {
+  /// Size of the stack allocated byte buffer.
+  size_t N, 
+  /// The alignment required for the buffer.
+  size_t alignment = alignof(std::max_align_t)
+>
+class Arena
+{
 public: // 'tors
   Arena() noexcept
-      : ptr_(buf_) {
-    static_assert(alignment <= alignof(std::max_align_t),
-                  "Alignment chosen is more than the maximum supported alignment");
+    : ptr_(buf_)
+  {
+    static_assert (alignment <= alignof(std::max_align_t),
+        "Alignment chosen is more than the maximum supported alignment");
   }
 
   /// Non copyable and assignable
   Arena(const Arena&) = delete;
   Arena& operator=(const Arena&) = delete;
 
-  ~Arena() {
-    ptr_ = nullptr;
+  ~Arena() 
+  { 
+    ptr_ = nullptr; 
   }
 
 public: // Public APIs
+
   /*
    * Reserves space within the buffer of size atleast 'n'
    * bytes.
@@ -70,9 +75,10 @@ public: // Public APIs
    *    (+ alignment padding if applicable)
    */
   template <
-      /// The requested alignment for this allocation.
-      /// Must be less than or equal to the 'alignment'.
-      size_t requested_alignment>
+    /// The requested alignment for this allocation.
+    /// Must be less than or equal to the 'alignment'.
+    size_t requested_alignment
+  >
   char* allocate(size_t n) noexcept;
 
   /*
@@ -83,7 +89,8 @@ public: // Public APIs
   /*
    * The size of the internal storage buffer.
    */
-  constexpr static size_t size() noexcept {
+  constexpr static size_t size() noexcept
+  {
     return N;
   }
 
@@ -91,16 +98,19 @@ public: // Public APIs
    * Returns number of remaining bytes within the storage buffer
    * that can be used for further allocation requests.
    */
-  size_t used() const noexcept {
+  size_t used() const noexcept
+  {
     return static_cast<size_t>(ptr_ - buf_);
   }
 
 private: // Private member functions
+
   /*
    * A check to determine if the pointer 'p'
    * points to a region within storage.
    */
-  bool pointer_in_storage(char* p) const noexcept {
+  bool pointer_in_storage(char* p) const noexcept
+  {
     return (buf_ <= p) && (p <= (buf_ + N));
   }
 
@@ -108,7 +118,8 @@ private: // Private member functions
    * Rounds up the number to the next closest number
    * as per the alignment.
    */
-  constexpr static size_t align_up(size_t n) noexcept {
+  constexpr static size_t align_up(size_t n) noexcept
+  {
     return (n + (alignment - 1)) & ~(alignment - 1);
   }
 
@@ -120,26 +131,31 @@ private: // data members
   char* ptr_ = nullptr;
 };
 
+
+
 /*
  */
 template <
-    /// The allocator for type T
-    typename T,
-    /// Number of bytes for the arena
-    size_t N,
-    /// Alignment of the arena
-    size_t align = alignof(std::max_align_t)>
-class stack_alloc {
+  /// The allocator for type T
+  typename T,
+  /// Number of bytes for the arena
+  size_t N,
+  /// Alignment of the arena
+  size_t align = alignof(std::max_align_t)
+>
+class stack_alloc
+{
 public: // typedefs
   using value_type = T;
   using arena_type = Arena<N, align>;
 
   static auto constexpr alignment = align;
-  static auto constexpr size      = N;
+  static auto constexpr size = N;
 
 public: // 'tors
   stack_alloc(arena_type& a)
-      : arena_(a) {
+    : arena_(a)
+  {
   }
 
   stack_alloc(const stack_alloc&) = default;
@@ -147,7 +163,8 @@ public: // 'tors
 
   template <typename U>
   stack_alloc(const stack_alloc<U, N, alignment>& other)
-      : arena_(other.arena_) {
+    : arena_(other.arena_)
+  {
   }
 
   template <typename U>
@@ -156,6 +173,7 @@ public: // 'tors
   };
 
 public: // Exposed APIs
+
   /*
    * Allocate memory of 'n' bytes for object
    * of type 'T'
@@ -169,6 +187,7 @@ public: // Exposed APIs
   void deallocate(T* p, size_t n) noexcept;
 
 private: // Private APIs
+
 private: // Private data members
   /// The arena
   arena_type& arena_;

@@ -23,27 +23,26 @@ SOFTWARE.
 #ifndef JWT_HPP
 #define JWT_HPP
 
-#include <array>
-#include <cassert>
-#include <chrono>
-#include <cstring>
-#include <ostream>
 #include <set>
+#include <array>
 #include <string>
+#include <chrono>
+#include <ostream>
+#include <cassert>
+#include <cstring>
 
-#include "jwt/algorithm.hpp"
 #include "jwt/assertions.hpp"
 #include "jwt/base64.hpp"
 #include "jwt/config.hpp"
+#include "jwt/algorithm.hpp"
+#include "jwt/string_view.hpp"
+#include "jwt/parameters.hpp"
 #include "jwt/exceptions.hpp"
 #include "jwt/json/json.hpp"
-#include "jwt/parameters.hpp"
-#include "jwt/string_view.hpp"
-
 // For convenience
-using json_t        = nlohmann::json;
+using json_t = nlohmann::json;
 using system_time_t = std::chrono::time_point<std::chrono::system_clock>;
-namespace json_ns   = nlohmann;
+namespace json_ns = nlohmann;
 
 namespace jwt {
 
@@ -51,7 +50,8 @@ namespace jwt {
  * The type of header.
  * NOTE: Only JWT is supported currently.
  */
-enum class type {
+enum class type
+{
   NONE = 0,
   JWT  = 1,
 };
@@ -60,37 +60,38 @@ enum class type {
  * Converts a string representing a value of type
  * `enum class type` into its actual type.
  */
-inline enum type str_to_type(const jwt::string_view typ) noexcept {
-  assert(typ.length() && "Empty type string");
+inline enum type str_to_type(const jwt::string_view typ) noexcept
+{
+  assert (typ.length() && "Empty type string");
 
-  if (!strcasecmp(typ.data(), "jwt"))
-    return type::JWT;
-  else if (!strcasecmp(typ.data(), "none"))
-    return type::NONE;
+  if (!strcasecmp(typ.data(), "jwt")) return type::JWT;
+  else if(!strcasecmp(typ.data(), "none")) return type::NONE;
 
   JWT_NOT_REACHED("Code not reached");
   return type::NONE;
 }
 
+
 /**
  * Converts an instance of type `enum class type`
  * to its string equivalent.
  */
-inline jwt::string_view type_to_str(SCOPED_ENUM type typ) {
+inline jwt::string_view type_to_str(SCOPED_ENUM type typ)
+{
   switch (typ) {
-    case type::JWT:
-      return "JWT";
-    default:
-      assert(0 && "Unknown type");
+    case type::JWT: return "JWT";
+    default:        assert (0 && "Unknown type");
   };
 
   JWT_NOT_REACHED("Code not reached");
 }
 
+
 /**
  * Registered claim names.
  */
-enum class registered_claims {
+enum class registered_claims
+{
   // Expiration Time claim
   expiration = 0,
   // Not Before Time claim
@@ -107,61 +108,61 @@ enum class registered_claims {
   jti,
 };
 
+
 /**
  * Converts an instance of type `enum class registered_claims`
  * to its string equivalent representation.
  */
-inline jwt::string_view reg_claims_to_str(SCOPED_ENUM registered_claims claim) noexcept {
+inline jwt::string_view reg_claims_to_str(SCOPED_ENUM registered_claims claim) noexcept
+{
   switch (claim) {
-    case registered_claims::expiration:
-      return "exp";
-    case registered_claims::not_before:
-      return "nbf";
-    case registered_claims::issuer:
-      return "iss";
-    case registered_claims::audience:
-      return "aud";
-    case registered_claims::issued_at:
-      return "iat";
-    case registered_claims::subject:
-      return "sub";
-    case registered_claims::jti:
-      return "jti";
-    default:
-      assert(0 && "Not a registered claim");
+    case registered_claims::expiration: return "exp";
+    case registered_claims::not_before: return "nbf";
+    case registered_claims::issuer:     return "iss";
+    case registered_claims::audience:   return "aud";
+    case registered_claims::issued_at:  return "iat";
+    case registered_claims::subject:    return "sub";
+    case registered_claims::jti:        return "jti";
+    default:                            assert (0 && "Not a registered claim");
   };
   JWT_NOT_REACHED("Code not reached");
   return "";
 }
 
 /**
- * A helper class that enables reuse of the 
+ * A helper class that enables reuse of the
  * std::set container with custom comparator.
  */
-struct jwt_set {
+struct jwt_set
+{
   /**
    * Transparent comparator.
    * @note: C++14 only.
    */
-  struct case_compare {
+  struct case_compare
+  {
     using is_transparent = std::true_type;
 
-    bool operator()(const std::string& lhs, const std::string& rhs) const {
+    bool operator()(const std::string& lhs, const std::string& rhs) const
+    {
       int ret = strcmp(lhs.c_str(), rhs.c_str());
       return (ret < 0);
     }
 
-    bool operator()(const jwt::string_view lhs, const jwt::string_view rhs) const {
+    bool operator()(const jwt::string_view lhs, const jwt::string_view rhs) const
+    {
       int ret = strcmp(lhs.data(), rhs.data());
       return (ret < 0);
     }
 
-    bool operator()(const std::string& lhs, const jwt::string_view rhs) const {
+    bool operator()(const std::string& lhs, const jwt::string_view rhs) const
+    {
       int ret = strcmp(lhs.data(), rhs.data());
       return (ret < 0);
     }
 
-    bool operator()(const jwt::string_view lhs, const std::string& rhs) const {
+    bool operator()(const jwt::string_view lhs, const std::string& rhs) const
+    {
       int ret = strcmp(lhs.data(), rhs.data());
       return (ret < 0);
     }
@@ -174,16 +175,18 @@ struct jwt_set {
 // default arguments
 // See: https://stackoverflow.com/a/23336823/434233
 template <typename T, typename = typename std::enable_if<
-                          detail::meta::has_create_json_obj_member<T>{}>::type>
-std::string to_json_str(const T& obj, bool pretty = false);
+            detail::meta::has_create_json_obj_member<T>{}>::type>
+std::string to_json_str(const T& obj, bool pretty=false);
 
 template <typename T>
-std::ostream& write(std::ostream& os, const T& obj, bool pretty = false);
+std::ostream& write(std::ostream& os, const T& obj, bool pretty=false);
 
 template <typename T,
           typename = typename std::enable_if<
-              detail::meta::has_create_json_obj_member<T>{}>::type>
-std::ostream& operator<<(std::ostream& os, const T& obj);
+                      detail::meta::has_create_json_obj_member<T>{}>::type
+         >
+std::ostream& operator<< (std::ostream& os, const T& obj);
+
 
 /**
  * A helper class providing the necessary functionalities
@@ -196,7 +199,8 @@ std::ostream& operator<<(std::ostream& os, const T& obj);
  * @note: The JWT component classes inherits from this
  *        class to get the above functionalities.
  */
-struct write_interface {
+struct write_interface
+{
   /**
    * Converts an object of type `T` to its JSON
    * string format.
@@ -214,7 +218,7 @@ struct write_interface {
   /**
    * Writes the object of instance `T` in JSON format
    * to standard output stream.
-   * The requirements on type `T` is same as that for 
+   * The requirements on type `T` is same as that for
    * `to_json_str` API.
    */
   template <typename T>
@@ -233,7 +237,7 @@ struct write_interface {
    * format.
    */
   template <typename T, typename Cond>
-  friend std::ostream& operator<<(std::ostream& os, const T& obj);
+  friend std::ostream& operator<< (std::ostream& os, const T& obj);
 };
 
 /**
@@ -242,16 +246,18 @@ struct write_interface {
  * json string.
  *
  * @note: The JWT component classes inherits from this
- * class to get the base64 related encoding and decoding 
+ * class to get the base64 related encoding and decoding
  * functionalities.
  */
 template <typename Derived>
-struct base64_enc_dec {
+struct base64_enc_dec
+{
   /**
    * Does URL safe base64 encoding
    */
-  std::string base64_encode(bool with_pretty = false) const {
-    std::string jstr    = to_json_str(*static_cast<const Derived*>(this), with_pretty);
+  std::string base64_encode(bool with_pretty = false) const
+  {
+    std::string jstr = to_json_str(*static_cast<const Derived*>(this), with_pretty);
     std::string b64_str = jwt::base64_encode(jstr.c_str(), jstr.length());
     // Do the URI safe encoding
     auto new_len = jwt::base64_uri_encode(&b64_str[0], b64_str.length());
@@ -263,20 +269,26 @@ struct base64_enc_dec {
   /**
    * Does URL safe base64 decoding.
    */
-  std::string base64_decode(const jwt::string_view encoded_str) {
+  std::string base64_decode(const jwt::string_view encoded_str)
+  {
     return jwt::base64_uri_decode(encoded_str.data(), encoded_str.length());
   }
+
 };
+
 
 /**
  * Component class representing JWT Header.
  */
-struct jwt_header : write_interface, base64_enc_dec<jwt_header> {
+struct jwt_header: write_interface
+                 , base64_enc_dec<jwt_header>
+{
 public: // 'tors
   /*
    * Default constructor.
    */
-  jwt_header() {
+  jwt_header()
+  {
     payload_["alg"] = "none";
     payload_["typ"] = "JWT";
   }
@@ -286,15 +298,18 @@ public: // 'tors
    * and JWT type.
    */
   jwt_header(SCOPED_ENUM algorithm alg, SCOPED_ENUM type typ = type::JWT)
-      : alg_(alg), typ_(typ) {
-    payload_["typ"] = type_to_str(typ_).to_string();
-    payload_["alg"] = alg_to_str(alg_).to_string();
+    : alg_(alg)
+    , typ_(typ)
+  {
+    payload_["typ"] = std::string(type_to_str(typ_));
+    payload_["alg"] = std::string(alg_to_str(alg_));
   }
 
   /**
    * Construct the header from an encoded string.
    */
-  jwt_header(const jwt::string_view enc_str) {
+  jwt_header(const jwt::string_view enc_str)
+  {
     this->decode(enc_str);
   }
 
@@ -312,23 +327,26 @@ public: // Exposed APIs
   /**
    * Set the algorithm.
    */
-  void algo(SCOPED_ENUM algorithm alg) {
-    alg_            = alg;
-    payload_["alg"] = alg_to_str(alg_).to_string();
+  void algo(SCOPED_ENUM algorithm alg)
+  {
+    alg_ = alg;
+    payload_["alg"] = std::string(alg_to_str(alg_));
   }
 
   /**
    * Set the algorithm. String overload.
    */
-  void algo(const jwt::string_view sv) {
-    alg_            = str_to_alg(sv.data());
-    payload_["alg"] = alg_to_str(alg_).to_string();
+  void algo(const jwt::string_view sv)
+  {
+    alg_ = str_to_alg(sv.data());
+    payload_["alg"] = std::string(alg_to_str(alg_));
   }
 
   /**
    * Get the algorithm.
    */
-  SCOPED_ENUM algorithm algo() const noexcept {
+  SCOPED_ENUM algorithm algo() const noexcept
+  {
     return alg_;
   }
 
@@ -339,23 +357,26 @@ public: // Exposed APIs
   /**
    * Set the JWT type.
    */
-  void typ(SCOPED_ENUM type typ) noexcept {
-    typ_            = typ;
-    payload_["typ"] = type_to_str(typ_).to_string();
+  void typ(SCOPED_ENUM type typ) noexcept
+  {
+    typ_ = typ;
+    payload_["typ"] = std::string(type_to_str(typ_));
   }
 
   /**
    * Set the JWT type header. String overload.
    */
-  void typ(const jwt::string_view sv) {
-    typ_            = str_to_type(sv.data());
-    payload_["typ"] = type_to_str(typ_).to_string();
+  void typ(const jwt::string_view sv)
+  {
+    typ_ = str_to_type(sv.data());
+    payload_["typ"] = std::string(type_to_str(typ_));
   }
 
   /**
    * Get the JWT type.
    */
-  SCOPED_ENUM type typ() const noexcept {
+  SCOPED_ENUM type typ() const noexcept
+  {
     return typ_;
   }
 
@@ -363,9 +384,12 @@ public: // Exposed APIs
    * Add a header to the JWT header.
    */
   template <typename T,
-            typename = std::enable_if_t<
-                !std::is_same<jwt::string_view, std::decay_t<T>>::value>>
-  bool add_header(const jwt::string_view hname, T&& hvalue, bool overwrite = false) {
+            typename=std::enable_if_t<
+                      !std::is_same<jwt::string_view, std::decay_t<T>>::value
+                     >
+           >
+  bool add_header(const jwt::string_view hname, T&& hvalue, bool overwrite=false)
+  {
     auto itr = headers_.find(hname);
     if (itr != std::end(headers_) && !overwrite) {
       return false;
@@ -381,7 +405,8 @@ public: // Exposed APIs
    * Add a header to the JWT header.
    * Overload which takes the header value as `jwt::string_view`
    */
-  bool add_header(const jwt::string_view cname, const jwt::string_view cvalue, bool overwrite = false) {
+  bool add_header(const jwt::string_view cname, const jwt::string_view cvalue, bool overwrite=false)
+  {
     return add_header(cname,
                       std::string{cvalue.data(), cvalue.length()},
                       overwrite);
@@ -392,7 +417,8 @@ public: // Exposed APIs
    * NOTE: Special handling for removing type field
    * from header. The typ_ is set to NONE when removed.
    */
-  bool remove_header(const jwt::string_view hname) {
+  bool remove_header(const jwt::string_view hname)
+  {
     if (!strcasecmp(hname.data(), "typ")) {
       typ_ = type::NONE;
       payload_.erase(hname.data());
@@ -413,18 +439,20 @@ public: // Exposed APIs
    * Checks if header with the given name
    * is present or not.
    */
-  bool has_header(const jwt::string_view hname) {
-    if (!strcasecmp(hname.data(), "typ"))
-      return typ_ != type::NONE;
+  bool has_header(const jwt::string_view hname)
+  {
+    if (!strcasecmp(hname.data(), "typ")) return typ_ != type::NONE;
     return headers_.find(hname) != std::end(headers_);
   }
+
 
   /**
    * Get the URL safe base64 encoded string
    * of the header.
    */
   //TODO: error code ?
-  std::string encode(bool pprint = false) {
+  std::string encode(bool pprint = false)
+  {
     return base64_encode(pprint);
   }
 
@@ -455,7 +483,8 @@ public: // Exposed APIs
    * @note: Presence of this member function is a requirement
    * for some interfaces (Eg: `write_interface`).
    */
-  const json_t& create_json_obj() const {
+  const json_t& create_json_obj() const
+  {
     return payload_;
   }
 
@@ -464,7 +493,7 @@ private: // Data members
   SCOPED_ENUM algorithm alg_ = algorithm::NONE;
 
   /// The type of header
-  SCOPED_ENUM type typ_ = type::JWT;
+  SCOPED_ENUM type      typ_ = type::JWT;
 
   // The JSON payload object
   json_t payload_;
@@ -473,12 +502,15 @@ private: // Data members
   jwt_set::header_claim_set_t headers_;
 };
 
+
 /**
  * Component class representing JWT Payload.
  * The payload is nothing but a set of claims
  * which are directly written into a JSON object.
  */
-struct jwt_payload : write_interface, base64_enc_dec<jwt_payload> {
+struct jwt_payload: write_interface
+                  , base64_enc_dec<jwt_payload>
+{
 public: // 'tors
   /**
    * Default constructor.
@@ -489,7 +521,8 @@ public: // 'tors
    * Construct the payload from an encoded string.
    * TODO: Throw an exception in case of error.
    */
-  jwt_payload(const jwt::string_view enc_str) {
+  jwt_payload(const jwt::string_view enc_str)
+  {
     this->decode(enc_str);
   }
 
@@ -514,10 +547,13 @@ public: // Exposed APIs
    * c) can be written to `json_t` object.
    */
   template <typename T,
-            typename = typename std::enable_if_t<
-                !std::is_same<system_time_t, std::decay_t<T>>::value ||
-                !std::is_same<jwt::string_view, std::decay_t<T>>::value>>
-  bool add_claim(const jwt::string_view cname, T&& cvalue, bool overwrite = false) {
+            typename=typename std::enable_if_t<
+              !std::is_same<system_time_t, std::decay_t<T>>::value ||
+              !std::is_same<jwt::string_view, std::decay_t<T>>::value
+              >
+           >
+  bool add_claim(const jwt::string_view cname, T&& cvalue, bool overwrite=false)
+  {
     // Duplicate claim names not allowed
     // if overwrite flag is set to true.
     auto itr = claim_names_.find(cname);
@@ -538,7 +574,8 @@ public: // Exposed APIs
    * Adds a claim.
    * This overload takes string claim value.
    */
-  bool add_claim(const jwt::string_view cname, const jwt::string_view cvalue, bool overwrite = false) {
+  bool add_claim(const jwt::string_view cname, const jwt::string_view cvalue, bool overwrite=false)
+  {
     return add_claim(cname, std::string{cvalue.data(), cvalue.length()}, overwrite);
   }
 
@@ -547,13 +584,14 @@ public: // Exposed APIs
    * This overload takes system_time_t claim value.
    * @note: Useful for providing timestamp as the claim value.
    */
-  bool add_claim(const jwt::string_view cname, system_time_t tp, bool overwrite = false) {
+  bool add_claim(const jwt::string_view cname, system_time_t tp, bool overwrite=false)
+  {
     return add_claim(
         cname,
         std::chrono::duration_cast<
-            std::chrono::seconds>(tp.time_since_epoch())
-            .count(),
-        overwrite);
+          std::chrono::seconds>(tp.time_since_epoch()).count(),
+        overwrite
+        );
   }
 
   /**
@@ -561,14 +599,17 @@ public: // Exposed APIs
    * This overload takes `registered_claims` as the claim name.
    */
   template <typename T,
-            typename = std::enable_if_t<
-                !std::is_same<std::decay_t<T>, system_time_t>::value ||
-                !std::is_same<std::decay_t<T>, jwt::string_view>::value>>
-  bool add_claim(SCOPED_ENUM registered_claims cname, T&& cvalue, bool overwrite = false) {
+            typename=std::enable_if_t<
+                      !std::is_same<std::decay_t<T>, system_time_t>::value ||
+                      !std::is_same<std::decay_t<T>, jwt::string_view>::value
+                     >>
+  bool add_claim(SCOPED_ENUM registered_claims cname, T&& cvalue, bool overwrite=false)
+  {
     return add_claim(
         reg_claims_to_str(cname),
         std::forward<T>(cvalue),
-        overwrite);
+        overwrite
+        );
   }
 
   /**
@@ -576,13 +617,14 @@ public: // Exposed APIs
    * This overload takes `registered_claims` as the claim name and
    * `system_time_t` as the claim value type.
    */
-  bool add_claim(SCOPED_ENUM registered_claims cname, system_time_t tp, bool overwrite = false) {
+  bool add_claim(SCOPED_ENUM registered_claims cname, system_time_t tp, bool overwrite=false)
+  {
     return add_claim(
         reg_claims_to_str(cname),
         std::chrono::duration_cast<
-            std::chrono::seconds>(tp.time_since_epoch())
-            .count(),
-        overwrite);
+          std::chrono::seconds>(tp.time_since_epoch()).count(),
+        overwrite
+        );
   }
 
   /**
@@ -590,11 +632,13 @@ public: // Exposed APIs
    * This overload takes `registered_claims` as the claim name and
    * `jwt::string_view` as the claim value type.
    */
-  bool add_claim(SCOPED_ENUM registered_claims cname, jwt::string_view cvalue, bool overwrite = false) {
+  bool add_claim(SCOPED_ENUM registered_claims cname, jwt::string_view cvalue, bool overwrite=false)
+  {
     return add_claim(
-        reg_claims_to_str(cname),
-        std::string{cvalue.data(), cvalue.length()},
-        overwrite);
+          reg_claims_to_str(cname),
+          std::string{cvalue.data(), cvalue.length()},
+          overwrite
+        );
   }
 
   /**
@@ -606,13 +650,14 @@ public: // Exposed APIs
    * JSON library will throw an exception.
    */
   template <typename T>
-  decltype(auto) get_claim_value(const jwt::string_view cname) const {
+  decltype(auto) get_claim_value(const jwt::string_view cname) const
+  {
     return payload_[cname.data()].get<T>();
   }
 
   /**
    * Gets the claim value provided the claim value name.
-   * This overload takes the claim name as an instance of 
+   * This overload takes the claim name as an instance of
    * type `registered_claims`.
    *
    * The template type `T` is what the user expects the value
@@ -620,17 +665,18 @@ public: // Exposed APIs
    * JSON library will throw an exception.
    */
   template <typename T>
-  decltype(auto) get_claim_value(SCOPED_ENUM registered_claims cname) const {
+  decltype(auto) get_claim_value(SCOPED_ENUM registered_claims cname) const
+  {
     return get_claim_value<T>(reg_claims_to_str(cname));
   }
 
   /**
    * Remove a claim identified by a claim name.
    */
-  bool remove_claim(const jwt::string_view cname) {
+  bool remove_claim(const jwt::string_view cname)
+  {
     auto itr = claim_names_.find(cname);
-    if (itr == claim_names_.end())
-      return false;
+    if (itr == claim_names_.end()) return false;
 
     claim_names_.erase(itr);
     payload_.erase(cname.data());
@@ -640,32 +686,35 @@ public: // Exposed APIs
 
   /**
    * Remove a claim.
-   * Overload which takes the claim name as an instance 
+   * Overload which takes the claim name as an instance
    * of `registered_claims` type.
    */
-  bool remove_claim(SCOPED_ENUM registered_claims cname) {
+  bool remove_claim(SCOPED_ENUM registered_claims cname)
+  {
     return remove_claim(reg_claims_to_str(cname));
   }
 
   /**
-   * Checks whether a claim is present in the payload 
+   * Checks whether a claim is present in the payload
    * or not.
    * @note: Claim name is case sensitive for this API.
    */
   //TODO: Not all libc++ version agrees with this
   //because count() is not made const for is_transparent
   //based overload
-  bool has_claim(const jwt::string_view cname) const noexcept {
+  bool has_claim(const jwt::string_view cname) const noexcept
+  {
     return claim_names_.find(cname) != std::end(claim_names_);
   }
 
   /**
-   * Checks whether a claim is present in the payload or 
+   * Checks whether a claim is present in the payload or
    * not.
    * Overload which takes the claim name as an instance
    * of `registered_claims` type.
    */
-  bool has_claim(SCOPED_ENUM registered_claims cname) const noexcept {
+  bool has_claim(SCOPED_ENUM registered_claims cname) const noexcept
+  {
     return has_claim(reg_claims_to_str(cname));
   }
 
@@ -674,22 +723,23 @@ public: // Exposed APIs
    * value in the payload.
    */
   template <typename T>
-  bool has_claim_with_value(const jwt::string_view cname, T&& cvalue) const {
+  bool has_claim_with_value(const jwt::string_view cname, T&& cvalue) const
+  {
     auto itr = claim_names_.find(cname);
-    if (itr == claim_names_.end())
-      return false;
+    if (itr == claim_names_.end()) return false;
 
     return (cvalue == payload_[cname.data()]);
   }
 
   /**
-   * Checks whether there is claim with a specific 
+   * Checks whether there is claim with a specific
    * value in the payload.
    * Overload which takes the claim name as an instance of
    * type `registered_claims`.
    */
   template <typename T>
-  bool has_claim_with_value(const SCOPED_ENUM registered_claims cname, T&& value) const {
+  bool has_claim_with_value(const SCOPED_ENUM registered_claims cname, T&& value) const
+  {
     return has_claim_with_value(reg_claims_to_str(cname), std::forward<T>(value));
   }
 
@@ -697,7 +747,8 @@ public: // Exposed APIs
    * Encodes the payload as URL safe Base64 encoded
    * string.
    */
-  std::string encode(bool pprint = false) {
+  std::string encode(bool pprint = false)
+  {
     return base64_encode(pprint);
   }
 
@@ -723,14 +774,16 @@ public: // Exposed APIs
   /**
    * Creates a JSON object of the payload.
    *
-   * The presence of this API is required for 
+   * The presence of this API is required for
    * making it work with `write_interface`.
    */
-  const json_t& create_json_obj() const {
+  const json_t& create_json_obj() const
+  {
     return payload_;
   }
 
 private:
+
   /// JSON object containing payload
   json_t payload_;
   /// The set of claim names in the payload
@@ -745,7 +798,8 @@ private:
  * b) Verifying the signature by matching it with header and payload
  * signature.
  */
-struct jwt_signature {
+struct jwt_signature
+{
 public: // 'tors
   /// Default constructor
   jwt_signature() = default;
@@ -754,7 +808,8 @@ public: // 'tors
    * Constructor which takes the key.
    */
   jwt_signature(const jwt::string_view key)
-      : key_(key.data(), key.length()) {
+    : key_(key.data(), key.length())
+  {
   }
 
   /// Default copy and assignment operator
@@ -778,8 +833,8 @@ public: // Exposed APIs
    * of bool and error_code.
    */
   verify_result_t verify(const jwt_header& header,
-                         const jwt::string_view hdr_pld_sign,
-                         const jwt::string_view jwt_sign);
+              const jwt::string_view hdr_pld_sign,
+              const jwt::string_view jwt_sign);
 
 private: // Private implementation
   /*!
@@ -791,20 +846,23 @@ private: // Private implementation
   verify_func_t get_verify_algorithm_impl(const jwt_header& hdr) const noexcept;
 
 private: // Data members;
+
   /// The key for creating the JWS
   std::string key_;
 };
+
 
 /**
  * The main class representing the JWT object.
  * It is a composition of all JWT composition classes.
  *
  * @note: This class does not provide all the required
- * APIs in its public interface. Instead the class provides 
- * `header()` and `payload()` APIs. Those can be used to 
+ * APIs in its public interface. Instead the class provides
+ * `header()` and `payload()` APIs. Those can be used to
  * access more public APIs specific to those components.
  */
-class jwt_object {
+class jwt_object
+{
 public: // 'tors
   /**
    * Default constructor.
@@ -818,7 +876,7 @@ public: // 'tors
    *
    * The parameters that can be passed:
    * 1. payload : Can pass a initializer list of pairs or any associative
-   * containers which models `MappingConcept` (see `meta::is_mapping_concept`) 
+   * containers which models `MappingConcept` (see `meta::is_mapping_concept`)
    * to populate claims. Use `add_claim` for more controlled additions.
    *
    * 2. secret : The secret to be used for generating and verification
@@ -831,7 +889,7 @@ public: // 'tors
    * to populate header. Not much useful unless JWE is supported.
    */
   template <typename First, typename... Rest,
-            typename = std::enable_if_t<detail::meta::is_parameter_concept<First>::value>>
+            typename=std::enable_if_t<detail::meta::is_parameter_concept<First>::value>>
   jwt_object(First&& first, Rest&&... rest);
 
 public: // Exposed static APIs
@@ -849,21 +907,24 @@ public: // Exposed APIs
   /**
    * Returns the payload component object by reference.
    */
-  jwt_payload& payload() noexcept {
+  jwt_payload& payload() noexcept
+  {
     return payload_;
   }
 
   /**
    * Returns the payload component object by const-reference.
    */
-  const jwt_payload& payload() const noexcept {
+  const jwt_payload& payload() const noexcept
+  {
     return payload_;
   }
 
   /**
    * Sets the payload component object.
    */
-  void payload(const jwt_payload& p) {
+  void payload(const jwt_payload& p)
+  {
     payload_ = p;
   }
 
@@ -871,14 +932,16 @@ public: // Exposed APIs
    * Sets the payload component object.
    * Takes the payload object as rvalue-reference.
    */
-  void payload(jwt_payload&& p) {
+  void payload(jwt_payload&& p)
+  {
     payload_ = std::move(p);
   }
 
   /**
    * Sets the header component object.
    */
-  void header(const jwt_header& h) {
+  void header(const jwt_header& h)
+  {
     header_ = h;
   }
 
@@ -886,35 +949,40 @@ public: // Exposed APIs
    * Sets the header component object.
    * Takes the header object as rvalue-reference.
    */
-  void header(jwt_header&& h) {
+  void header(jwt_header&& h)
+  {
     header_ = std::move(h);
   }
 
   /**
    * Get the header component object as reference.
    */
-  jwt_header& header() noexcept {
+  jwt_header& header() noexcept
+  {
     return header_;
   }
 
   /**
    * Get the header component object as const-reference.
    */
-  const jwt_header& header() const noexcept {
+  const jwt_header& header() const noexcept
+  {
     return header_;
   }
 
   /**
    * Get the secret to be used for signing.
    */
-  std::string secret() const {
+  std::string secret() const
+  {
     return secret_;
   }
 
   /**
    * Set the secret to be used for signing.
    */
-  void secret(const jwt::string_view sv) {
+  void secret(const jwt::string_view sv)
+  {
     secret_.assign(sv.data(), sv.length());
   }
 
@@ -923,9 +991,10 @@ public: // Exposed APIs
    * @note: See `jwt_payload::add_claim` for more details.
    */
   template <typename T,
-            typename = typename std::enable_if_t<
-                !std::is_same<system_time_t, std::decay_t<T>>::value>>
-  jwt_object& add_claim(const jwt::string_view name, T&& value) {
+            typename=typename std::enable_if_t<
+              !std::is_same<system_time_t, std::decay_t<T>>::value>>
+  jwt_object& add_claim(const jwt::string_view name, T&& value)
+  {
     payload_.add_claim(name, std::forward<T>(value));
     return *this;
   }
@@ -947,7 +1016,8 @@ public: // Exposed APIs
    * @note: See `jwt_payload::add_claim` for more details.
    */
   template <typename T>
-  jwt_object& add_claim(SCOPED_ENUM registered_claims cname, T&& value) {
+  jwt_object& add_claim(SCOPED_ENUM registered_claims cname, T&& value)
+  {
     return add_claim(reg_claims_to_str(cname), std::forward<T>(value));
   }
 
@@ -963,7 +1033,8 @@ public: // Exposed APIs
    *
    * @note: See `jwt_payload::remove_claim` for more details.
    */
-  jwt_object& remove_claim(SCOPED_ENUM registered_claims cname) {
+  jwt_object& remove_claim(SCOPED_ENUM registered_claims cname)
+  {
     return remove_claim(reg_claims_to_str(cname));
   }
 
@@ -973,7 +1044,8 @@ public: // Exposed APIs
    *
    * @note: See `jwt_payload::has_claim` for more details.
    */
-  bool has_claim(const jwt::string_view cname) const noexcept {
+  bool has_claim(const jwt::string_view cname) const noexcept
+  {
     return payload().has_claim(cname);
   }
 
@@ -983,7 +1055,8 @@ public: // Exposed APIs
    *
    * @note: See `jwt_payload::has_claim` for more details.
    */
-  bool has_claim(SCOPED_ENUM registered_claims cname) const noexcept {
+  bool has_claim(SCOPED_ENUM registered_claims cname) const noexcept
+  {
     return payload().has_claim(cname);
   }
 
@@ -1076,6 +1149,7 @@ public: //TODO: Not good
   static void set_decode_params(DecodeParams& dparams);
 
 private: // Data Members
+
   /// JWT header section
   jwt_header header_;
 
@@ -1136,7 +1210,9 @@ jwt_object decode(const jwt::string_view enc_str,
                   const params::detail::algorithms_param<SequenceT>& algos,
                   Args&&... args);
 
+
 } // END namespace jwt
+
 
 #include "jwt/impl/jwt.ipp"
 

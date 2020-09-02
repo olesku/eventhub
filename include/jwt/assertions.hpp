@@ -28,23 +28,22 @@ SOFTWARE.
 namespace jwt {
 
 #if defined(__clang__)
-#define JWT_NOT_REACHED_MARKER() __builtin_unreachable()
+#  define JWT_NOT_REACHED_MARKER() __builtin_unreachable()
 #elif defined(__GNUC__)
-#if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 5)
-#define JWT_NOT_REACHED_MARKER() __builtin_unreachable()
-#endif
+#  if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 5)
+#    define JWT_NOT_REACHED_MARKER() __builtin_unreachable()
+#  endif
 #elif defined(_MSC_VER)
-#define JWT_NOT_REACHED_MARKER() __assume(0)
+#  define JWT_NOT_REACHED_MARKER() __assume(0)
 #endif
 
 #if defined(DEBUG)
-#define JWT_NOT_REACHED(reason) \
-  do {                          \
-    assert(0 && reason);        \
-    JWT_NOT_REACHED_MARKER();   \
-  } while (0)
+#  define JWT_NOT_REACHED(reason)  do { \
+                                     assert (0 && reason); \
+                                     JWT_NOT_REACHED_MARKER();        \
+                                   } while (0)
 #else
-#define JWT_NOT_REACHED(reason) JWT_NOT_REACHED_MARKER()
+#  define JWT_NOT_REACHED(reason)  JWT_NOT_REACHED_MARKER()
 #endif
 
 } // END namespace jwt
