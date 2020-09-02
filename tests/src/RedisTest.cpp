@@ -65,6 +65,9 @@ TEST_CASE("Test redis", "[Redis") {
     Config.del("MAX_CACHE_LENGTH");
     Config.addInt("MAX_CACHE_LENGTH", 1000);
 
+    Config.del("ENABLE_CACHE");
+    Config.addBool("ENABLE_CACHE", true);
+
     redis.cacheMessage("test/channel1", "Test 1", 0, 0);
     redis.cacheMessage("test/channel1", "Test 2", 0, 0);
     redis.cacheMessage("test/channel1", "Test 3", 0, 0);

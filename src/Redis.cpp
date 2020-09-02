@@ -82,6 +82,12 @@ const std::string Redis::cacheMessage(const string topic, const string payload, 
 
   auto cacheId = _getNextCacheId(timestamp);
 
+  // Do not cache message if cache functionality is disabled.
+  if (!Config.getBool("ENABLE_CACHE")) {
+    return cacheId;
+  }
+
+
   if (ttl == 0) {
     ttl = Config.getInt("DEFAULT_CACHE_TTL");
   }
@@ -103,6 +109,12 @@ const std::string Redis::cacheMessage(const string topic, const string payload, 
 size_t Redis::getCacheSince(const string topicPattern, long long since, long long limit, bool isPattern, nlohmann::json& result) {
   std::vector<std::string> topics;
   result = nlohmann::json::array();
+
+  // If cache is not enabled simply return an empty set.
+  if (!Config.getBool("ENABLE_CACHE")) {
+    return 0;
+  }
+
   auto now = Util::getTimeSinceEpoch();
 
   // Look up all matching topics in redis we get a request for a topic pattern
@@ -189,6 +201,11 @@ std::pair<long long, long long> _splitIdAndSeq(const string cacheId) {
 // Get cached messages after a given message ID.
 size_t Redis::getCacheSinceId(const string topicPattern, const string sinceId, long long limit, bool isPattern, nlohmann::json& result) {
   result = nlohmann::json::array();
+
+  // If cache is not enabled simply return an empty set.
+  if (!Config.getBool("ENABLE_CACHE")) {
+    return 0;
+  }
 
   try {
     long long timestamp, seqNo;
