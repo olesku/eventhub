@@ -89,6 +89,7 @@ Eventhub is configured through [environment variables](https://en.wikipedia.org/
 |PING_INTERVAL                | Websocket ping interval             | 30
 |HANDSHAKE_TIMEOUT            | Client handshake timeout            | 15
 |DISABLE_AUTH                 | Disable client authentication       | false
+|ENABLE_SSE                   | Enable Server-Sent-Events support   | false
 |PROMETHEUS_METRIC_PREFIX     | Prometheus prefix                   | eventhub
 |DEFAULT_CACHE_TTL            | Default message TTL                 | 60
 |MAX_CACHE_REQUEST_LIMIT      | Default returned cache result limit | 1000
