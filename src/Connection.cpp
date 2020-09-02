@@ -129,6 +129,13 @@ ssize_t Connection::write(const string& data) {
   std::lock_guard<std::mutex> lock(_write_lock);
   int ret = 0;
 
+  if ((_write_buffer.length() + data.length()) > NET_WRITE_BUFFER_MAX) {
+    _write_buffer.clear();
+    shutdown();
+    LOG->error("Client {} exceeded max write buffer size of {}.", getIP(), NET_WRITE_BUFFER_MAX);
+    return 0;
+  }
+
   _write_buffer.append(data);
   if (_write_buffer.empty())
     return 0;

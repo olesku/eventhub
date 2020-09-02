@@ -16,6 +16,9 @@ static constexpr unsigned int MAXEVENTS = 1024;
 // Read buffer size.
 static constexpr size_t NET_READ_BUFFER_SIZE = 1 << 7;
 
+// Max write buffer size.
+static constexpr size_t NET_WRITE_BUFFER_MAX = 1024 * 1000;
+
 // Will split up into continuation frames above this threshold.
 static constexpr size_t WS_MAX_CHUNK_SIZE = 1 << 15;
 
@@ -30,5 +33,8 @@ static constexpr unsigned int METRIC_DELAY_SAMPLE_RATE_MS = 5000;
 
 // Cache purger interval.
 static constexpr unsigned int CACHE_PURGER_INTERVAL_MS = (60 * 1000);
+
+// Maximum number of acls allowed in a JWT token.
+static constexpr unsigned int JWT_MAX_ACLS = 20;
 
 #endif // INCLUDE_COMMON_HPP_
