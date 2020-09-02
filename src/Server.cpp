@@ -133,9 +133,9 @@ void Server::start() {
   if (Config.getBool("ENABLE_CACHE")) {
     _ev.addTimer(CACHE_PURGER_INTERVAL_MS, [&](TimerCtx *ctx) {
       try {
-        LOG->trace("Running cache purger.");
+        LOG->debug("Running cache purger.");
         auto purgedItems = _redis.purgeExpiredCacheItems();
-        LOG->trace("Purged {} items.", purgedItems);
+        LOG->debug("Purged {} items.", purgedItems);
       } catch(...) {}
     }, true);
   }

@@ -240,21 +240,28 @@ size_t Redis::getCacheSinceId(const string topicPattern, const string sinceId, l
 
 // Delete expired items from the cache.
 size_t Redis::purgeExpiredCacheItems() {
-  std::vector<std::string> allTopics, cacheKeys;
+  std::vector<std::string> allTopics;
   std::vector<std::pair<std::string,std::string>> expiredItems;
   auto now = Util::getTimeSinceEpoch();
 
   _redisInstance->hkeys(REDIS_PREFIX("pub_count"), std::back_inserter(allTopics));
 
   for (auto topic : allTopics) {
+    std::vector<std::string> cacheKeys;
     _redisInstance->zrange(REDIS_CACHE_SCORE_PATH(topic), 0, -1, std::back_inserter(cacheKeys));
 
-    for (auto key : cacheKeys) {
-      auto p = _parseIdAndExpireAt(key);
+    if (!cacheKeys.empty()) {
+      for (auto key : cacheKeys) {
+        auto p = _parseIdAndExpireAt(key);
 
-      if (p.second < now) {
-        expiredItems.push_back({topic, key});
+        if (p.second < now) {
+          expiredItems.push_back({topic, key});
+        }
       }
+    } else {
+        // Remove topic from pub_count if it has no more cached
+        // elements left.
+       _redisInstance->hdel(REDIS_PREFIX("pub_count"), topic);
     }
   }
 
