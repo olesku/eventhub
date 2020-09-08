@@ -237,11 +237,12 @@ bool Connection::unsubscribe(const std::string& topicPattern) {
   auto& subscription = it->second;
 
   subscription.topic->deleteSubscriberByIterator(subscription.topicListIterator);
-  _subscribedTopics.erase(it);
 
   if (subscription.topic->getSubscriberCount() == 0) {
     tm.deleteTopic(topicPattern);
   }
+
+  _subscribedTopics.erase(it);
 
   return true;
 }

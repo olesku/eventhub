@@ -23,7 +23,7 @@ public:
   TopicSubscriberList::iterator addSubscriber(ConnectionPtr conn, const jsonrpcpp::Id subscriptionRequestId);
   void deleteSubscriberByIterator(TopicSubscriberList::iterator it);
   void publish(const std::string& data);
-  inline size_t getSubscriberCount() { return _subscriber_list.size(); }
+  size_t getSubscriberCount();
 
 private:
   std::string _id;
