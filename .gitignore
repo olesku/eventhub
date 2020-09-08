@@ -1,4 +1,5 @@
 build/*
+build-dbg/*
 .vscode
 eventhub.code-workspace
 tests/integration/clienttest/clienttest
