@@ -2,12 +2,18 @@ project (eventhub)
 cmake_minimum_required (VERSION 2.6)
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
-set(CMAKE_C_FLAGS "-Wall -ggdb")
+set(CMAKE_C_FLAGS "-Wall")
 set(CMAKE_C_COMPILER "gcc")
 set(CMAKE_CXX_COMPILER "g++")
 set(CMAKE_CXX_FLAGS "-Wall -std=c++14 -DSPDLOG_FMT_EXTERNAL")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+set(CMAKE_C_FLAGS_RELEASE "-O2")
+set(CMAKE_CXX_FLAGS_RELEASE "-O2")
+
+set(CMAKE_CXX_FLAGS_DEBUG "-ggdb")
+set(CMAKE_C_FLAGS_DEBUG "-ggdb")
 
 
 # To detect data race with thread sanitizer, uncomment those 2 lines
