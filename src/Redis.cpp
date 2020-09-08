@@ -220,17 +220,54 @@ size_t Redis::getCacheSinceId(const string topicPattern, const string sinceId, l
       return 0;
     }
 
-    // Remove entries with equal timestamp and same or lower sequence id.
-    for (auto it = result.begin(); it != result.end(); it++) {
+    // The loop below removes entries with equal timestamp and same or lower sequence id.
+    bool sinceIdFound = false;
+    auto it = result.begin();
+
+    while (it != result.end()) {
       long long elm_Timestamp, elm_seqNo;
-      const auto elm_id = static_cast<std::string>((*it)["id"]);
-      std::tie(elm_Timestamp, elm_seqNo) = _splitIdAndSeq(elm_id);
+      const auto elm = *it;
+
+      // Validate the cache object and return empty result if an invalid
+      // object is found.
+      if (!elm.is_object() || !elm.contains("id") || !elm.contains("topic") || !elm.contains("message")) {
+        LOG->error("Found invalid cache object in getCacheSinceId.\n  topicPattern: {} sinceId: {} isPattern: {} limit: {}\n cacheElement: {}\n",
+          topicPattern, sinceId, isPattern, limit, elm.dump());
+
+        result.clear();
+        return 0;
+      }
+
+      std::tie(elm_Timestamp, elm_seqNo) = _splitIdAndSeq(elm["id"]);
+
+      // sinceId is surpassed and not found.
+      // Return empty result.
+      if (elm_Timestamp > timestamp || (elm_Timestamp == timestamp && elm_seqNo > seqNo)) {
+        if (!sinceIdFound) {
+          result.clear();
+          return 0;
+        }
+      }
 
       if (elm_Timestamp == timestamp && elm_seqNo <= seqNo) {
+        // We only want to return results if we find sinceId in the cache.
+        if (elm_seqNo == seqNo) {
+          sinceIdFound = true;
+        }
+
         it = result.erase(it);
+      } else {
+        it++;
       }
     }
+
+    // sinceId was not found in the cache, return empty result.
+    if (!sinceIdFound) {
+      result.clear();
+      return 0;
+    }
   } catch(...) {
+    result.clear();
     return 0;
   }
 
