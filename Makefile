@@ -11,6 +11,9 @@ debug:
 docker:
 	docker build -t eventhub .
 
+docker-debug:
+	docker build -t eventhub-debug -f Dockerfile.debug .
+
 clean:
 	rm -rf build
 	rm -rf build-dbg
