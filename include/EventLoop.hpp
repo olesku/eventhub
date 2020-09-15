@@ -107,9 +107,11 @@ private:
   job_queue_t _job_queue;
   std::mutex _timer_queue_lock;
   std::mutex _job_queue_lock;
+  std::mutex _next_timer_fire_time_lock;
   std::chrono::milliseconds _next_timer_fire_time;
 
   void _decreaseNextFiretimeIfLess(const std::chrono::milliseconds& fireTime) {
+    std::lock_guard<std::mutex> lock(_next_timer_fire_time_lock);
     if (_next_timer_fire_time == std::chrono::milliseconds::zero() || _next_timer_fire_time > fireTime) {
       _next_timer_fire_time = fireTime;
     }
