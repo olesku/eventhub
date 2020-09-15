@@ -7,6 +7,8 @@
 #include <sys/socket.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 
 #include <mutex>
 #include <string>
@@ -25,11 +27,17 @@ std::atomic<bool> stopEventhub{false};
 namespace eventhub {
 
 Server::Server(const string redisHost, int redisPort, const std::string redisPassword, int redisPoolSize)
-    : _redis(redisHost, redisPort, redisPassword, redisPoolSize) {}
+    :  _server_socket(-1), _ssl_server_socket(-1), _ssl_method(NULL), _ssl_ctx(NULL),
+       _redis(redisHost, redisPort, redisPassword, redisPoolSize) {}
 
 Server::~Server() {
   LOG->trace("Server destructor called.");
   stop();
+
+  if (_ssl_ctx != NULL) {
+    SSL_CTX_free(_ssl_ctx);
+    EVP_cleanup();
+  }
 }
 
 void Server::start() {

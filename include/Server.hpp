@@ -4,6 +4,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <openssl/ssl.h>
 
 #include "ConnectionWorker.hpp"
 #include "Redis.hpp"
@@ -23,6 +24,7 @@ public:
   void start();
   void stop();
   const int getServerSocket();
+  const int getServerSSLSocket();
   Worker* getWorker();
   void publish(const std::string topicName, const std::string data);
   inline Redis& getRedis() { return _redis; }
@@ -30,6 +32,9 @@ public:
 
 private:
   int _server_socket;
+  int _ssl_server_socket;
+  const SSL_METHOD *_ssl_method;
+  SSL_CTX* _ssl_ctx;
   WorkerGroup<Worker> _connection_workers;
   WorkerGroup<Worker>::iterator _cur_worker;
   std::mutex _connection_workers_lock;
