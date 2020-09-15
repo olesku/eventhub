@@ -148,11 +148,6 @@ TEST_CASE("Test redis", "[Redis") {
       }
 
       REQUIRE(i == 10);
-
-      i = 0;
-      for (auto item : res) {
-        i++;
-      }
     }
   }
 }
