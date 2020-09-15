@@ -39,44 +39,23 @@ bool AccessController::authenticate(const std::string& jwtToken, const std::stri
   BYPASS_AUTH_IF_DISABLED();
 
   try {
-    // This is used as a safety measure to try to rule out a suspected bug where the JWT library allocates
-    // more memory infinitely.
-    // XXX: Might be removed in future release.
-
-    unsigned int aclCnt = 0;
-
     _token = jwt::decode(jwtToken, jwt::params::algorithms({"hs256"}), jwt::params::secret(secret));
 
     auto& payload = _token.payload();
 
     if (payload.has_claim("write")) {
       for (auto filter : payload.get_claim_value<std::vector<std::string>>("write")) {
-        if (aclCnt > JWT_MAX_ACLS) {
-          LOG->error("Token {} has more than {} write acls. Denying authentication.", JWT_MAX_ACLS, jwtToken);
-          return false;
-        }
-
         if (TopicManager::isValidTopicOrFilter(filter)) {
           _publish_acl.push_back(filter);
         }
-
-        aclCnt++;
       }
     }
 
     if (payload.has_claim("read")) {
-      aclCnt = 0;
       for (auto filter : payload.get_claim_value<std::vector<std::string>>("read")) {
-        if (aclCnt > JWT_MAX_ACLS) {
-          LOG->error("Token {} has more than {} read acls. Denying authentication.", JWT_MAX_ACLS, jwtToken);
-          return false;
-        }
-
         if (TopicManager::isValidTopicOrFilter(filter)) {
           _subscribe_acl.push_back(filter);
         }
-
-        aclCnt++;
       }
     }
 

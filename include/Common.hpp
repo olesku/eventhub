@@ -34,7 +34,4 @@ static constexpr unsigned int METRIC_DELAY_SAMPLE_RATE_MS = 5000;
 // Cache purger interval.
 static constexpr unsigned int CACHE_PURGER_INTERVAL_MS = (60 * 1000);
 
-// Maximum number of acls allowed in a JWT token.
-static constexpr unsigned int JWT_MAX_ACLS = 20;
-
 #endif // INCLUDE_COMMON_HPP_
