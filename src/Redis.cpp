@@ -161,7 +161,7 @@ size_t Redis::getCacheSince(const string topicPattern, long long since, long lon
     // If there is a mismatch between the length of the ZSET (timestamps) and the HSET (data)
     // for a given topic, something is messed up. In this case we perform purge of the cache for that topic.
     if (cacheItems.size() != cacheKeys.size()) {
-      LOG->error("Missmatch between cache score set and cache data set for topic {}.", topic);
+      LOG->error("Mismatch between cache score set and cache data set for topic {}.", topic);
       _redisInstance->del({REDIS_CACHE_DATA_PATH(topic), REDIS_CACHE_SCORE_PATH(topic)});
       continue;
     }
