@@ -85,6 +85,12 @@ TEST_CASE("isValidTopic", "[topic_manager]") {
     const string illegalChars = "&%~/(){}[]";
     REQUIRE(TopicManager::isValidTopic(illegalChars) == false);
   }
+
+  SECTION("# is a valid catch all topic") {
+    REQUIRE(TopicManager::isValidTopicFilter("#"));
+    REQUIRE(TopicManager::isFilterMatched("#", "foo/bar/baz"));
+    REQUIRE(TopicManager::isFilterMatched("#", "foo"));
+  }
 }
 
 TEST_CASE("isFilterMatched", "[topic_manager]") {
