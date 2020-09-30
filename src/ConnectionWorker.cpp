@@ -87,8 +87,6 @@ void Worker::_acceptConnection() {
       default:
         LOG->error("Could not accept new connection: {}.", strerror(errno));
     }
-
-    return;
   }
 
   // Create the client object and assign it to a worker.
