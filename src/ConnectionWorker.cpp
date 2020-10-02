@@ -71,7 +71,7 @@ void Worker::_acceptConnection() {
   socklen_t clen;
   int clientFd;
 
-  // Non-SSL accept.
+  // Accept the connection.
   memset(reinterpret_cast<char*>(&csin), '\0', sizeof(csin));
   clen = sizeof(csin);
   clientFd = accept(_server->getServerSocket(), (struct sockaddr*)&csin, &clen);
@@ -93,15 +93,16 @@ void Worker::_acceptConnection() {
     return;
   }
 
-  // SSL accept.
-
+  // SSL handshake.
   if (_server->isSSL()) {
     addTimer(0, [_server = _server, clientFd, &csin](TimerCtx *ctx) {
       int ret = 0;
       static unsigned int nRetries = 0;
 
-      ctx->repeat_delay = std::chrono::milliseconds(100);
+      // Increase the next try with 100ms per retry.
+      ctx->repeat_delay += chrono::milliseconds(100);
 
+      // If we reach max retries then disconnect the client and return.
       if (nRetries >= SSL_MAX_HANDSHAKE_RETRY) {
         close(clientFd);
         ctx->repeat = false;
