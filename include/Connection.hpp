@@ -24,6 +24,7 @@
 #include "http/Parser.hpp"
 #include "jsonrpc/jsonrpcpp.hpp"
 #include "websocket/Parser.hpp"
+#include "SSL.hpp"
 
 using namespace std;
 
@@ -51,6 +52,7 @@ struct TopicSubscription {
 class Connection : public std::enable_shared_from_this<Connection> {
 public:
   Connection(int fd, struct sockaddr_in* csin, Worker* worker);
+  Connection(int fd, struct sockaddr_in* csin, SSL* ssl, Worker* worker);
   ~Connection();
 
   ssize_t write(const string& data);
@@ -59,6 +61,7 @@ public:
 
   int addToEpoll(std::list<ConnectionPtr>::iterator connectionIterator, uint32_t epollEvents);
 
+  void setSSL(SSL* ssl);
   ConnectionState setState(ConnectionState newState);
   ConnectionState getState();
   AccessController& getAccessController();
@@ -79,10 +82,12 @@ public:
     _is_shutdown = true;
   }
 
+
   inline bool isShutdown() { return _is_shutdown; }
 
 private:
   int _fd;
+  OpenSSLUniquePtr<SSL> _ssl;
   struct sockaddr_in _csin;
   Worker* _worker;
   struct epoll_event _epoll_event;
@@ -94,6 +99,7 @@ private:
   AccessController _access_controller;
   ConnectionState _state;
   bool _is_shutdown;
+  bool _is_ssl;
   std::list<std::shared_ptr<Connection>>::iterator _connection_list_iterator;
 
   std::unordered_map<std::string, TopicSubscription> _subscribedTopics;

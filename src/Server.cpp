@@ -15,29 +15,26 @@
 #include <chrono>
 #include <future>
 #include <atomic>
+#include <memory>
 
 #include "jwt/json/json.hpp"
 #include "Common.hpp"
 #include "Config.hpp"
 #include "metrics/Types.hpp"
 #include "Util.hpp"
+#include "SSL.hpp"
 
 std::atomic<bool> stopEventhub{false};
 
 namespace eventhub {
 
 Server::Server(const string redisHost, int redisPort, const std::string redisPassword, int redisPoolSize)
-    :  _server_socket(-1), _ssl_server_socket(-1), _ssl_method(NULL), _ssl_ctx(NULL),
+    :  _server_socket(-1), _ssl_enabled(false), _ssl_method(NULL),
        _redis(redisHost, redisPort, redisPassword, redisPoolSize) {}
 
 Server::~Server() {
   LOG->trace("Server destructor called.");
   stop();
-
-  if (_ssl_ctx != NULL) {
-    SSL_CTX_free(_ssl_ctx);
-    EVP_cleanup();
-  }
 }
 
 void Server::start() {
@@ -80,6 +77,11 @@ void Server::start() {
 
   if (Config.getBool("DISABLE_AUTH")) {
     LOG->warn("WARNING: Server is running with DISABLE_AUTH=true. Everything is allowed by any client.");
+  }
+
+  // Set up SSL context.
+  if (Config.getBool("ENABLE_SSL")) {
+    _initSSLContext();
   }
 
   // Start the connection workers.
@@ -181,6 +183,13 @@ void Server::start() {
   }
 
   cronJobs.join();
+}
+
+void Server::_initSSLContext() {
+  _ssl_ctx = OpenSSLUniquePtr<SSL_CTX>(SSL_CTX_new(TLS_server_method()));
+  SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_TLSv1_2|SSL_OP_SINGLE_DH_USE);
+
+  _ssl_enabled = true;
 }
 
 Worker* Server::getWorker() {

@@ -12,6 +12,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 
 #include <memory>
 #include <mutex>
@@ -32,6 +34,7 @@
 #include "websocket/Response.hpp"
 #include "sse/Response.hpp"
 #include "Util.hpp"
+#include "SSL.hpp"
 
 using namespace std;
 
@@ -66,12 +69,11 @@ void Worker::addTimer(int64_t delay, std::function<void(TimerCtx* ctx)> callback
 void Worker::_acceptConnection() {
   struct sockaddr_in csin;
   socklen_t clen;
-  int clientFd;
+  int clientFd, ret;
 
+  // Non-SSL accept.
   memset(reinterpret_cast<char*>(&csin), '\0', sizeof(csin));
   clen = sizeof(csin);
-
-  // Accept the connection.
   clientFd = accept(_server->getServerSocket(), (struct sockaddr*)&csin, &clen);
 
   if (clientFd == -1) {
@@ -87,10 +89,60 @@ void Worker::_acceptConnection() {
       default:
         LOG->error("Could not accept new connection: {}.", strerror(errno));
     }
+
+    return;
+  }
+
+  // SSL accept.
+  auto ssl = OpenSSLUniquePtr<SSL>(SSL_new(_server->getSSLContext()));
+  if (_server->isSSL()) {
+    SSL_set_fd(ssl.get(), clientFd);
+    SSL_set_accept_state(ssl.get());
+    ERR_clear_error();
+
+    // TODO: A SSL handshake can fail, and we need to handle the error codes returned from SSL_accept here
+    // and do a retry with a timeout if required.
+    ret = SSL_accept(ssl.get());
+    if (ret <= 0) {
+      int errorCode = SSL_get_error(ssl.get(), ret);
+      if (errorCode == SSL_ERROR_WANT_READ || errorCode == SSL_ERROR_WANT_WRITE) {
+
+        addTimer(0, [ssl = std::move(ssl), _server = _server, clientFd, &csin](TimerCtx *ctx) {
+          static unsigned int nRetries = 0;
+          nRetries++;
+
+          if (SSL_accept(ssl.get())) {
+            auto conn = _server->getWorker()->_addConnection(clientFd, &csin);
+            ctx->repeat = false;
+            return;
+          }
+
+          if (nRetries > SSL_MAX_HANDSHAKE_RETRY) {
+            close(clientFd);
+            return;
+            ctx->repeat = false;
+          }
+
+          ctx->repeat_delay = std::chrono::milliseconds(1000);
+        }, true);
+
+        return;
+      } else {
+        close(clientFd);
+        return;
+      }
+
+      char buf[1024] = {'\0'};
+      ERR_error_string_n(ERR_get_error(), buf, 1024);
+      LOG->error("OpenSSL error: {}", buf);
+    }
   }
 
   // Create the client object and assign it to a worker.
-  _server->getWorker()->_addConnection(clientFd, &csin);
+  auto conn = _server->getWorker()->_addConnection(clientFd, &csin);
+  if (_server->isSSL()) {
+    conn->setSSL(ssl.get());
+  }
 }
 
 /**
@@ -98,7 +150,7 @@ void Worker::_acceptConnection() {
  * @param fd Filedescriptor of connection.
  * @param csin sockaddr_in for the connection.
  */
-void Worker::_addConnection(int fd, struct sockaddr_in* csin) {
+ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin) {
   std::lock_guard<std::mutex> lock(_connection_list_mutex);
 
   auto client = make_shared<Connection>(fd, csin, this);
@@ -166,6 +218,8 @@ void Worker::_addConnection(int fd, struct sockaddr_in* csin) {
 
   _metrics.current_connections_count++;
   _metrics.total_connect_count++;
+
+  return client;
 }
 
 /**

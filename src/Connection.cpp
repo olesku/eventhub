@@ -20,12 +20,15 @@
 #include "TopicManager.hpp"
 #include "http/Parser.hpp"
 #include "websocket/Parser.hpp"
+#include "SSL.hpp"
 
 namespace eventhub {
 using namespace std;
 
+
 Connection::Connection(int fd, struct sockaddr_in* csin, Worker* worker) : _fd(fd), _worker(worker) {
   _is_shutdown = false;
+  _is_ssl = false;
 
   memcpy(&_csin, csin, sizeof(struct sockaddr_in));
   int flag = 1;
@@ -92,9 +95,20 @@ size_t Connection::_pruneWriteBuffer(size_t bytes) {
   return _write_buffer.length();
 }
 
+void Connection::setSSL(SSL* ssl) {
+  _ssl = OpenSSLUniquePtr<SSL>(ssl);
+  _is_ssl = true;
+}
+
 void Connection::read() {
   char buf[NET_READ_BUFFER_SIZE];
-  ssize_t bytesRead = ::read(_fd, buf, NET_READ_BUFFER_SIZE);
+  ssize_t bytesRead = 0;
+
+  if (_is_ssl) {
+    bytesRead = ::SSL_read(_ssl.get(), buf, NET_READ_BUFFER_SIZE);
+  } else {
+    bytesRead = ::read(_fd, buf, NET_READ_BUFFER_SIZE);
+  }
 
   if (bytesRead > 0) {
     buf[bytesRead] = '\0';
@@ -140,7 +154,11 @@ ssize_t Connection::write(const string& data) {
   if (_write_buffer.empty())
     return 0;
 
-  ret = ::write(_fd, _write_buffer.c_str(), _write_buffer.length());
+  if (_is_ssl) {
+    SSL_write(_ssl.get(), _write_buffer.c_str(), _write_buffer.length());
+  } else {
+    ret = ::write(_fd, _write_buffer.c_str(), _write_buffer.length());
+  }
 
   if (ret <= 0) {
     LOG->trace("Client {} write error: {}.", getIP(), strerror(errno));

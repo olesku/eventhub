@@ -13,6 +13,7 @@
 #include "TopicManager.hpp"
 #include "metrics/Types.hpp"
 #include "Worker.hpp"
+#include "SSL.hpp"
 
 namespace eventhub {
 class Server; // Forward declaration.
@@ -45,7 +46,7 @@ private:
   int64_t _ev_delay_sample_start;
 
   void _acceptConnection();
-  void _addConnection(int fd, struct sockaddr_in* csin);
+  ConnectionPtr _addConnection(int fd, struct sockaddr_in* csin);
   void _removeConnection(ConnectionPtr conn);
   void _read(ConnectionPtr conn);
 

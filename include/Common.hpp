@@ -34,4 +34,7 @@ static constexpr unsigned int METRIC_DELAY_SAMPLE_RATE_MS = 5000;
 // Cache purger interval.
 static constexpr unsigned int CACHE_PURGER_INTERVAL_MS = (60 * 1000);
 
+// Maximum SSL handshake retries.
+static const unsigned int SSL_MAX_HANDSHAKE_RETRY = 3;
+
 #endif // INCLUDE_COMMON_HPP_
