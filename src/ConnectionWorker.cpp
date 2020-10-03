@@ -95,7 +95,8 @@ void Worker::_acceptConnection() {
 
   // SSL handshake.
   if (_server->isSSL()) {
-    addTimer(0, [_server = _server, clientFd, &csin](TimerCtx *ctx) {
+    addTimer(1, [_server = _server, clientFd, &csin](TimerCtx *ctx) {
+      LOG->info("FOO");
       int ret = 0;
       static unsigned int nRetries = 0;
 
@@ -134,7 +135,8 @@ void Worker::_acceptConnection() {
           return;
         }
       } else {
-        _server->getWorker()->_addConnection(clientFd, &csin)->setSSL(ssl.get());
+        LOG->info("Added SSL connection.");
+        _server->getWorker()->_addConnection(clientFd, &csin, ssl.get());
         ssl.release();
         ctx->repeat = false;
         return;
@@ -142,6 +144,7 @@ void Worker::_acceptConnection() {
 
     }, true);
   } else {
+    LOG->info("Added non-SSL connection.");
     _server->getWorker()->_addConnection(clientFd, &csin);
   }
 }
@@ -151,10 +154,14 @@ void Worker::_acceptConnection() {
  * @param fd Filedescriptor of connection.
  * @param csin sockaddr_in for the connection.
  */
-ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin) {
+ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin, SSL* ssl) {
   std::lock_guard<std::mutex> lock(_connection_list_mutex);
 
   auto client = make_shared<Connection>(fd, csin, this);
+  if (ssl != nullptr) {
+    LOG->info("Set client SSL.");
+    client->setSSL(ssl);
+  }
 
   auto connectionIterator = _connection_list.insert(_connection_list.end(), client);
   int ret                 = client->addToEpoll(connectionIterator, (EPOLLIN | EPOLLRDHUP | EPOLLHUP | EPOLLERR));
@@ -219,6 +226,8 @@ ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin) {
 
   _metrics.current_connections_count++;
   _metrics.total_connect_count++;
+
+  client->read();
 
   return client;
 }

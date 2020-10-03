@@ -106,22 +106,20 @@ void Connection::read() {
 
   if (_is_ssl) {
     bytesRead = ::SSL_read(_ssl.get(), buf, NET_READ_BUFFER_SIZE);
+    LOG->info("SSL_read: {}", buf);
   } else {
     bytesRead = ::read(_fd, buf, NET_READ_BUFFER_SIZE);
+    LOG->info("READ: {}", buf);
   }
 
   if (bytesRead > 0) {
     buf[bytesRead] = '\0';
   } else {
     buf[0] = '\0';
-  }
-
-  if (bytesRead < 1) {
     shutdown();
     return;
   }
 
-  // _parser.parse(buf, bytesRead);
   // Redirect request to either HTTP handler or websocket handler
   // based on which state the client is in.
   switch (getState()) {
@@ -155,8 +153,10 @@ ssize_t Connection::write(const string& data) {
     return 0;
 
   if (_is_ssl) {
-    SSL_write(_ssl.get(), _write_buffer.c_str(), _write_buffer.length());
+    ret = SSL_write(_ssl.get(), _write_buffer.c_str(), _write_buffer.length());
+    LOG->info("SSL_WRITE: {}", _write_buffer);
   } else {
+    LOG->info("WRITE: {}", _write_buffer);
     ret = ::write(_fd, _write_buffer.c_str(), _write_buffer.length());
   }
 

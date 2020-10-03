@@ -185,9 +185,39 @@ void Server::start() {
   cronJobs.join();
 }
 
+static int client_certificate_verify(int preverify_ok, X509_STORE_CTX *ctx) {
+
+    (void) ctx;  // Unused
+
+	/* Preverify should check expiry, revocation. */
+	return preverify_ok;
+}
+
 void Server::_initSSLContext() {
   _ssl_ctx = OpenSSLUniquePtr<SSL_CTX>(SSL_CTX_new(TLS_server_method()));
-  SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_TLSv1_2|SSL_OP_SINGLE_DH_USE);
+  const char* cert = "/home/oles/code/eventhub/ssl/cert.pem";
+  const char* key = "/home/oles/code/eventhub/ssl/key.pem";
+
+  SSL_CTX_set_verify(_ssl_ctx.get(), SSL_VERIFY_NONE, client_certificate_verify);
+  SSL_CTX_set_ecdh_auto(_ssl_ctx.get(), 1);
+  SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_TLSv1_2|SSL_OP_SINGLE_DH_USE|SSL_OP_NO_TLSv1_3);
+  SSL_CTX_set_default_verify_paths(_ssl_ctx.get());
+
+	if (SSL_CTX_use_certificate_chain_file(_ssl_ctx.get(), cert) <= 0) {
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
+  }
+
+  if (SSL_CTX_use_PrivateKey_file(_ssl_ctx.get(), key, SSL_FILETYPE_PEM) <= 0 ) {
+      ERR_print_errors_fp(stderr);
+      exit(EXIT_FAILURE);
+  }
+
+  /* verify private key */
+  if (!SSL_CTX_check_private_key(_ssl_ctx.get()) ) {
+      fprintf(stderr, "Private key does not match the public certificate\n");
+      exit(EXIT_FAILURE);
+  }
 
   _ssl_enabled = true;
 }
