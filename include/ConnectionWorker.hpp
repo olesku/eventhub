@@ -46,7 +46,7 @@ private:
   int64_t _ev_delay_sample_start;
 
   void _acceptConnection();
-  ConnectionPtr _addConnection(int fd, struct sockaddr_in* csin, SSL* ssl = nullptr);
+  ConnectionPtr _addConnection(int fd, struct sockaddr_in* csin);
   void _removeConnection(ConnectionPtr conn);
   void _read(ConnectionPtr conn);
 

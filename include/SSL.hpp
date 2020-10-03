@@ -3,6 +3,8 @@
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/bio.h>
+#include <openssl/bioerr.h>
 #include "Logger.hpp"
 
 namespace eventhub {

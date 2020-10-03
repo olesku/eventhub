@@ -34,6 +34,7 @@ using ConnectionPtr          = std::shared_ptr<class Connection>;
 using ConnectionWeakPtr      = std::weak_ptr<class Connection>;
 using ConnectionListIterator = std::list<ConnectionPtr>::iterator;
 
+class Server;
 class Worker;
 class Topic;
 
@@ -51,8 +52,7 @@ struct TopicSubscription {
 
 class Connection : public std::enable_shared_from_this<Connection> {
 public:
-  Connection(int fd, struct sockaddr_in* csin, Worker* worker);
-  Connection(int fd, struct sockaddr_in* csin, SSL* ssl, Worker* worker);
+  Connection(int fd, struct sockaddr_in* csin, Server* server, Worker* worker);
   ~Connection();
 
   ssize_t write(const string& data);
@@ -61,7 +61,6 @@ public:
 
   int addToEpoll(std::list<ConnectionPtr>::iterator connectionIterator, uint32_t epollEvents);
 
-  void setSSL(SSL* ssl);
   ConnectionState setState(ConnectionState newState);
   ConnectionState getState();
   AccessController& getAccessController();
@@ -88,7 +87,10 @@ public:
 private:
   int _fd;
   OpenSSLUniquePtr<SSL> _ssl;
+  BIO* _ssl_write_bio;
+  BIO* _ssl_read_bio;
   struct sockaddr_in _csin;
+  Server* _server;
   Worker* _worker;
   struct epoll_event _epoll_event;
   string _write_buffer;
@@ -107,6 +109,8 @@ private:
   void _enableEpollOut();
   void _disableEpollOut();
   size_t _pruneWriteBuffer(size_t bytes);
+  void _initSSL();
+  void _doSSLHandshake();
 };
 
 } // namespace eventhub

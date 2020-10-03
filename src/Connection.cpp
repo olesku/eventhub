@@ -15,6 +15,7 @@
 
 #include "Common.hpp"
 #include "Config.hpp"
+#include "Server.hpp"
 #include "ConnectionWorker.hpp"
 #include "Topic.hpp"
 #include "TopicManager.hpp"
@@ -26,7 +27,7 @@ namespace eventhub {
 using namespace std;
 
 
-Connection::Connection(int fd, struct sockaddr_in* csin, Worker* worker) : _fd(fd), _worker(worker) {
+Connection::Connection(int fd, struct sockaddr_in* csin, Server* server, Worker* worker) : _fd(fd), _server(server), _worker(worker) {
   _is_shutdown = false;
   _is_ssl = false;
 
@@ -54,6 +55,11 @@ Connection::Connection(int fd, struct sockaddr_in* csin, Worker* worker) : _fd(f
 
   // Set initial state.
   setState(ConnectionState::HTTP);
+
+  // Initialize SSL if required.
+  if (_server->isSSL()) {
+    _initSSL();
+  }
 }
 
 Connection::~Connection() {
@@ -95,9 +101,65 @@ size_t Connection::_pruneWriteBuffer(size_t bytes) {
   return _write_buffer.length();
 }
 
-void Connection::setSSL(SSL* ssl) {
-  _ssl = OpenSSLUniquePtr<SSL>(ssl);
+void Connection::_initSSL() {
+  _ssl = OpenSSLUniquePtr<SSL>(SSL_new(_server->getSSLContext()));
+  SSL_set_fd(_ssl.get(), _fd);
+  SSL_set_accept_state(_ssl.get());
+  ERR_clear_error();
   _is_ssl = true;
+}
+
+void Connection::_doSSLHandshake() {
+  static bool foo = false;
+
+  if (foo) {
+    return;
+  }
+
+// SSL handshake.
+  _worker->addTimer(0, [&](TimerCtx *ctx) {
+    LOG->info("_doSSLHandshake()");
+    int ret = 0;
+    static unsigned int nRetries = 0;
+
+    // Increase the next try with 100ms per retry.
+    ctx->repeat_delay += chrono::milliseconds(100);
+
+    // If we reach max retries then disconnect the client and return.
+    if (nRetries >= SSL_MAX_HANDSHAKE_RETRY) {
+      shutdown();
+      ctx->repeat = false;
+      return;
+    }
+
+    ret = SSL_accept(_ssl.get());
+
+    if (ret <= 0) {
+      char buf[512] = {'\0'};
+      ERR_error_string_n(ERR_get_error(), buf, 512);
+      LOG->error("OpenSSL error: {}", buf);
+
+      int errorCode = SSL_get_error(_ssl.get(), ret);
+      if (errorCode == SSL_ERROR_WANT_READ  ||
+          errorCode == SSL_ERROR_WANT_WRITE ||
+          errorCode == SSL_ERROR_WANT_ACCEPT) {
+
+
+        LOG->error("OpenSSL retry handshake. nRetries = {}", nRetries);
+        nRetries++;
+        return;
+      } else {
+        nRetries = SSL_MAX_HANDSHAKE_RETRY;
+        return;
+      }
+    } else {
+      ctx->repeat = false;
+      return;
+    }
+
+  }, true);
+
+  foo = true;
 }
 
 void Connection::read() {
@@ -105,9 +167,17 @@ void Connection::read() {
   ssize_t bytesRead = 0;
 
   if (_is_ssl) {
+    if (!SSL_is_init_finished(_ssl.get())) {
+      LOG->info("SSL handshake");
+      _doSSLHandshake();
+      return;
+    }
+
     bytesRead = ::SSL_read(_ssl.get(), buf, NET_READ_BUFFER_SIZE);
     LOG->info("SSL_read: {}", buf);
-  } else {
+  } 
+  
+  else {
     bytesRead = ::read(_fd, buf, NET_READ_BUFFER_SIZE);
     LOG->info("READ: {}", buf);
   }

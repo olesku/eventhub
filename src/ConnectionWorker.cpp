@@ -93,60 +93,7 @@ void Worker::_acceptConnection() {
     return;
   }
 
-  // SSL handshake.
-  if (_server->isSSL()) {
-    addTimer(1, [_server = _server, clientFd, &csin](TimerCtx *ctx) {
-      LOG->info("FOO");
-      int ret = 0;
-      static unsigned int nRetries = 0;
-
-      // Increase the next try with 100ms per retry.
-      ctx->repeat_delay += chrono::milliseconds(100);
-
-      // If we reach max retries then disconnect the client and return.
-      if (nRetries >= SSL_MAX_HANDSHAKE_RETRY) {
-        close(clientFd);
-        ctx->repeat = false;
-        return;
-      }
-
-      auto ssl = OpenSSLUniquePtr<SSL>(SSL_new(_server->getSSLContext()));
-      SSL_set_fd(ssl.get(), clientFd);
-      SSL_set_accept_state(ssl.get());
-      ERR_clear_error();
-      ret = SSL_accept(ssl.get());
-
-      if (ret <= 0) {
-        char buf[512] = {'\0'};
-        ERR_error_string_n(ERR_get_error(), buf, 512);
-        LOG->error("OpenSSL error: {}", buf);
-
-        int errorCode = SSL_get_error(ssl.get(), ret);
-        if (errorCode == SSL_ERROR_WANT_READ  ||
-            errorCode == SSL_ERROR_WANT_WRITE ||
-            errorCode == SSL_ERROR_WANT_ACCEPT) {
-
-
-          LOG->error("OpenSSL retry handshake. nRetries = {}", nRetries);
-          nRetries++;
-          return;
-        } else {
-          nRetries = SSL_MAX_HANDSHAKE_RETRY;
-          return;
-        }
-      } else {
-        LOG->info("Added SSL connection.");
-        _server->getWorker()->_addConnection(clientFd, &csin, ssl.get());
-        ssl.release();
-        ctx->repeat = false;
-        return;
-      }
-
-    }, true);
-  } else {
-    LOG->info("Added non-SSL connection.");
-    _server->getWorker()->_addConnection(clientFd, &csin);
-  }
+  _server->getWorker()->_addConnection(clientFd, &csin);
 }
 
 /**
@@ -154,14 +101,10 @@ void Worker::_acceptConnection() {
  * @param fd Filedescriptor of connection.
  * @param csin sockaddr_in for the connection.
  */
-ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin, SSL* ssl) {
+ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin) {
   std::lock_guard<std::mutex> lock(_connection_list_mutex);
 
-  auto client = make_shared<Connection>(fd, csin, this);
-  if (ssl != nullptr) {
-    LOG->info("Set client SSL.");
-    client->setSSL(ssl);
-  }
+  auto client = make_shared<Connection>(fd, csin, _server, this);
 
   auto connectionIterator = _connection_list.insert(_connection_list.end(), client);
   int ret                 = client->addToEpoll(connectionIterator, (EPOLLIN | EPOLLRDHUP | EPOLLHUP | EPOLLERR));
