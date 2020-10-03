@@ -102,6 +102,8 @@ private:
   ConnectionState _state;
   bool _is_shutdown;
   bool _is_ssl;
+  bool _ssl_handshake_done;
+  unsigned int _ssl_handshake_retries;
   std::list<std::shared_ptr<Connection>>::iterator _connection_list_iterator;
 
   std::unordered_map<std::string, TopicSubscription> _subscribedTopics;

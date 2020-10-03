@@ -185,9 +185,28 @@ void Server::start() {
   cronJobs.join();
 }
 
+int alpn_cb (SSL *ssl, const unsigned char **out,
+                           unsigned char *outlen,
+                           const unsigned char *in,
+                           unsigned int inlen,
+                           void *arg)
+{
+    auto t = fmt::format("{}", in);
+
+    if (t.find("http/1.1") != string::npos) {
+      LOG->info("HTTP/1.1 ALPN accepted ALPN: {}", t);
+      *out = (unsigned const char*)in;
+      *outlen = inlen;
+      return SSL_TLSEXT_ERR_OK;
+    }
+
+  LOG->info("HTTP/1.1 ALPN NOT accepted ALPN: {}", t);
+  return SSL_TLSEXT_ERR_NOACK;
+}
+
 static int client_certificate_verify(int preverify_ok, X509_STORE_CTX *ctx) {
 
-    (void) ctx;  // Unused
+  (void) ctx;  // Unused
 
 	/* Preverify should check expiry, revocation. */
 	return preverify_ok;
@@ -198,10 +217,12 @@ void Server::_initSSLContext() {
   const char* cert = "/home/oles/code/eventhub/ssl/cert.pem";
   const char* key = "/home/oles/code/eventhub/ssl/key.pem";
 
-  SSL_CTX_set_verify(_ssl_ctx.get(), SSL_VERIFY_NONE, client_certificate_verify);
   SSL_CTX_set_ecdh_auto(_ssl_ctx.get(), 1);
-  SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_TLSv1_2|SSL_OP_SINGLE_DH_USE|SSL_OP_NO_TLSv1_3);
+  SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_TLSv1_2|SSL_OP_NO_TLSv1_3);
   SSL_CTX_set_default_verify_paths(_ssl_ctx.get());
+  SSL_CTX_set_alpn_select_cb(_ssl_ctx.get(), alpn_cb, NULL);
+  //SSL_CTX_set_min_proto_version(_ssl_ctx.get(), TLS1_2_VERSION);
+  SSL_CTX_set_verify(_ssl_ctx.get(), SSL_VERIFY_NONE, client_certificate_verify);
 
 	if (SSL_CTX_use_certificate_chain_file(_ssl_ctx.get(), cert) <= 0) {
         ERR_print_errors_fp(stderr);

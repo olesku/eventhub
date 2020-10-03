@@ -12,8 +12,6 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
 
 #include <memory>
 #include <mutex>
@@ -34,7 +32,6 @@
 #include "websocket/Response.hpp"
 #include "sse/Response.hpp"
 #include "Util.hpp"
-#include "SSL.hpp"
 
 using namespace std;
 
@@ -169,8 +166,6 @@ ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin) {
 
   _metrics.current_connections_count++;
   _metrics.total_connect_count++;
-
-  client->read();
 
   return client;
 }

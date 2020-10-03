@@ -30,6 +30,8 @@ using namespace std;
 Connection::Connection(int fd, struct sockaddr_in* csin, Server* server, Worker* worker) : _fd(fd), _server(server), _worker(worker) {
   _is_shutdown = false;
   _is_ssl = false;
+  _ssl_handshake_done = false;
+  _ssl_handshake_retries = 0;
 
   memcpy(&_csin, csin, sizeof(struct sockaddr_in));
   int flag = 1;
@@ -110,56 +112,41 @@ void Connection::_initSSL() {
 }
 
 void Connection::_doSSLHandshake() {
-  static bool foo = false;
 
-  if (foo) {
+  if (_ssl_handshake_done) {
     return;
   }
 
-// SSL handshake.
-  _worker->addTimer(0, [&](TimerCtx *ctx) {
-    LOG->info("_doSSLHandshake()");
-    int ret = 0;
-    static unsigned int nRetries = 0;
-
-    // Increase the next try with 100ms per retry.
-    ctx->repeat_delay += chrono::milliseconds(100);
-
-    // If we reach max retries then disconnect the client and return.
-    if (nRetries >= SSL_MAX_HANDSHAKE_RETRY) {
-      shutdown();
-      ctx->repeat = false;
-      return;
-    }
-
+  unsigned int n = 0;
+  int ret = 0;
+  do {
+    n++;
     ret = SSL_accept(_ssl.get());
-
-    if (ret <= 0) {
+    LOG->info("SSL_accept ret: {}", ret);
+    if (ret < 0) {
       char buf[512] = {'\0'};
       ERR_error_string_n(ERR_get_error(), buf, 512);
       LOG->error("OpenSSL error: {}", buf);
 
       int errorCode = SSL_get_error(_ssl.get(), ret);
       if (errorCode == SSL_ERROR_WANT_READ  ||
-          errorCode == SSL_ERROR_WANT_WRITE ||
-          errorCode == SSL_ERROR_WANT_ACCEPT) {
+          errorCode == SSL_ERROR_WANT_WRITE) {
 
-
-        LOG->error("OpenSSL retry handshake. nRetries = {}", nRetries);
-        nRetries++;
-        return;
-      } else {
-        nRetries = SSL_MAX_HANDSHAKE_RETRY;
-        return;
+        LOG->error("OpenSSL retry handshake. Try #{}", n);
+        this_thread::sleep_for(chrono::milliseconds(1000));
+        continue;
       }
+    } else if (ret == 0) {
+      LOG->error("SSL error.");
+      shutdown();
+      return;
     } else {
-      ctx->repeat = false;
+      LOG->info("Successful SSL handshake.");
       return;
     }
+  } while (n < SSL_MAX_HANDSHAKE_RETRY);
 
-  }, true);
-
-  foo = true;
+  _ssl_handshake_done = true;
 }
 
 void Connection::read() {
@@ -168,7 +155,7 @@ void Connection::read() {
 
   if (_is_ssl) {
     if (!SSL_is_init_finished(_ssl.get())) {
-      LOG->info("SSL handshake");
+      //LOG->info("SSL handshake");
       _doSSLHandshake();
       return;
     }
