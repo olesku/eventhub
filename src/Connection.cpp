@@ -23,6 +23,7 @@
 #include "http/Parser.hpp"
 #include "websocket/Parser.hpp"
 #include "SSL.hpp"
+#include "Util.hpp"
 
 namespace eventhub {
 using namespace std;
@@ -113,7 +114,7 @@ void Connection::_initSSL() {
 void Connection::_doSSLHandshake() {
   ERR_clear_error();
   int ret = SSL_accept(_ssl.get());
-  LOG->info("SSL_accept ret: {}", ret);
+  int errorCode = SSL_get_error(_ssl.get(), ret);
 
   if (_ssl_handshake_retries >= SSL_MAX_HANDSHAKE_RETRY) {
     LOG->error("Max SSL retries reached.");
@@ -121,30 +122,17 @@ void Connection::_doSSLHandshake() {
     return;
   }
 
-  _ssl_handshake_retries++;
-
-  if (ret < 0) {
-    char buf[512] = {'\0'};
-    ERR_error_string_n(ERR_get_error(), buf, 512);
-    LOG->error("OpenSSL error: {}", buf);
-
-    int errorCode = SSL_get_error(_ssl.get(), ret);
+  if (ret <= 0) {
     if (errorCode == SSL_ERROR_WANT_READ  ||
         errorCode == SSL_ERROR_WANT_WRITE) {
       LOG->error("OpenSSL retry handshake. Try #{}", _ssl_handshake_retries);
-      return;
     } else {
-      LOG->error("Error during handshake.");
+      LOG->error("Fatal error in SSL_accept: {} for client {}", Util::getSSLErrorString(errorCode), getIP());
       shutdown();
     }
-  } else if (ret == 0) {
-    LOG->error("SSL error.");
-    shutdown();
-    return;
-  } else {
-    LOG->info("Successful SSL handshake.");
-    return;
   }
+
+   _ssl_handshake_retries++;
 }
 
 void Connection::read() {
@@ -156,6 +144,8 @@ void Connection::read() {
       _doSSLHandshake();
       return;
     }
+
+    _ssl_read_buffer.clear();
 
     do {
       bytesRead = SSL_read(_ssl.get(), buf, NET_READ_BUFFER_SIZE);
@@ -177,9 +167,7 @@ void Connection::read() {
       }
 
       if (err == SSL_ERROR_ZERO_RETURN || err == SSL_ERROR_SYSCALL) {
-        char ebuf[512] = {'\0'};
-        ERR_error_string_n(ERR_get_error(), ebuf, 512);
-        LOG->error("OpenSSL read error: {}", ebuf);
+        LOG->error("OpenSSL read error: {} for client {}", Util::getSSLErrorString(ERR_get_error()), getIP());
         shutdown();
         return;
       }

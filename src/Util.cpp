@@ -3,6 +3,7 @@
 #include <openssl/bio.h>
 #include <openssl/buffer.h>
 #include <openssl/evp.h>
+#include <openssl/err.h>
 #include <stdint.h>
 
 #include <algorithm>
@@ -73,6 +74,13 @@ std::string& Util::strToLower(std::string& s) {
 
 int64_t Util::getTimeSinceEpoch() {
   return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+}
+
+std::string Util::getSSLErrorString(unsigned long e) {
+    char buf[512] = {'\0'};
+    ERR_error_string_n(e, buf, 512);
+    ERR_clear_error();
+    return std::move(std::string(buf));
 }
 
 } // namespace eventhub
