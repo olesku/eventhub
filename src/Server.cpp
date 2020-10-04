@@ -207,10 +207,11 @@ int alpn_cb (SSL *ssl, const unsigned char **out, unsigned char *outlen,
 
 void Server::_initSSLContext() {
   const SSL_METHOD* method = TLS_server_method();
-
   _ssl_ctx = OpenSSLUniquePtr<SSL_CTX>(SSL_CTX_new(method));
-  const char* cert = "/home/oles/code/eventhub/ssl/cert.pem";
-  const char* key = "/home/oles/code/eventhub/ssl/key.pem";
+
+  const string caCert = Config.getString("SSL_CA_CERTIFICATE");
+  const string cert = Config.getString("SSL_CERTIFICATE"); //"/home/oles/code/eventhub/ssl/cert.pem";
+  const string key = Config.getString("SSL_PRIVATE_KEY"); //"/home/oles/code/eventhub/ssl/key.pem";
 
   SSL_CTX_set_ecdh_auto(_ssl_ctx.get(), 1);
   //SSL_CTX_set_min_proto_version(_ssl_ctx.get(), TLS1_2_VERSION);
@@ -218,22 +219,33 @@ void Server::_initSSLContext() {
   SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_CIPHER_SERVER_PREFERENCE);
   SSL_CTX_set_alpn_select_cb(_ssl_ctx.get(), alpn_cb, NULL);
 
-  SSL_CTX_set_default_verify_paths(_ssl_ctx.get());
+  if (caCert.empty()) {
+    SSL_CTX_set_default_verify_paths(_ssl_ctx.get());
+  } else {
+    if (SSL_CTX_load_verify_locations(_ssl_ctx.get(), caCert.c_str(), NULL) <= 0) {
+        LOG->error("Error loading CA certificate: {}", Util::getSSLErrorString(ERR_get_error()));
+        stop();
+        exit(EXIT_FAILURE);
+    }
+  }
 
-	if (SSL_CTX_use_certificate_chain_file(_ssl_ctx.get(), cert) <= 0) {
-        ERR_print_errors_fp(stderr);
+	if (SSL_CTX_use_certificate_chain_file(_ssl_ctx.get(), cert.c_str()) <= 0) {
+        LOG->error("Error loading certificate: {}", Util::getSSLErrorString(ERR_get_error()));
+        stop();
         exit(EXIT_FAILURE);
   }
 
-  if (SSL_CTX_use_PrivateKey_file(_ssl_ctx.get(), key, SSL_FILETYPE_PEM) <= 0 ) {
-      ERR_print_errors_fp(stderr);
-      exit(EXIT_FAILURE);
+  if (SSL_CTX_use_PrivateKey_file(_ssl_ctx.get(), key.c_str(), SSL_FILETYPE_PEM) <= 0 ) {
+        LOG->error("Error loading private key: {}", Util::getSSLErrorString(ERR_get_error()));
+        stop();
+        exit(EXIT_FAILURE);
   }
 
   /* verify private key */
   if (!SSL_CTX_check_private_key(_ssl_ctx.get()) ) {
-      fprintf(stderr, "Private key does not match the public certificate\n");
-      exit(EXIT_FAILURE);
+        LOG->error("Error validating private key: {}", Util::getSSLErrorString(ERR_get_error()));
+        stop();
+        exit(EXIT_FAILURE);
   }
 
   _ssl_enabled = true;
