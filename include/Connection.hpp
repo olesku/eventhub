@@ -87,13 +87,12 @@ public:
 private:
   int _fd;
   OpenSSLUniquePtr<SSL> _ssl;
-  BIO* _ssl_write_bio;
-  BIO* _ssl_read_bio;
   struct sockaddr_in _csin;
   Server* _server;
   Worker* _worker;
   struct epoll_event _epoll_event;
   string _write_buffer;
+  string _ssl_read_buffer;
   std::mutex _write_lock;
   std::mutex _subscription_list_lock;
   std::unique_ptr<http::Parser> _http_parser;
@@ -102,7 +101,6 @@ private:
   ConnectionState _state;
   bool _is_shutdown;
   bool _is_ssl;
-  bool _ssl_handshake_done;
   unsigned int _ssl_handshake_retries;
   std::list<std::shared_ptr<Connection>>::iterator _connection_list_iterator;
 

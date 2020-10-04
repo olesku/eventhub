@@ -14,7 +14,7 @@ static constexpr unsigned int EPOLL_MAX_TIMEOUT = 100;
 static constexpr unsigned int MAXEVENTS = 1024;
 
 // Read buffer size.
-static constexpr size_t NET_READ_BUFFER_SIZE = 1 << 7;
+static constexpr size_t NET_READ_BUFFER_SIZE = 1024;
 
 // Max write buffer size.
 static constexpr size_t NET_WRITE_BUFFER_MAX = 1024 * 1000;

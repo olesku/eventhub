@@ -15,7 +15,7 @@ public:
   Parser();
   ~Parser() {}
 
-  void parse(char* buf, size_t len);
+  void parse(const char* buf, size_t len);
 
   void clearDataPayload();
   void clearControlPayload();

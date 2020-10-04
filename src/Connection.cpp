@@ -6,6 +6,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include <ctime>
 #include <memory>
@@ -30,7 +31,6 @@ using namespace std;
 Connection::Connection(int fd, struct sockaddr_in* csin, Server* server, Worker* worker) : _fd(fd), _server(server), _worker(worker) {
   _is_shutdown = false;
   _is_ssl = false;
-  _ssl_handshake_done = false;
   _ssl_handshake_retries = 0;
 
   memcpy(&_csin, csin, sizeof(struct sockaddr_in));
@@ -40,16 +40,16 @@ Connection::Connection(int fd, struct sockaddr_in* csin, Server* server, Worker*
   fcntl(fd, F_SETFL, O_NONBLOCK);
 
   // Set KEEPALIVE on socket.
-  setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast<char*>(&flag), sizeof(int));
+  //setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast<char*>(&flag), sizeof(int));
 
 // If we have TCP_USER_TIMEOUT set it to 10 seconds.
-#ifdef TCP_USER_TIMEOUT
+/*#ifdef TCP_USER_TIMEOUT
   int timeout = 10000;
   setsockopt(fd, SOL_TCP, TCP_USER_TIMEOUT, reinterpret_cast<char*>(&timeout), sizeof(timeout));
-#endif
+#endif*/
 
   // Set TCP_NODELAY on socket.
-  setsockopt(_fd, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<char*>(&flag), sizeof(int));
+  //setsockopt(_fd, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<char*>(&flag), sizeof(int));
 
   LOG->trace("Client {} connected.", getIP());
 
@@ -61,6 +61,7 @@ Connection::Connection(int fd, struct sockaddr_in* csin, Server* server, Worker*
   // Initialize SSL if required.
   if (_server->isSSL()) {
     _initSSL();
+    _doSSLHandshake();
   }
 }
 
@@ -107,46 +108,45 @@ void Connection::_initSSL() {
   _ssl = OpenSSLUniquePtr<SSL>(SSL_new(_server->getSSLContext()));
   SSL_set_fd(_ssl.get(), _fd);
   SSL_set_accept_state(_ssl.get());
-  ERR_clear_error();
   _is_ssl = true;
+  _doSSLHandshake();
 }
 
 void Connection::_doSSLHandshake() {
+  ERR_clear_error();
+  int ret = SSL_accept(_ssl.get());
+  LOG->info("SSL_accept ret: {}", ret);
 
-  if (_ssl_handshake_done) {
+  if (_ssl_handshake_retries >= SSL_MAX_HANDSHAKE_RETRY) {
+    LOG->error("Max SSL retries reached.");
+    shutdown();
     return;
   }
 
-  unsigned int n = 0;
-  int ret = 0;
-  do {
-    n++;
-    ret = SSL_accept(_ssl.get());
-    LOG->info("SSL_accept ret: {}", ret);
-    if (ret < 0) {
-      char buf[512] = {'\0'};
-      ERR_error_string_n(ERR_get_error(), buf, 512);
-      LOG->error("OpenSSL error: {}", buf);
+  _ssl_handshake_retries++;
 
-      int errorCode = SSL_get_error(_ssl.get(), ret);
-      if (errorCode == SSL_ERROR_WANT_READ  ||
-          errorCode == SSL_ERROR_WANT_WRITE) {
+  if (ret < 0) {
+    char buf[512] = {'\0'};
+    ERR_error_string_n(ERR_get_error(), buf, 512);
+    LOG->error("OpenSSL error: {}", buf);
 
-        LOG->error("OpenSSL retry handshake. Try #{}", n);
-        this_thread::sleep_for(chrono::milliseconds(1000));
-        continue;
-      }
-    } else if (ret == 0) {
-      LOG->error("SSL error.");
-      shutdown();
+    int errorCode = SSL_get_error(_ssl.get(), ret);
+    if (errorCode == SSL_ERROR_WANT_READ  ||
+        errorCode == SSL_ERROR_WANT_WRITE) {
+      LOG->error("OpenSSL retry handshake. Try #{}", _ssl_handshake_retries);
       return;
     } else {
-      LOG->info("Successful SSL handshake.");
-      return;
+      LOG->error("Error during handshake.");
+      shutdown();
     }
-  } while (n < SSL_MAX_HANDSHAKE_RETRY);
-
-  _ssl_handshake_done = true;
+  } else if (ret == 0) {
+    LOG->error("SSL error.");
+    shutdown();
+    return;
+  } else {
+    LOG->info("Successful SSL handshake.");
+    return;
+  }
 }
 
 void Connection::read() {
@@ -155,38 +155,72 @@ void Connection::read() {
 
   if (_is_ssl) {
     if (!SSL_is_init_finished(_ssl.get())) {
-      //LOG->info("SSL handshake");
       _doSSLHandshake();
       return;
     }
 
-    bytesRead = ::SSL_read(_ssl.get(), buf, NET_READ_BUFFER_SIZE);
-    LOG->info("SSL_read: {}", buf);
-  } 
-  
-  else {
-    bytesRead = ::read(_fd, buf, NET_READ_BUFFER_SIZE);
-    LOG->info("READ: {}", buf);
-  }
+    do {
+      bytesRead = SSL_read(_ssl.get(), buf, NET_READ_BUFFER_SIZE);
+      int err = SSL_get_error(_ssl.get(), bytesRead);
 
-  if (bytesRead > 0) {
-    buf[bytesRead] = '\0';
+      if (bytesRead > 0) {
+        // We cannot use append() since we need to allow null-bytes.
+        for (unsigned int i = 0; i < bytesRead; _ssl_read_buffer.push_back(buf[i++]));
+      }
+
+      if (err == SSL_ERROR_WANT_READ || err == SSL_ERROR_NONE) {
+        LOG->trace("read: SSL_WANT_READ or SSL_ERROR_NONE");
+        continue;
+      }
+
+      if (err == SSL_ERROR_WANT_WRITE) {
+        LOG->trace("SSL_WANT_WRITE");
+        continue; // XXX: Is this apropriate ?
+      }
+
+      if (err == SSL_ERROR_ZERO_RETURN || err == SSL_ERROR_SYSCALL) {
+        char ebuf[512] = {'\0'};
+        ERR_error_string_n(ERR_get_error(), ebuf, 512);
+        LOG->error("OpenSSL read error: {}", ebuf);
+        shutdown();
+        return;
+      }
+      
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        LOG->info("EAGAIN or EWOULDBLOCK");
+        break;
+      }
+    } while (bytesRead > 0);
   } else {
-    buf[0] = '\0';
-    shutdown();
-    return;
+    bytesRead = ::read(_fd, buf, NET_READ_BUFFER_SIZE);
+  
+    if (bytesRead > 0) {
+      buf[bytesRead] = '\0';
+    } else {
+      buf[0] = '\0';
+      shutdown();
+      return;
+    }
   }
 
   // Redirect request to either HTTP handler or websocket handler
   // based on which state the client is in.
   switch (getState()) {
     case ConnectionState::HTTP:
-      _http_parser->parse(buf, bytesRead);
+      if (_is_ssl) {
+        _http_parser->parse(_ssl_read_buffer.c_str(), _ssl_read_buffer.length());
+      } else {
+        _http_parser->parse(buf, bytesRead);
+      }
       break;
 
     case ConnectionState::WEBSOCKET:
-      _websocket_parser.parse(buf, bytesRead);
-      break;
+      if (_is_ssl) {
+        _websocket_parser.parse(_ssl_read_buffer.c_str(), _ssl_read_buffer.length());
+      } else {
+        _websocket_parser.parse(buf, bytesRead);
+      }
+    break;
 
     default:
       LOG->debug("Connection {} has invalid state, disconnecting.", getIP());

@@ -109,8 +109,8 @@ const std::string& Parser::getControlPayload() {
   return _control_payload_buf;
 }
 
-void Parser::parse(char* buf, size_t len) {
-  ws_parser_execute(&_ws_parser, &_ws_parser_callbacks, this, buf, len);
+void Parser::parse(const char* buf, size_t len) {
+  ws_parser_execute(&_ws_parser, &_ws_parser_callbacks, this, const_cast<char*>(buf), len);
 }
 
 } // namespace websocket
