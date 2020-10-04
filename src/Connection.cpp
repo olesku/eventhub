@@ -40,16 +40,16 @@ Connection::Connection(int fd, struct sockaddr_in* csin, Server* server, Worker*
   fcntl(fd, F_SETFL, O_NONBLOCK);
 
   // Set KEEPALIVE on socket.
-  //setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast<char*>(&flag), sizeof(int));
+  setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast<char*>(&flag), sizeof(int));
 
 // If we have TCP_USER_TIMEOUT set it to 10 seconds.
-/*#ifdef TCP_USER_TIMEOUT
+#ifdef TCP_USER_TIMEOUT
   int timeout = 10000;
   setsockopt(fd, SOL_TCP, TCP_USER_TIMEOUT, reinterpret_cast<char*>(&timeout), sizeof(timeout));
-#endif*/
+#endif
 
   // Set TCP_NODELAY on socket.
-  //setsockopt(_fd, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<char*>(&flag), sizeof(int));
+  setsockopt(_fd, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<char*>(&flag), sizeof(int));
 
   LOG->trace("Client {} connected.", getIP());
 
@@ -61,7 +61,6 @@ Connection::Connection(int fd, struct sockaddr_in* csin, Server* server, Worker*
   // Initialize SSL if required.
   if (_server->isSSL()) {
     _initSSL();
-    _doSSLHandshake();
   }
 }
 
@@ -109,7 +108,6 @@ void Connection::_initSSL() {
   SSL_set_fd(_ssl.get(), _fd);
   SSL_set_accept_state(_ssl.get());
   _is_ssl = true;
-  _doSSLHandshake();
 }
 
 void Connection::_doSSLHandshake() {
@@ -225,6 +223,10 @@ void Connection::read() {
     default:
       LOG->debug("Connection {} has invalid state, disconnecting.", getIP());
       shutdown();
+  }
+
+  if (_is_ssl) {
+    _ssl_read_buffer.clear();
   }
 }
 
