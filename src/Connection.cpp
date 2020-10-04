@@ -114,7 +114,6 @@ void Connection::_initSSL() {
 void Connection::_doSSLHandshake() {
   ERR_clear_error();
   int ret = SSL_accept(_ssl.get());
-  int errorCode = SSL_get_error(_ssl.get(), ret);
 
   if (_ssl_handshake_retries >= SSL_MAX_HANDSHAKE_RETRY) {
     LOG->error("Max SSL retries reached.");
@@ -123,6 +122,7 @@ void Connection::_doSSLHandshake() {
   }
 
   if (ret <= 0) {
+    int errorCode = SSL_get_error(_ssl.get(), ret);
     if (errorCode == SSL_ERROR_WANT_READ  ||
         errorCode == SSL_ERROR_WANT_WRITE) {
       LOG->error("OpenSSL retry handshake. Try #{}", _ssl_handshake_retries);
