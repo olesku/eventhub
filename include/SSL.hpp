@@ -25,18 +25,6 @@ template<> struct OpenSSLDeleter<SSL> {
   }
 };
 
-template<> struct OpenSSLDeleter<BIO> {
-  void operator()(BIO *p) const {
-    BIO_free_all(p);
-  }
-};
-
-template<> struct OpenSSLDeleter<BIO_METHOD> {
-  void operator()(BIO_METHOD *p) const {
-    BIO_meth_free(p);
-  }
-};
-
 template<class OpenSSLType>
 using OpenSSLUniquePtr = std::unique_ptr<OpenSSLType, OpenSSLDeleter<OpenSSLType>>;
 

@@ -93,6 +93,7 @@ private:
   struct epoll_event _epoll_event;
   string _write_buffer;
   string _ssl_read_buffer;
+  std::vector<char> _read_buffer;
   std::mutex _write_lock;
   std::mutex _subscription_list_lock;
   std::unique_ptr<http::Parser> _http_parser;

@@ -129,7 +129,7 @@ size_t Redis::getCacheSince(const string topicPattern, long long since, long lon
     topics.push_back(topicPattern);
   }
 
-  for (const auto topic : topics) {
+  for (const auto& topic : topics) {
     // zcacheKeys is in format <hset-id>:<expireAtTimestamp>
     std::deque<std::string> zcacheKeys;
 

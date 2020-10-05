@@ -63,6 +63,8 @@ Connection::Connection(int fd, struct sockaddr_in* csin, Server* server, Worker*
   if (_server->isSSL()) {
     _initSSL();
   }
+
+  _read_buffer.resize(NET_READ_BUFFER_SIZE);
 }
 
 Connection::~Connection() {
@@ -136,8 +138,12 @@ void Connection::_doSSLHandshake() {
 }
 
 void Connection::read() {
-  char buf[NET_READ_BUFFER_SIZE];
-  ssize_t bytesRead = 0;
+  size_t bytesRead = 0;
+  int ret = 0;
+
+  if (_read_buffer.size() > 0) {
+    _read_buffer.clear();
+  }
 
   if (_is_ssl) {
     if (!SSL_is_init_finished(_ssl.get())) {
@@ -145,67 +151,64 @@ void Connection::read() {
       return;
     }
 
-    _ssl_read_buffer.clear();
-
     do {
-      bytesRead = SSL_read(_ssl.get(), buf, NET_READ_BUFFER_SIZE);
-      int err = SSL_get_error(_ssl.get(), bytesRead);
+      // If more read buffer capacity is required increase it by chunks of NET_READ_BUFFER_SIZE.
+      if (bytesRead + NET_READ_BUFFER_SIZE > _read_buffer.capacity()) {
+        size_t newCapacity = _read_buffer.capacity() + NET_READ_BUFFER_SIZE;
 
-      if (bytesRead > 0) {
-        // We cannot use append() since we need to allow null-bytes.
-        for (unsigned int i = 0; i < bytesRead; _ssl_read_buffer.push_back(buf[i++]));
+        // TODO: Max variable should be called something else.
+        if (newCapacity > WS_MAX_DATA_FRAME_SIZE + NET_READ_BUFFER_SIZE) {
+          LOG->error("Client {} exceeded max buffer size. Disconnecting.", getIP());
+          shutdown();
+          return;
+        }
+
+        // Retain data we have in the _read_buffer and copy it back after call to resize().
+        // We have to do this since resize() invalidates existing data.
+        vector<char> retain;
+        retain.resize(bytesRead);
+        memcpy(retain.data(), _read_buffer.data(), bytesRead);
+
+        LOG->trace("Resizing readbuffer for client {} to {}", getIP(), newCapacity);
+        _read_buffer.resize(newCapacity);
+        memcpy(_read_buffer.data(), retain.data(), bytesRead);
       }
 
-      if (err == SSL_ERROR_WANT_READ || err == SSL_ERROR_NONE) {
-        LOG->trace("read: SSL_WANT_READ or SSL_ERROR_NONE");
+      ret = SSL_read(_ssl.get(), _read_buffer.data()+bytesRead, NET_READ_BUFFER_SIZE);
+
+      if (ret > 0) {
+        bytesRead += ret;
         continue;
       }
-
-      if (err == SSL_ERROR_WANT_WRITE) {
-        LOG->trace("SSL_WANT_WRITE");
-        continue; // XXX: Is this apropriate ?
-      }
-
+    
+      int err = SSL_get_error(_ssl.get(), ret);
       if (err == SSL_ERROR_ZERO_RETURN || err == SSL_ERROR_SYSCALL) {
         LOG->error("OpenSSL read error: {} for client {}", Util::getSSLErrorString(ERR_get_error()), getIP());
         shutdown();
         return;
       }
-      
-      if (errno == EAGAIN || errno == EWOULDBLOCK) {
-        LOG->info("EAGAIN or EWOULDBLOCK");
-        break;
-      }
-    } while (bytesRead > 0);
+    } while (ret > 0);
   } else {
-    bytesRead = ::read(_fd, buf, NET_READ_BUFFER_SIZE);
+    bytesRead = ::read(_fd, _read_buffer.data(), NET_READ_BUFFER_SIZE);
   
-    if (bytesRead > 0) {
-      buf[bytesRead] = '\0';
-    } else {
-      buf[0] = '\0';
+    if (bytesRead <= 0) {
       shutdown();
       return;
     }
   }
 
+  //LOG->info("READ: {}", _read_buffer.data());
+  LOG->info("_read_buffer.capacity() = {}", _read_buffer.capacity());
+
   // Redirect request to either HTTP handler or websocket handler
   // based on which state the client is in.
   switch (getState()) {
     case ConnectionState::HTTP:
-      if (_is_ssl) {
-        _http_parser->parse(_ssl_read_buffer.c_str(), _ssl_read_buffer.length());
-      } else {
-        _http_parser->parse(buf, bytesRead);
-      }
-      break;
+      _http_parser->parse(_read_buffer.data(), bytesRead);
+    break;
 
     case ConnectionState::WEBSOCKET:
-      if (_is_ssl) {
-        _websocket_parser.parse(_ssl_read_buffer.c_str(), _ssl_read_buffer.length());
-      } else {
-        _websocket_parser.parse(buf, bytesRead);
-      }
+      _websocket_parser.parse(_read_buffer.data(), bytesRead);
     break;
 
     default:
@@ -213,9 +216,8 @@ void Connection::read() {
       shutdown();
   }
 
-  if (_is_ssl) {
-    _ssl_read_buffer.clear();
-  }
+ 
+  _read_buffer.clear();
 }
 
 ssize_t Connection::write(const string& data) {
@@ -234,23 +236,40 @@ ssize_t Connection::write(const string& data) {
     return 0;
 
   if (_is_ssl) {
-    ret = SSL_write(_ssl.get(), _write_buffer.c_str(), _write_buffer.length());
-    LOG->info("SSL_WRITE: {}", _write_buffer);
-  } else {
-    LOG->info("WRITE: {}", _write_buffer);
-    ret = ::write(_fd, _write_buffer.c_str(), _write_buffer.length());
-  }
+    unsigned int pcktSize = _write_buffer.length() > NET_READ_BUFFER_SIZE ? NET_READ_BUFFER_SIZE : _write_buffer.length();
+    ret = SSL_write(_ssl.get(), _write_buffer.c_str(), pcktSize);
+    LOG->info("SSL_write ret = {}", ret);
+    if (ret > 0) { 
+      _pruneWriteBuffer(ret);
+    } else {
+      int err = SSL_get_error(_ssl.get(), ret); 
+      if (err != SSL_ERROR_WANT_WRITE && err != SSL_ERROR_WANT_READ && err != SSL_ERROR_SYSCALL) {
+        LOG->info("write: SSL err: {}", Util::getSSLErrorString(err));
+        //shutdown();
+        //return ret;
+      }
+    }
 
-  if (ret <= 0) {
-    LOG->trace("Client {} write error: {}.", getIP(), strerror(errno));
-    _enableEpollOut();
-  } else if ((unsigned int)ret < _write_buffer.length()) {
-    LOG->trace("Client {} could not write() entire buffer, wrote {} of {} bytes.", ret, _write_buffer.length());
-    _pruneWriteBuffer(ret);
-    _enableEpollOut();
+    LOG->info("_write_buffer.length() = {} ret = {}", _write_buffer.length(), ret);
+    if (_write_buffer.length() > 0) {
+      _enableEpollOut();
+    } else {
+      _disableEpollOut();
+    }
   } else {
-    _disableEpollOut();
-    _write_buffer.clear();
+    ret = ::write(_fd, _write_buffer.c_str(), _write_buffer.length());
+
+    if (ret <= 0) {
+      LOG->trace("Client {} write error: {}.", getIP(), strerror(errno));
+      _enableEpollOut();
+    } else if ((unsigned int)ret < _write_buffer.length()) {
+      LOG->trace("Client {} could not write() entire buffer, wrote {} of {} bytes.", ret, _write_buffer.length());
+      _pruneWriteBuffer(ret);
+      _enableEpollOut();
+    } else {
+      _disableEpollOut();
+      _write_buffer.clear();
+    }
   }
 
   return ret;

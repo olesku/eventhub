@@ -32,7 +32,7 @@ std::atomic<bool> stopEventhub{false};
 namespace eventhub {
 
 Server::Server(const string redisHost, int redisPort, const std::string redisPassword, int redisPoolSize)
-    :  _server_socket(-1), _ssl_enabled(false), _ssl_method(NULL),
+    :  _server_socket(-1), _ssl_enabled(false),
        _redis(redisHost, redisPort, redisPassword, redisPoolSize) {}
 
 Server::~Server() {
@@ -210,43 +210,42 @@ void Server::_initSSLContext() {
   _ssl_ctx = OpenSSLUniquePtr<SSL_CTX>(SSL_CTX_new(method));
 
   const string caCert = Config.getString("SSL_CA_CERTIFICATE");
-  const string cert = Config.getString("SSL_CERTIFICATE"); //"/home/oles/code/eventhub/ssl/cert.pem";
-  const string key = Config.getString("SSL_PRIVATE_KEY"); //"/home/oles/code/eventhub/ssl/key.pem";
+  const string cert = Config.getString("SSL_CERTIFICATE");
+  const string key = Config.getString("SSL_PRIVATE_KEY");
+
+  if (caCert.empty()) {
+    SSL_CTX_set_default_verify_paths(_ssl_ctx.get());
+  } else {
+    if (SSL_CTX_load_verify_locations(_ssl_ctx.get(), caCert.c_str(), NULL) <= 0) {
+      LOG->error("Error loading CA certificate: {}", Util::getSSLErrorString(ERR_get_error()));
+      stop();
+      exit(EXIT_FAILURE);
+    }
+  }
+
+	if (SSL_CTX_use_certificate_chain_file(_ssl_ctx.get(), cert.c_str()) <= 0) {
+    LOG->error("Error loading certificate: {}", Util::getSSLErrorString(ERR_get_error()));
+    stop();
+    exit(EXIT_FAILURE);
+  }
+
+  if (SSL_CTX_use_PrivateKey_file(_ssl_ctx.get(), key.c_str(), SSL_FILETYPE_PEM) <= 0 ) {
+    LOG->error("Error loading private key: {}", Util::getSSLErrorString(ERR_get_error()));
+    stop();
+    exit(EXIT_FAILURE);
+  }
+
+  if (!SSL_CTX_check_private_key(_ssl_ctx.get()) ) {
+    LOG->error("Error validating private key: {}", Util::getSSLErrorString(ERR_get_error()));
+    stop();
+    exit(EXIT_FAILURE);
+  }
 
   SSL_CTX_set_ecdh_auto(_ssl_ctx.get(), 1);
   //SSL_CTX_set_min_proto_version(_ssl_ctx.get(), TLS1_2_VERSION);
   //SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_TLSv1_2|SSL_OP_SINGLE_DH_USE|SSL_OP_NO_TLSv1_3);
   SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_CIPHER_SERVER_PREFERENCE);
   SSL_CTX_set_alpn_select_cb(_ssl_ctx.get(), alpn_cb, NULL);
-
-  if (caCert.empty()) {
-    SSL_CTX_set_default_verify_paths(_ssl_ctx.get());
-  } else {
-    if (SSL_CTX_load_verify_locations(_ssl_ctx.get(), caCert.c_str(), NULL) <= 0) {
-        LOG->error("Error loading CA certificate: {}", Util::getSSLErrorString(ERR_get_error()));
-        stop();
-        exit(EXIT_FAILURE);
-    }
-  }
-
-	if (SSL_CTX_use_certificate_chain_file(_ssl_ctx.get(), cert.c_str()) <= 0) {
-        LOG->error("Error loading certificate: {}", Util::getSSLErrorString(ERR_get_error()));
-        stop();
-        exit(EXIT_FAILURE);
-  }
-
-  if (SSL_CTX_use_PrivateKey_file(_ssl_ctx.get(), key.c_str(), SSL_FILETYPE_PEM) <= 0 ) {
-        LOG->error("Error loading private key: {}", Util::getSSLErrorString(ERR_get_error()));
-        stop();
-        exit(EXIT_FAILURE);
-  }
-
-  /* verify private key */
-  if (!SSL_CTX_check_private_key(_ssl_ctx.get()) ) {
-        LOG->error("Error validating private key: {}", Util::getSSLErrorString(ERR_get_error()));
-        stop();
-        exit(EXIT_FAILURE);
-  }
 
   _ssl_enabled = true;
 }
