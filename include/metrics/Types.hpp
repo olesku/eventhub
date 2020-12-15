@@ -47,7 +47,7 @@ struct AggregatedMetrics {
   unsigned long eventloop_delay_ms;
 };
 
-} // statisics
+} // metrics
 } // eventhub
 
 #endif // INCLUDE_METRICS_TYPES_HPP_

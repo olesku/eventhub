@@ -68,10 +68,9 @@ void Worker::_acceptConnection() {
   socklen_t clen;
   int clientFd;
 
+  // Accept the connection.
   memset(reinterpret_cast<char*>(&csin), '\0', sizeof(csin));
   clen = sizeof(csin);
-
-  // Accept the connection.
   clientFd = accept(_server->getServerSocket(), (struct sockaddr*)&csin, &clen);
 
   if (clientFd == -1) {
@@ -91,7 +90,6 @@ void Worker::_acceptConnection() {
     return;
   }
 
-  // Create the client object and assign it to a worker.
   _server->getWorker()->_addConnection(clientFd, &csin);
 }
 
@@ -100,10 +98,10 @@ void Worker::_acceptConnection() {
  * @param fd Filedescriptor of connection.
  * @param csin sockaddr_in for the connection.
  */
-void Worker::_addConnection(int fd, struct sockaddr_in* csin) {
+ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin) {
   std::lock_guard<std::mutex> lock(_connection_list_mutex);
 
-  auto client = make_shared<Connection>(fd, csin, this);
+  auto client = make_shared<Connection>(fd, csin, _server, this);
 
   auto connectionIterator = _connection_list.insert(_connection_list.end(), client);
   int ret                 = client->addToEpoll(connectionIterator, (EPOLLIN | EPOLLRDHUP | EPOLLHUP | EPOLLERR));
@@ -111,7 +109,7 @@ void Worker::_addConnection(int fd, struct sockaddr_in* csin) {
   if (ret == -1) {
     LOG->warn("Could not add client to epoll: {}.", strerror(errno));
     _connection_list.erase(connectionIterator);
-    return;
+    return nullptr;
   }
 
   LOG->trace("Client {} accepted in worker {}", client->getIP(), getWorkerId());
@@ -168,6 +166,8 @@ void Worker::_addConnection(int fd, struct sockaddr_in* csin) {
 
   _metrics.current_connections_count++;
   _metrics.total_connect_count++;
+
+  return client;
 }
 
 /**

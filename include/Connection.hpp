@@ -24,6 +24,7 @@
 #include "http/Parser.hpp"
 #include "jsonrpc/jsonrpcpp.hpp"
 #include "websocket/Parser.hpp"
+#include "SSL.hpp"
 
 using namespace std;
 
@@ -33,6 +34,7 @@ using ConnectionPtr          = std::shared_ptr<class Connection>;
 using ConnectionWeakPtr      = std::weak_ptr<class Connection>;
 using ConnectionListIterator = std::list<ConnectionPtr>::iterator;
 
+class Server;
 class Worker;
 class Topic;
 
@@ -50,7 +52,7 @@ struct TopicSubscription {
 
 class Connection : public std::enable_shared_from_this<Connection> {
 public:
-  Connection(int fd, struct sockaddr_in* csin, Worker* worker);
+  Connection(int fd, struct sockaddr_in* csin, Server* server, Worker* worker);
   ~Connection();
 
   ssize_t write(const string& data);
@@ -79,14 +81,19 @@ public:
     _is_shutdown = true;
   }
 
+
   inline bool isShutdown() { return _is_shutdown; }
 
 private:
   int _fd;
+  OpenSSLUniquePtr<SSL> _ssl;
   struct sockaddr_in _csin;
+  Server* _server;
   Worker* _worker;
   struct epoll_event _epoll_event;
   string _write_buffer;
+  string _ssl_read_buffer;
+  std::vector<char> _read_buffer;
   std::mutex _write_lock;
   std::mutex _subscription_list_lock;
   std::unique_ptr<http::Parser> _http_parser;
@@ -94,6 +101,8 @@ private:
   AccessController _access_controller;
   ConnectionState _state;
   bool _is_shutdown;
+  bool _is_ssl;
+  unsigned int _ssl_handshake_retries;
   std::list<std::shared_ptr<Connection>>::iterator _connection_list_iterator;
 
   std::unordered_map<std::string, TopicSubscription> _subscribedTopics;
@@ -101,6 +110,8 @@ private:
   void _enableEpollOut();
   void _disableEpollOut();
   size_t _pruneWriteBuffer(size_t bytes);
+  void _initSSL();
+  void _doSSLHandshake();
 };
 
 } // namespace eventhub

@@ -11,6 +11,7 @@ public:
   static const std::string uriDecode(const std::string& str);
   static std::string& strToLower(std::string& s);
   static int64_t getTimeSinceEpoch();
+  static std::string getSSLErrorString(unsigned long e);
 
 private:
   Util() {}

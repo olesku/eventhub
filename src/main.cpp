@@ -51,6 +51,10 @@ int main(int argc, char** argv) {
     eventhub::Config.addBool("DISABLE_AUTH", false);
     eventhub::Config.addBool("ENABLE_SSE", false);
     eventhub::Config.addBool("ENABLE_CACHE", true);
+    eventhub::Config.addBool("ENABLE_SSL", false);
+    eventhub::Config.addString("SSL_CERTIFICATE", "");
+    eventhub::Config.addString("SSL_PRIVATE_KEY", "");
+    eventhub::Config.addString("SSL_CA_CERTIFICATE", "");
     eventhub::Config.addString("PROMETHEUS_METRIC_PREFIX", "eventhub");
   } catch (std::exception& e) {
     eventhub::LOG->error("Error reading configuration: {}", e.what());

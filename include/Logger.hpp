@@ -6,6 +6,7 @@
 #include <iostream>
 #include <map>
 #include <stdlib.h>
+#include <spdlog/fwd.h>
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_sinks.h>
 
