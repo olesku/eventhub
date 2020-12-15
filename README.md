@@ -95,6 +95,10 @@ Eventhub is configured through [environment variables](https://en.wikipedia.org/
 |DEFAULT_CACHE_TTL            | Default message TTL                 | 60
 |MAX_CACHE_REQUEST_LIMIT      | Default returned cache result limit | 1000
 |LOG_LEVEL                    | Log level to use                    | info
+|ENABLE_SSL                   | Enable SSL                          | false
+|SSL_CERTIFICATE              | Path to certificate for SSL         | None
+|SSL_PRIVATE_KEY              | Path to private key for SSL         | None
+|SSL_CA_CERTIFICATE           | Path to CA certificate              | None
 
 ## Docker
 The easiest way is to use our docker image.
@@ -138,18 +142,13 @@ make
 Eventhub has clustering capabilities, and it's easy to run multiple instances with the same datasources.
 It's using Redis for intercommunication, so the only thing you have to do is to configure each instance to use the same Redis server.
 
-
 ## Metrics
 
 Runtime metrics in [Prometheus](https://prometheus.io/) format is available at the `/metrics` endpoint.
 JSON is available at `/metrics?format=json`
 
 # TLS/SSL
-Right now Eventhub doesn't support this natively. If you want to use this you have to front it with a loadbalancer that does the TLS-termination. It has been tested with ELB/NLB/ALB on AWS and HAProxy and NGINX on-premise.
-
-In clustered installations you usually have a loadbalancer with these capabilities in front anyway.
-
-However, native support for TLS is planned and will be supported eventually.
+Eventhub fully supports SSL termination.
 
 # License
 Eventhub is licensed under MIT. See [LICENSE](https://github.com/olesku/eventhub/blob/LICENSE).
