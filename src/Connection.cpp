@@ -180,7 +180,7 @@ void Connection::read() {
         bytesRead += ret;
         continue;
       }
-    
+
       int err = SSL_get_error(_ssl.get(), ret);
       if (err == SSL_ERROR_ZERO_RETURN || err == SSL_ERROR_SYSCALL) {
         LOG->error("OpenSSL read error: {} for client {}", Util::getSSLErrorString(ERR_get_error()), getIP());
@@ -190,15 +190,12 @@ void Connection::read() {
     } while (ret > 0);
   } else {
     bytesRead = ::read(_fd, _read_buffer.data(), NET_READ_BUFFER_SIZE);
-  
+
     if (bytesRead <= 0) {
       shutdown();
       return;
     }
   }
-
-  //LOG->info("READ: {}", _read_buffer.data());
-  LOG->info("_read_buffer.capacity() = {}", _read_buffer.capacity());
 
   // Redirect request to either HTTP handler or websocket handler
   // based on which state the client is in.
@@ -216,7 +213,7 @@ void Connection::read() {
       shutdown();
   }
 
- 
+
   _read_buffer.clear();
 }
 
@@ -238,19 +235,21 @@ ssize_t Connection::write(const string& data) {
   if (_is_ssl) {
     unsigned int pcktSize = _write_buffer.length() > NET_READ_BUFFER_SIZE ? NET_READ_BUFFER_SIZE : _write_buffer.length();
     ret = SSL_write(_ssl.get(), _write_buffer.c_str(), pcktSize);
-    LOG->info("SSL_write ret = {}", ret);
-    if (ret > 0) { 
+
+    if (ret > 0) {
       _pruneWriteBuffer(ret);
     } else {
-      int err = SSL_get_error(_ssl.get(), ret); 
-      if (err != SSL_ERROR_WANT_WRITE && err != SSL_ERROR_WANT_READ && err != SSL_ERROR_SYSCALL) {
-        LOG->info("write: SSL err: {}", Util::getSSLErrorString(err));
-        //shutdown();
-        //return ret;
+      int err = SSL_get_error(_ssl.get(), ret);
+
+      if (!(err == SSL_ERROR_SYSCALL && (errno == EAGAIN || errno == EWOULDBLOCK)) &&
+          err != SSL_ERROR_WANT_WRITE && err != SSL_ERROR_WANT_READ)
+      {
+        LOG->trace("write: SSL err: {} for client {}", Util::getSSLErrorString(err), getIP());
+        shutdown();
+        return ret;
       }
     }
 
-    LOG->info("_write_buffer.length() = {} ret = {}", _write_buffer.length(), ret);
     if (_write_buffer.length() > 0) {
       _enableEpollOut();
     } else {
