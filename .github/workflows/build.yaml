@@ -23,8 +23,8 @@ jobs:
       with:
         redis-version: ${{ matrix.redis-version }}
 
-    - name: Build and test
-      run: |
+    - name: Install redis-plus-plus library
+    - run: |
         git clone https://github.com/sewenew/redis-plus-plus.git && \
         cd redis-plus-plus && \
         git checkout tags/1.1.1 && \
@@ -33,5 +33,14 @@ jobs:
         cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr .. && \
         make && \
         sudo make install && \
-        cd ../.. && \
+        cd ../..
+
+    - name: Build
+      run: |
+        mkdir -p build && cd build && \
+        cmake -DSKIP_TESTS=1 -DCMAKE_BUILD_TYPE=Release .. && \
         make
+
+    - name: Run tests
+      run: |
+        build/eventhub_tests
