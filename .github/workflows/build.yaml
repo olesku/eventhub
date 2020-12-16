@@ -1,4 +1,4 @@
-name: Run tests
+name: Build and test
 
 on: [push]
 
@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        redis-version: [5]
+        redis-version: [5, 6]
 
     steps:
     - name: Git checkout
@@ -18,12 +18,7 @@ jobs:
       env:
         DEBIAN_FRONTEND: noninteractive
 
-    - name: Start Redis
-      uses: supercharge/redis-github-action@1.1.0
-      with:
-        redis-version: ${{ matrix.redis-version }}
-
-    - name: Install redis-plus-plus library
+    - name: Build and install redis-plus-plus library
       run: |
         git clone https://github.com/sewenew/redis-plus-plus.git && \
         cd redis-plus-plus && \
@@ -35,15 +30,17 @@ jobs:
         sudo make install && \
         cd ../..
 
-    - name: Build
+    - name: Build eventhub
       run: |
         mkdir -p build && cd build && \
         cmake -DSKIP_TESTS=1 -DCMAKE_BUILD_TYPE=Release .. && \
         make
 
+    - name: Start Redis
+      uses: supercharge/redis-github-action@1.1.0
+      with:
+        redis-version: ${{ matrix.redis-version }}
+
     - name: Run tests
       run: |
-        pwd
-        ls -la
-        ls -la */*
         ./build/eventhub_tests
