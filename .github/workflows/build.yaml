@@ -43,4 +43,7 @@ jobs:
 
     - name: Run tests
       run: |
-        ./eventhub_tests
+        pwd
+        ls -la
+        ls -la */*
+        ./build/eventhub_tests
