@@ -1,4 +1,4 @@
-name: Build and push docker image to Quay
+name: Docker build
 
 on:
   workflow_dispatch:
@@ -13,6 +13,7 @@ on:
 
 jobs:
   build:
+    name: Build and push docker image to Quay
     runs-on: ubuntu-latest
     steps:
     - name: Build docker image
