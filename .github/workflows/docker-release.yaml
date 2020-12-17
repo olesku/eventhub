@@ -28,4 +28,4 @@ jobs:
         run: | 
           docker tag "quay.io/olesku/eventhub:${{github.event.inputs.branch}}" "quay.io/olesku/eventhub:latest"
           docker push "quay.io/olesku/eventhub:latest"
-        if: github.event.inputs.tagAsLatest == "true"
+        if: ${{github.event.inputs.tagAsLatest}} == true
