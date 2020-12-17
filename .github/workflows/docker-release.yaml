@@ -1,0 +1,30 @@
+name: Build and push docker image to Quay
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to build'
+        required: true
+      tagAsLatest:
+        description: 'Tag this build as latest'
+        required: true
+        default: false
+
+jobs:
+  build_image:
+    steps:
+    - name: Build docker image
+      run: |
+        docker build -t "quay.io/olesku/eventhub:${{github.event.inputs.branch}}" .
+
+    - name: Log into quay.io
+      run: |
+        docker login -u "${QUAY_USER)" -p "${QUAY_PASSWORD} quay.io"
+      env:
+        QUAY_USER: ${{secrets.QUAY_USER}}
+        QUAY_PASSWORD: ${{secrets.QUAY_PASSWORD}}
+
+    - name: Push docker image to quay.io
+      run: |
+        docker push "quay.io/olesku/eventhub:${{github.event.inputs.branch}}"
