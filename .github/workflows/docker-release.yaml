@@ -1,5 +1,4 @@
 name: Docker build
-
 on:
   workflow_dispatch:
     inputs:
@@ -16,14 +15,12 @@ jobs:
     name: Build and push docker image to Quay
     runs-on: ubuntu-latest
     steps:
-    - name: Build docker image
-      run: docker build -t "quay.io/olesku/eventhub:${{github.event.inputs.branch}}" .
-
-    - name: Log into quay.io
-      run: docker login -u "${QUAY_USER)" -p "${QUAY_PASSWORD} quay.io"
-      env:
-        QUAY_USER: ${{secrets.QUAY_USER}}
-        QUAY_PASSWORD: ${{secrets.QUAY_PASSWORD}}
-
-    - name: Push docker image to quay.io
-      run: docker push "quay.io/olesku/eventhub:${{github.event.inputs.branch}}"
+      - name: Build docker image
+        run: docker build -t "quay.io/olesku/eventhub:${{github.event.inputs.branch}}" .
+      - name: Log into quay.io
+        run: docker login -u "${QUAY_USER)" -p "${QUAY_PASSWORD} quay.io"
+        env:
+          QUAY_USER: ${{secrets.QUAY_USER}}
+          QUAY_PASSWORD: ${{secrets.QUAY_PASSWORD}}
+      - name: Push docker image to quay.io
+        run: docker push "quay.io/olesku/eventhub:${{github.event.inputs.branch}}"
