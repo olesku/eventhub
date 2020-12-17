@@ -48,10 +48,7 @@ find_path(REDIS_PLUS_PLUS_HEADER sw)
 include_directories(${REDIS_PLUS_PLUS_HEADER})
 
 add_subdirectory(src)
-
-if (NOT DEFINED SKIP_TESTS)
-  add_subdirectory(tests)
-endif()
+add_subdirectory(tests)
 
 file(GLOB_RECURSE ALL_SOURCE_FILES *.cpp *.hpp *.h)
 

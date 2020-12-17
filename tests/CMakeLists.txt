@@ -24,4 +24,6 @@ target_link_libraries(eventhub_tests ${HIREDIS_LIB})
 find_library(REDIS_PLUS_PLUS_LIB redis++)
 target_link_libraries(eventhub_tests ${REDIS_PLUS_PLUS_LIB})
 
-add_custom_command(TARGET eventhub_tests POST_BUILD COMMAND ../eventhub_tests)
+if (NOT DEFINED SKIP_TESTS)
+  add_custom_command(TARGET eventhub_tests POST_BUILD COMMAND ../eventhub_tests)
+endif()
