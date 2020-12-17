@@ -5,6 +5,7 @@ on:
       branch:
         description: 'Branch to build'
         required: true
+        default: "master"
       tagAsLatest:
         description: 'Tag this build as latest'
         required: true
@@ -12,7 +13,6 @@ on:
 
 jobs:
   build:
-    name: Build and push docker image to Quay
     runs-on: ubuntu-latest
     steps:
       - name: Build docker image
@@ -24,3 +24,8 @@ jobs:
           QUAY_PASSWORD: ${{secrets.QUAY_PASSWORD}}
       - name: Push docker image to quay.io
         run: docker push "quay.io/olesku/eventhub:${{github.event.inputs.branch}}"
+      - name: Tag and push as latest
+        run: | 
+          docker tag "quay.io/olesku/eventhub:${{github.event.inputs.branch}}" "quay.io/olesku/eventhub:latest"
+          docker push "quay.io/olesku/eventhub:latest"
+        if: github.event.inputs.tagAsLatest = "true"
