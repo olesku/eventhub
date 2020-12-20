@@ -2,7 +2,7 @@
 <img width="308" height="85" src="./docs/images/logo.png" />
 </p>
 
-[![Build Status](https://github.com/olesku/eventhub/workflows/Build%20and%20test/badge.svg)](https://travis-ci.com/olesku/eventhub)
+[![Build Status](https://github.com/olesku/eventhub/workflows/Build/badge.svg)](https://travis-ci.com/olesku/eventhub)
 [![Docker Repository on Quay](https://quay.io/repository/olesku/eventhub/status "Docker Repository on Quay")](https://quay.io/repository/olesku/eventhub)
 
 Eventhub is a WebSocket message broker written in modern C++.

@@ -2,10 +2,6 @@ name: Docker build
 on:
   workflow_dispatch:
     inputs:
-      branch:
-        description: 'Branch to build'
-        required: true
-        default: "master"
       tagAsLatest:
         description: 'Tag this build as latest'
         required: true
@@ -15,17 +11,22 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Git checkout
+        uses: actions/checkout@v1
       - name: Build docker image
-        run: docker build -t "quay.io/olesku/eventhub:${{github.event.inputs.branch}}" .
+        run: docker build -t "quay.io/olesku/eventhub:${GITHUB_REF##*/}" .
+
       - name: Log into quay.io
         run: docker login -u "${QUAY_USER)" -p "${QUAY_PASSWORD} quay.io"
         env:
           QUAY_USER: ${{secrets.QUAY_USER}}
           QUAY_PASSWORD: ${{secrets.QUAY_PASSWORD}}
+
       - name: Push docker image to quay.io
-        run: docker push "quay.io/olesku/eventhub:${{github.event.inputs.branch}}"
+        run: docker push "quay.io/olesku/eventhub:${GITHUB_REF##*/}"
+
       - name: Tag and push as latest
         run: | 
-          docker tag "quay.io/olesku/eventhub:${{github.event.inputs.branch}}" "quay.io/olesku/eventhub:latest"
+          docker tag "quay.io/olesku/eventhub:${GITHUB_REF##*/}" "quay.io/olesku/eventhub:latest"
           docker push "quay.io/olesku/eventhub:latest"
         if: ${{github.event.inputs.tagAsLatest}} == true
