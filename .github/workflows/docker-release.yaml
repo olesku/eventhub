@@ -17,7 +17,7 @@ jobs:
         run: docker build -t "quay.io/olesku/eventhub:${GITHUB_REF##*/}" .
 
       - name: Log into quay.io
-        run: docker login -u "${QUAY_USER)" -p "${QUAY_PASSWORD} quay.io"
+        run: docker login -u "${QUAY_USER)" -p "${QUAY_PASSWORD}" quay.io
         env:
           QUAY_USER: ${{secrets.QUAY_USER}}
           QUAY_PASSWORD: ${{secrets.QUAY_PASSWORD}}
