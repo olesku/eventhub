@@ -2,11 +2,9 @@ name: Build
 
 on:
   push:
-    branches: [github-actions]
-#  push:
-#    branches: [master]
-#  pull_request:
-#    branches: [master]
+    branches: [master]
+  pull_request:
+    branches: [master]
 
 jobs:
   build:
