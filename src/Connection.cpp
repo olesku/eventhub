@@ -31,6 +31,7 @@ using namespace std;
 
 Connection::Connection(int fd, struct sockaddr_in* csin, Server* server, Worker* worker) : _fd(fd), _server(server), _worker(worker) {
   _is_shutdown = false;
+  _is_shutdown_after_flush = false;
   _is_ssl = false;
   _ssl_handshake_retries = 0;
 
@@ -229,8 +230,9 @@ ssize_t Connection::write(const string& data) {
   }
 
   _write_buffer.append(data);
-  if (_write_buffer.empty())
+  if (_write_buffer.empty()) {
     return 0;
+  }
 
   if (_is_ssl) {
     unsigned int pcktSize = _write_buffer.length() > NET_READ_BUFFER_SIZE ? NET_READ_BUFFER_SIZE : _write_buffer.length();
@@ -271,11 +273,24 @@ ssize_t Connection::write(const string& data) {
     }
   }
 
+  if (_write_buffer.empty() && _is_shutdown_after_flush) {
+    shutdown();
+  }
+
   return ret;
 }
 
 ssize_t Connection::flushSendBuffer() {
   return write("");
+}
+
+void Connection::shutdownAfterFlush() {
+  if (_write_buffer.empty()) {
+    shutdown();
+    return;
+  }
+
+  _is_shutdown_after_flush = true;
 }
 
 const std::string Connection::getIP() {

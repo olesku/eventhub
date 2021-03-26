@@ -47,7 +47,7 @@ void error(ConnectionPtr conn, const std::string& message, unsigned int statusCo
 
   http::Response resp(statusCode, fmt::format("{}\n", j.dump()));
   conn->write(resp.get());
-  conn->shutdown();
+  conn->shutdownAfterFlush();
 }
 
 } // namespace response

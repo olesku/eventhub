@@ -76,6 +76,8 @@ public:
   void onHTTPRequest(http::ParserCallback callback);
   void onWebsocketRequest(websocket::ParserCallback callback);
 
+  void shutdownAfterFlush();
+
   inline void shutdown() {
     !_is_shutdown && ::shutdown(_fd, SHUT_RDWR);
     _is_shutdown = true;
@@ -101,6 +103,7 @@ private:
   AccessController _access_controller;
   ConnectionState _state;
   bool _is_shutdown;
+  bool _is_shutdown_after_flush;
   bool _is_ssl;
   unsigned int _ssl_handshake_retries;
   std::list<std::shared_ptr<Connection>>::iterator _connection_list_iterator;

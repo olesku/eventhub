@@ -53,14 +53,14 @@ void Handler::_handlePath(HandlerContext& ctx, Parser* req) {
     resp.setHeader("Connection", "close");
 
     ctx.connection()->write(resp.get());
-    ctx.connection()->shutdown();
+    ctx.connection()->shutdownAfterFlush();
     return;
   } else if (method != "get") {
     Response resp(405, "<h1>405 Method not allowed</h1>\r\n");
     resp.setHeader("Connection", "close");
 
     ctx.connection()->write(resp.get());
-    ctx.connection()->shutdown();
+    ctx.connection()->shutdownAfterFlush();
     return;
   }
 
@@ -73,7 +73,7 @@ void Handler::_handlePath(HandlerContext& ctx, Parser* req) {
     resp.setBody("{ \"status\": \"ok\" }\r\n");
 
     ctx.connection()->write(resp.get());
-    ctx.connection()->shutdown();
+    ctx.connection()->shutdownAfterFlush();
     return;
   }
 
@@ -95,7 +95,7 @@ void Handler::_handlePath(HandlerContext& ctx, Parser* req) {
     resp.setBody(m);
 
     ctx.connection()->write(resp.get());
-    ctx.connection()->shutdown();
+    ctx.connection()->shutdownAfterFlush();
     return;
   }
 
@@ -175,7 +175,7 @@ void Handler::_badRequest(HandlerContext& ctx, const std::string reason, int sta
   resp.setHeader("connection", "close");
   resp.setBody(body.str());
   ctx.connection()->write(resp.get());
-  ctx.connection()->shutdown();
+  ctx.connection()->shutdownAfterFlush();
 }
 
 void Handler::_setCorsHeaders(Parser* req, Response& resp) {
