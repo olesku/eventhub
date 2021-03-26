@@ -118,7 +118,7 @@ void Connection::_doSSLHandshake() {
   int ret = SSL_accept(_ssl.get());
 
   if (_ssl_handshake_retries >= SSL_MAX_HANDSHAKE_RETRY) {
-    LOG->error("Max SSL retries reached.");
+    LOG->error("Max SSL retries ({}) reached for client {}", _ssl_handshake_retries, getIP());
     shutdown();
     return;
   }
@@ -127,9 +127,9 @@ void Connection::_doSSLHandshake() {
     int errorCode = SSL_get_error(_ssl.get(), ret);
     if (errorCode == SSL_ERROR_WANT_READ  ||
         errorCode == SSL_ERROR_WANT_WRITE) {
-      LOG->error("OpenSSL retry handshake. Try #{}", _ssl_handshake_retries);
+      LOG->trace("OpenSSL retry handshake. Try #{}", _ssl_handshake_retries);
     } else {
-      LOG->error("Fatal error in SSL_accept: {} for client {}", Util::getSSLErrorString(errorCode), getIP());
+      LOG->trace("Fatal error in SSL_accept: {} for client {}", Util::getSSLErrorString(errorCode), getIP());
       shutdown();
     }
   }

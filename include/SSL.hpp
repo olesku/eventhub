@@ -13,14 +13,12 @@ template<class T> struct OpenSSLDeleter;
 
 template<> struct OpenSSLDeleter<SSL_CTX> {
   void operator()(SSL_CTX *p) const {
-    LOG->info("Free SSL_CTX");
     SSL_CTX_free(p);
   }
 };
 
 template<> struct OpenSSLDeleter<SSL> {
   void operator()(SSL *p) const {
-    LOG->info("Free SSL");
     SSL_free(p);
   }
 };

@@ -80,7 +80,6 @@ std::string Util::getSSLErrorString(unsigned long e) {
     char buf[512] = {'\0'};
     ERR_error_string_n(e, buf, 512);
     ERR_clear_error();
-    return std::move(std::string(buf));
+    return buf;
 }
-
 } // namespace eventhub
