@@ -7,6 +7,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <errno.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 
 #include <ctime>
 #include <memory>
@@ -22,7 +24,6 @@
 #include "TopicManager.hpp"
 #include "http/Parser.hpp"
 #include "websocket/Parser.hpp"
-#include "SSL.hpp"
 #include "Util.hpp"
 
 namespace eventhub {
@@ -34,6 +35,7 @@ Connection::Connection(int fd, struct sockaddr_in* csin, Server* server, Worker*
   _is_shutdown_after_flush = false;
   _is_ssl = false;
   _ssl_handshake_retries = 0;
+  _ssl = nullptr;
 
   memcpy(&_csin, csin, sizeof(struct sockaddr_in));
   int flag = 1;
@@ -71,12 +73,13 @@ Connection::Connection(int fd, struct sockaddr_in* csin, Server* server, Worker*
 Connection::~Connection() {
   LOG->trace("Client {} disconnected.", getIP());
 
-  if (_worker->getEpollFileDescriptor() != -1) {
-    epoll_ctl(_worker->getEpollFileDescriptor(), EPOLL_CTL_DEL, _fd, 0);
-  }
-
   close(_fd);
   unsubscribeAll();
+
+  if (_is_ssl && _ssl != nullptr) {
+    SSL_free(_ssl);
+    _ssl = nullptr;
+  }
 }
 
 void Connection::_enableEpollOut() {
@@ -108,15 +111,21 @@ size_t Connection::_pruneWriteBuffer(size_t bytes) {
 }
 
 void Connection::_initSSL() {
-  _ssl = OpenSSLUniquePtr<SSL>(SSL_new(_server->getSSLContext()));
-  SSL_set_fd(_ssl.get(), _fd);
-  SSL_set_accept_state(_ssl.get());
+  _ssl = SSL_new(_server->getSSLContext());
+  if (_ssl == NULL) {
+    LOG->error("Failed to initialize SSL object for client {}", getIP());
+    shutdown();
+    return;
+  }
+
+  SSL_set_fd(_ssl, _fd);
+  SSL_set_accept_state(_ssl);
   _is_ssl = true;
 }
 
 void Connection::_doSSLHandshake() {
   ERR_clear_error();
-  int ret = SSL_accept(_ssl.get());
+  int ret = SSL_accept(_ssl);
 
   if (_ssl_handshake_retries >= SSL_MAX_HANDSHAKE_RETRY) {
     LOG->error("Max SSL retries ({}) reached for client {}", _ssl_handshake_retries, getIP());
@@ -125,13 +134,14 @@ void Connection::_doSSLHandshake() {
   }
 
   if (ret <= 0) {
-    int errorCode = SSL_get_error(_ssl.get(), ret);
+    int errorCode = SSL_get_error(_ssl, ret);
     if (errorCode == SSL_ERROR_WANT_READ  ||
         errorCode == SSL_ERROR_WANT_WRITE) {
       LOG->trace("OpenSSL retry handshake. Try #{}", _ssl_handshake_retries);
     } else {
       LOG->trace("Fatal error in SSL_accept: {} for client {}", Util::getSSLErrorString(errorCode), getIP());
       shutdown();
+      return;
     }
   }
 
@@ -139,6 +149,10 @@ void Connection::_doSSLHandshake() {
 }
 
 void Connection::read() {
+  if (isShutdown()) {
+    return;
+  }
+
   size_t bytesRead = 0;
   int ret = 0;
 
@@ -147,7 +161,7 @@ void Connection::read() {
   }
 
   if (_is_ssl) {
-    if (!SSL_is_init_finished(_ssl.get())) {
+    if (!SSL_is_init_finished(_ssl)) {
       _doSSLHandshake();
       return;
     }
@@ -175,14 +189,14 @@ void Connection::read() {
         memcpy(_read_buffer.data(), retain.data(), bytesRead);
       }
 
-      ret = SSL_read(_ssl.get(), _read_buffer.data()+bytesRead, NET_READ_BUFFER_SIZE);
+      ret = SSL_read(_ssl, _read_buffer.data()+bytesRead, NET_READ_BUFFER_SIZE);
 
       if (ret > 0) {
         bytesRead += ret;
         continue;
       }
 
-      int err = SSL_get_error(_ssl.get(), ret);
+      int err = SSL_get_error(_ssl, ret);
       if (err == SSL_ERROR_ZERO_RETURN || err == SSL_ERROR_SYSCALL) {
         LOG->error("OpenSSL read error: {} for client {}", Util::getSSLErrorString(ERR_get_error()), getIP());
         shutdown();
@@ -222,6 +236,10 @@ ssize_t Connection::write(const string& data) {
   std::lock_guard<std::mutex> lock(_write_lock);
   int ret = 0;
 
+  if (isShutdown()) {
+    return 0;
+  }
+
   if ((_write_buffer.length() + data.length()) > NET_WRITE_BUFFER_MAX) {
     _write_buffer.clear();
     shutdown();
@@ -236,12 +254,12 @@ ssize_t Connection::write(const string& data) {
 
   if (_is_ssl) {
     unsigned int pcktSize = _write_buffer.length() > NET_READ_BUFFER_SIZE ? NET_READ_BUFFER_SIZE : _write_buffer.length();
-    ret = SSL_write(_ssl.get(), _write_buffer.c_str(), pcktSize);
+    ret = SSL_write(_ssl, _write_buffer.c_str(), pcktSize);
 
     if (ret > 0) {
       _pruneWriteBuffer(ret);
     } else {
-      int err = SSL_get_error(_ssl.get(), ret);
+      int err = SSL_get_error(_ssl, ret);
 
       if (!(err == SSL_ERROR_SYSCALL && (errno == EAGAIN || errno == EWOULDBLOCK)) &&
           err != SSL_ERROR_WANT_WRITE && err != SSL_ERROR_WANT_READ)
@@ -284,6 +302,13 @@ ssize_t Connection::flushSendBuffer() {
   return write("");
 }
 
+void Connection::shutdown() {
+  if (!_is_shutdown) {
+    ::shutdown(_fd, SHUT_RDWR);
+    _is_shutdown = true;
+  }
+}
+
 void Connection::shutdownAfterFlush() {
   if (_write_buffer.empty()) {
     shutdown();
@@ -300,9 +325,7 @@ const std::string Connection::getIP() {
   return ip;
 }
 
-int Connection::addToEpoll(ConnectionListIterator connectionIterator, uint32_t epollEvents) {
-  _connection_list_iterator = connectionIterator;
-
+int Connection::addToEpoll(uint32_t epollEvents) {
   _epoll_event.events   = epollEvents;
   _epoll_event.data.fd  = _fd;
   _epoll_event.data.ptr = reinterpret_cast<void*>(this);
@@ -310,6 +333,14 @@ int Connection::addToEpoll(ConnectionListIterator connectionIterator, uint32_t e
   int ret = epoll_ctl(_worker->getEpollFileDescriptor(), EPOLL_CTL_ADD, _fd, &_epoll_event);
 
   return ret;
+}
+
+int Connection::removeFromEpoll() {
+  if (_worker->getEpollFileDescriptor() != -1) {
+    return epoll_ctl(_worker->getEpollFileDescriptor(), EPOLL_CTL_DEL, _fd, 0);
+  }
+
+  return 0;
 }
 
 ConnectionState Connection::setState(ConnectionState newState) {
@@ -347,6 +378,10 @@ void Connection::onHTTPRequest(http::ParserCallback callback) {
 
 AccessController& Connection::getAccessController() {
   return _access_controller;
+}
+
+void Connection::assignConnectionListIterator(std::list<ConnectionPtr>::iterator connectionIterator) {
+  _connection_list_iterator = connectionIterator;
 }
 
 ConnectionListIterator Connection::getConnectionListIterator() {

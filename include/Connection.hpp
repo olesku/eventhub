@@ -24,7 +24,7 @@
 #include "http/Parser.hpp"
 #include "jsonrpc/jsonrpcpp.hpp"
 #include "websocket/Parser.hpp"
-#include "SSL.hpp"
+#include <openssl/ssl.h>
 
 using namespace std;
 
@@ -59,11 +59,13 @@ public:
   void read();
   ssize_t flushSendBuffer();
 
-  int addToEpoll(std::list<ConnectionPtr>::iterator connectionIterator, uint32_t epollEvents);
+  int addToEpoll(uint32_t epollEvents);
+  int removeFromEpoll();
 
   ConnectionState setState(ConnectionState newState);
   ConnectionState getState();
   AccessController& getAccessController();
+  void assignConnectionListIterator(std::list<ConnectionPtr>::iterator connectionIterator);
   ConnectionListIterator getConnectionListIterator();
   ConnectionPtr getSharedPtr();
   const std::string getIP();
@@ -77,21 +79,15 @@ public:
   void onWebsocketRequest(websocket::ParserCallback callback);
 
   void shutdownAfterFlush();
-
-  inline void shutdown() {
-    !_is_shutdown && ::shutdown(_fd, SHUT_RDWR);
-    _is_shutdown = true;
-  }
-
-
+  void shutdown();
   inline bool isShutdown() { return _is_shutdown; }
 
 private:
   int _fd;
-  OpenSSLUniquePtr<SSL> _ssl;
   struct sockaddr_in _csin;
   Server* _server;
   Worker* _worker;
+  SSL*  _ssl;
   struct epoll_event _epoll_event;
   string _write_buffer;
   string _ssl_read_buffer;

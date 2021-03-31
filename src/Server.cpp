@@ -22,7 +22,6 @@
 #include "Config.hpp"
 #include "metrics/Types.hpp"
 #include "Util.hpp"
-#include "SSL.hpp"
 
 unsigned const char alpn_protocol[] = "http/1.1";
 unsigned int alpn_protocol_length = 8;
@@ -32,7 +31,7 @@ std::atomic<bool> stopEventhub{false};
 namespace eventhub {
 
 Server::Server(const string redisHost, int redisPort, const std::string redisPassword, int redisPoolSize)
-    :  _server_socket(-1), _ssl_enabled(false),
+    :  _server_socket(-1), _ssl_enabled(false), _ssl_ctx(nullptr),
        _redis(redisHost, redisPort, redisPassword, redisPoolSize) {}
 
 Server::~Server() {
@@ -207,45 +206,50 @@ int alpn_cb (SSL *ssl, const unsigned char **out, unsigned char *outlen,
 
 void Server::_initSSLContext() {
   const SSL_METHOD* method = TLS_server_method();
-  _ssl_ctx = OpenSSLUniquePtr<SSL_CTX>(SSL_CTX_new(method));
+  _ssl_ctx = SSL_CTX_new(method);
+
+  if (_ssl_ctx == NULL) {
+    LOG->critical("Could not initialize SSL context: {}", Util::getSSLErrorString(ERR_get_error()));
+    exit(1);
+  }
 
   const string caCert = Config.getString("SSL_CA_CERTIFICATE");
   const string cert = Config.getString("SSL_CERTIFICATE");
   const string key = Config.getString("SSL_PRIVATE_KEY");
 
   if (caCert.empty()) {
-    SSL_CTX_set_default_verify_paths(_ssl_ctx.get());
+    SSL_CTX_set_default_verify_paths(_ssl_ctx);
   } else {
-    if (SSL_CTX_load_verify_locations(_ssl_ctx.get(), caCert.c_str(), NULL) <= 0) {
+    if (SSL_CTX_load_verify_locations(_ssl_ctx, caCert.c_str(), NULL) <= 0) {
       LOG->error("Error loading CA certificate: {}", Util::getSSLErrorString(ERR_get_error()));
       stop();
       exit(EXIT_FAILURE);
     }
   }
 
-	if (SSL_CTX_use_certificate_chain_file(_ssl_ctx.get(), cert.c_str()) <= 0) {
+	if (SSL_CTX_use_certificate_chain_file(_ssl_ctx, cert.c_str()) <= 0) {
     LOG->error("Error loading certificate: {}", Util::getSSLErrorString(ERR_get_error()));
     stop();
     exit(EXIT_FAILURE);
   }
 
-  if (SSL_CTX_use_PrivateKey_file(_ssl_ctx.get(), key.c_str(), SSL_FILETYPE_PEM) <= 0 ) {
+  if (SSL_CTX_use_PrivateKey_file(_ssl_ctx, key.c_str(), SSL_FILETYPE_PEM) <= 0 ) {
     LOG->error("Error loading private key: {}", Util::getSSLErrorString(ERR_get_error()));
     stop();
     exit(EXIT_FAILURE);
   }
 
-  if (!SSL_CTX_check_private_key(_ssl_ctx.get()) ) {
+  if (!SSL_CTX_check_private_key(_ssl_ctx) ) {
     LOG->error("Error validating private key: {}", Util::getSSLErrorString(ERR_get_error()));
     stop();
     exit(EXIT_FAILURE);
   }
 
-  SSL_CTX_set_ecdh_auto(_ssl_ctx.get(), 1);
-  //SSL_CTX_set_min_proto_version(_ssl_ctx.get(), TLS1_2_VERSION);
-  //SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_TLSv1_2|SSL_OP_SINGLE_DH_USE|SSL_OP_NO_TLSv1_3);
-  SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_CIPHER_SERVER_PREFERENCE);
-  SSL_CTX_set_alpn_select_cb(_ssl_ctx.get(), alpn_cb, NULL);
+  SSL_CTX_set_ecdh_auto(_ssl_ctx, 1);
+  //SSL_CTX_set_min_proto_version(_ssl_ctx, TLS1_2_VERSION);
+  //SSL_CTX_set_options(_ssl_ctx, SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_TLSv1_2|SSL_OP_SINGLE_DH_USE|SSL_OP_NO_TLSv1_3);
+  SSL_CTX_set_options(_ssl_ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
+  SSL_CTX_set_alpn_select_cb(_ssl_ctx, alpn_cb, NULL);
 
   _ssl_enabled = true;
 }
@@ -269,6 +273,9 @@ void Server::publish(const string topicName, const string data) {
 void Server::stop() {
   close(_server_socket);
   _connection_workers.killAndDeleteAll();
+  if (_ssl_enabled && _ssl_ctx != nullptr) {
+    SSL_CTX_free(_ssl_ctx);
+  }
 }
 
 const int Server::getServerSocket() {
