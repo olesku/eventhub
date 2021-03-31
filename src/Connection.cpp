@@ -33,9 +33,6 @@ using namespace std;
 Connection::Connection(int fd, struct sockaddr_in* csin, Server* server, Worker* worker) : _fd(fd), _server(server), _worker(worker) {
   _is_shutdown = false;
   _is_shutdown_after_flush = false;
-  _is_ssl = false;
-  _ssl_handshake_retries = 0;
-  _ssl = nullptr;
 
   memcpy(&_csin, csin, sizeof(struct sockaddr_in));
   int flag = 1;
@@ -62,11 +59,6 @@ Connection::Connection(int fd, struct sockaddr_in* csin, Server* server, Worker*
   // Set initial state.
   setState(ConnectionState::HTTP);
 
-  // Initialize SSL if required.
-  if (_server->isSSL()) {
-    _initSSL();
-  }
-
   _read_buffer.resize(NET_READ_BUFFER_SIZE);
 }
 
@@ -75,11 +67,6 @@ Connection::~Connection() {
 
   close(_fd);
   unsubscribeAll();
-
-  if (_is_ssl && _ssl != nullptr) {
-    SSL_free(_ssl);
-    _ssl = nullptr;
-  }
 }
 
 void Connection::_enableEpollOut() {
@@ -110,108 +97,25 @@ size_t Connection::_pruneWriteBuffer(size_t bytes) {
   return _write_buffer.length();
 }
 
-void Connection::_initSSL() {
-  _ssl = SSL_new(_server->getSSLContext());
-  if (_ssl == NULL) {
-    LOG->error("Failed to initialize SSL object for client {}", getIP());
-    shutdown();
-    return;
-  }
-
-  SSL_set_fd(_ssl, _fd);
-  SSL_set_accept_state(_ssl);
-  _is_ssl = true;
-}
-
-void Connection::_doSSLHandshake() {
-  ERR_clear_error();
-  int ret = SSL_accept(_ssl);
-
-  if (_ssl_handshake_retries >= SSL_MAX_HANDSHAKE_RETRY) {
-    LOG->error("Max SSL retries ({}) reached for client {}", _ssl_handshake_retries, getIP());
-    shutdown();
-    return;
-  }
-
-  if (ret <= 0) {
-    int errorCode = SSL_get_error(_ssl, ret);
-    if (errorCode == SSL_ERROR_WANT_READ  ||
-        errorCode == SSL_ERROR_WANT_WRITE) {
-      LOG->trace("OpenSSL retry handshake. Try #{}", _ssl_handshake_retries);
-    } else {
-      LOG->trace("Fatal error in SSL_accept: {} for client {}", Util::getSSLErrorString(errorCode), getIP());
-      shutdown();
-      return;
-    }
-  }
-
-   _ssl_handshake_retries++;
-}
-
 void Connection::read() {
+   _read_buffer.clear();
+
   if (isShutdown()) {
     return;
   }
 
   size_t bytesRead = 0;
-  int ret = 0;
+  bytesRead = ::read(_fd, _read_buffer.data(), NET_READ_BUFFER_SIZE);
 
-  if (_read_buffer.size() > 0) {
-    _read_buffer.clear();
+  if (bytesRead <= 0) {
+    shutdown();
+    return;
   }
 
-  if (_is_ssl) {
-    if (!SSL_is_init_finished(_ssl)) {
-      _doSSLHandshake();
-      return;
-    }
+  _parseRequest(bytesRead);
+}
 
-    do {
-      // If more read buffer capacity is required increase it by chunks of NET_READ_BUFFER_SIZE.
-      if (bytesRead + NET_READ_BUFFER_SIZE > _read_buffer.capacity()) {
-        size_t newCapacity = _read_buffer.capacity() + NET_READ_BUFFER_SIZE;
-
-        // TODO: Max variable should be called something else.
-        if (newCapacity > WS_MAX_DATA_FRAME_SIZE + NET_READ_BUFFER_SIZE) {
-          LOG->error("Client {} exceeded max buffer size. Disconnecting.", getIP());
-          shutdown();
-          return;
-        }
-
-        // Retain data we have in the _read_buffer and copy it back after call to resize().
-        // We have to do this since resize() invalidates existing data.
-        vector<char> retain;
-        retain.resize(bytesRead);
-        memcpy(retain.data(), _read_buffer.data(), bytesRead);
-
-        LOG->trace("Resizing readbuffer for client {} to {}", getIP(), newCapacity);
-        _read_buffer.resize(newCapacity);
-        memcpy(_read_buffer.data(), retain.data(), bytesRead);
-      }
-
-      ret = SSL_read(_ssl, _read_buffer.data()+bytesRead, NET_READ_BUFFER_SIZE);
-
-      if (ret > 0) {
-        bytesRead += ret;
-        continue;
-      }
-
-      int err = SSL_get_error(_ssl, ret);
-      if (err == SSL_ERROR_ZERO_RETURN || err == SSL_ERROR_SYSCALL) {
-        LOG->error("OpenSSL read error: {} for client {}", Util::getSSLErrorString(ERR_get_error()), getIP());
-        shutdown();
-        return;
-      }
-    } while (ret > 0);
-  } else {
-    bytesRead = ::read(_fd, _read_buffer.data(), NET_READ_BUFFER_SIZE);
-
-    if (bytesRead <= 0) {
-      shutdown();
-      return;
-    }
-  }
-
+void Connection::_parseRequest(size_t bytesRead) {
   // Redirect request to either HTTP handler or websocket handler
   // based on which state the client is in.
   switch (getState()) {
@@ -227,7 +131,6 @@ void Connection::read() {
       LOG->debug("Connection {} has invalid state, disconnecting.", getIP());
       shutdown();
   }
-
 
   _read_buffer.clear();
 }
@@ -252,43 +155,18 @@ ssize_t Connection::write(const string& data) {
     return 0;
   }
 
-  if (_is_ssl) {
-    unsigned int pcktSize = _write_buffer.length() > NET_READ_BUFFER_SIZE ? NET_READ_BUFFER_SIZE : _write_buffer.length();
-    ret = SSL_write(_ssl, _write_buffer.c_str(), pcktSize);
+  ret = ::write(_fd, _write_buffer.c_str(), _write_buffer.length());
 
-    if (ret > 0) {
-      _pruneWriteBuffer(ret);
-    } else {
-      int err = SSL_get_error(_ssl, ret);
-
-      if (!(err == SSL_ERROR_SYSCALL && (errno == EAGAIN || errno == EWOULDBLOCK)) &&
-          err != SSL_ERROR_WANT_WRITE && err != SSL_ERROR_WANT_READ)
-      {
-        LOG->trace("write: SSL err: {} for client {}", Util::getSSLErrorString(err), getIP());
-        shutdown();
-        return ret;
-      }
-    }
-
-    if (_write_buffer.length() > 0) {
-      _enableEpollOut();
-    } else {
-      _disableEpollOut();
-    }
+  if (ret <= 0) {
+    LOG->trace("Client {} write error: {}.", getIP(), strerror(errno));
+    _enableEpollOut();
+  } else if ((unsigned int)ret < _write_buffer.length()) {
+    LOG->trace("Client {} could not write() entire buffer, wrote {} of {} bytes.", ret, _write_buffer.length());
+    _pruneWriteBuffer(ret);
+    _enableEpollOut();
   } else {
-    ret = ::write(_fd, _write_buffer.c_str(), _write_buffer.length());
-
-    if (ret <= 0) {
-      LOG->trace("Client {} write error: {}.", getIP(), strerror(errno));
-      _enableEpollOut();
-    } else if ((unsigned int)ret < _write_buffer.length()) {
-      LOG->trace("Client {} could not write() entire buffer, wrote {} of {} bytes.", ret, _write_buffer.length());
-      _pruneWriteBuffer(ret);
-      _enableEpollOut();
-    } else {
-      _disableEpollOut();
-      _write_buffer.clear();
-    }
+    _disableEpollOut();
+    _write_buffer.clear();
   }
 
   if (_write_buffer.empty() && _is_shutdown_after_flush) {

@@ -19,6 +19,7 @@ add_library( core
   TopicManager.cpp
   Server.cpp
   Connection.cpp
+  SSLConnection.cpp
   ConnectionWorker.cpp
   AccessController.cpp
   EpollWrapper.cpp

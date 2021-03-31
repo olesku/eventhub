@@ -22,6 +22,7 @@
 #include "Common.hpp"
 #include "Config.hpp"
 #include "Connection.hpp"
+#include "SSLConnection.hpp"
 #include "EventLoop.hpp"
 #include "HandlerContext.hpp"
 #include "Server.hpp"
@@ -101,7 +102,10 @@ void Worker::_acceptConnection() {
 ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin) {
   std::lock_guard<std::mutex> lock(_connection_list_mutex);
 
-  auto connectionIterator = _connection_list.insert(_connection_list.end(), make_shared<Connection>(fd, csin, _server, this));
+  auto connectionIterator = _connection_list.insert(_connection_list.end(),
+    _server->isSSL() ? make_shared<SSLConnection>(fd, csin, _server, this) :
+                       make_shared<Connection>(fd, csin, _server, this));
+
   auto client = connectionIterator->get()->getSharedPtr();
 
   client->assignConnectionListIterator(connectionIterator);
