@@ -13,7 +13,6 @@
 #include "TopicManager.hpp"
 #include "metrics/Types.hpp"
 #include "Worker.hpp"
-#include "SSL.hpp"
 
 namespace eventhub {
 class Server; // Forward declaration.

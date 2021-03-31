@@ -101,10 +101,11 @@ void Worker::_acceptConnection() {
 ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin) {
   std::lock_guard<std::mutex> lock(_connection_list_mutex);
 
-  auto client = make_shared<Connection>(fd, csin, _server, this);
+  auto connectionIterator = _connection_list.insert(_connection_list.end(), make_shared<Connection>(fd, csin, _server, this));
+  auto client = connectionIterator->get()->getSharedPtr();
 
-  auto connectionIterator = _connection_list.insert(_connection_list.end(), client);
-  int ret                 = client->addToEpoll(connectionIterator, (EPOLLIN | EPOLLRDHUP | EPOLLHUP | EPOLLERR));
+  client->assignConnectionListIterator(connectionIterator);
+  int ret = client->addToEpoll((EPOLLIN | EPOLLRDHUP | EPOLLHUP | EPOLLERR));
 
   if (ret == -1) {
     LOG->warn("Could not add client to epoll: {}.", strerror(errno));
@@ -139,7 +140,7 @@ ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin) {
     auto c = wptrConnection.lock();
 
     if (c && c->getState() != ConnectionState::WEBSOCKET && c->getState() != ConnectionState::SSE) {
-      LOG->trace("Client {} failed to handshake in {} seconds. Removing.", c->getIP(), Config.getInt("HANDSHAKE_TIMEOUT"));
+      LOG->debug("Client {} failed to handshake in {} seconds. Removing.", c->getIP(), Config.getInt("HANDSHAKE_TIMEOUT"));
       c->shutdown();
     }
   });
@@ -176,6 +177,8 @@ ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin) {
  */
 void Worker::_removeConnection(ConnectionPtr conn) {
   std::lock_guard<std::mutex> lock(_connection_list_mutex);
+
+  conn->removeFromEpoll();
   _connection_list.erase(conn->getConnectionListIterator());
 
   _metrics.current_connections_count--;
@@ -244,28 +247,17 @@ void Worker::_workerMain() {
       }
 
       auto client = static_cast<Connection*>(eventConnectionList[i].data.ptr)->getSharedPtr();
-
-      // Close socket if an error occurs.
-      if (eventConnectionList[i].events & EPOLLERR) {
-        LOG->debug("Error occurred while reading data from client {}.", client->getIP());
-        _removeConnection(client);
-        continue;
+      if ((eventConnectionList[i].events & EPOLLERR) || (eventConnectionList[i].events & EPOLLHUP) || (eventConnectionList[i].events & EPOLLRDHUP)) {
+        client->isShutdown();
       }
 
-      if ((eventConnectionList[i].events & EPOLLHUP) || (eventConnectionList[i].events & EPOLLRDHUP)) {
+      if (client->isShutdown()) {
         _removeConnection(client);
         continue;
       }
 
       if (eventConnectionList[i].events & EPOLLOUT) {
-        LOG->debug("Client {}: EPOLLOUT, flushing send buffer.", client->getIP());
         client->flushSendBuffer();
-        continue;
-      }
-
-      if (client->isShutdown()) {
-        LOG->debug("Client {} is marked as shutdown, should be handled by EPOLL(RD)HUP, removing.", client->getIP());
-        _removeConnection(client);
         continue;
       }
 
