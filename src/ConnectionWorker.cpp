@@ -22,6 +22,7 @@
 #include "Common.hpp"
 #include "Config.hpp"
 #include "Connection.hpp"
+#include "SSLConnection.hpp"
 #include "EventLoop.hpp"
 #include "HandlerContext.hpp"
 #include "Server.hpp"
@@ -101,7 +102,10 @@ void Worker::_acceptConnection() {
 ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin) {
   std::lock_guard<std::mutex> lock(_connection_list_mutex);
 
-  auto connectionIterator = _connection_list.insert(_connection_list.end(), make_shared<Connection>(fd, csin, _server, this));
+  auto connectionIterator = _connection_list.insert(_connection_list.end(),
+    _server->isSSL() ? make_shared<SSLConnection>(fd, csin, _server, this) :
+                       make_shared<Connection>(fd, csin, _server, this));
+
   auto client = connectionIterator->get()->getSharedPtr();
 
   client->assignConnectionListIterator(connectionIterator);
@@ -247,21 +251,29 @@ void Worker::_workerMain() {
       }
 
       auto client = static_cast<Connection*>(eventConnectionList[i].data.ptr)->getSharedPtr();
+
+      // Mark the client for shutdown if client disconnects or
+      // if there is an error.
       if ((eventConnectionList[i].events & EPOLLERR) || (eventConnectionList[i].events & EPOLLHUP) || (eventConnectionList[i].events & EPOLLRDHUP)) {
-        client->isShutdown();
+        client->shutdown();
       }
 
+      // If client is marked for shutdown remove the connection.
       if (client->isShutdown()) {
         _removeConnection(client);
         continue;
       }
 
+      // Flush send buffer if socket is ready for write.
       if (eventConnectionList[i].events & EPOLLOUT) {
         client->flushSendBuffer();
         continue;
       }
 
-      client->read();
+      // Read data from client if data is available.
+      if (eventConnectionList[i].events & EPOLLIN) {
+        client->read();
+      }
     }
 
     // Process timers and jobs.

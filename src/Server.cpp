@@ -27,6 +27,7 @@ unsigned const char alpn_protocol[] = "http/1.1";
 unsigned int alpn_protocol_length = 8;
 
 std::atomic<bool> stopEventhub{false};
+std::atomic<bool> reloadEventhub{false};
 
 namespace eventhub {
 
@@ -104,6 +105,10 @@ void Server::start() {
     while(!stopEventhub) {
       _ev.process();
       auto delay = _ev.getNextTimerDelay();
+
+      if (reloadEventhub) {
+        reload();
+      }
 
       // Sleep at most 100ms.
       if (delay.count() > 100) {
@@ -187,6 +192,12 @@ void Server::start() {
   cronJobs.join();
 }
 
+void Server::reload() {
+  LOG->info("Reloading Eventhub");
+  reloadEventhub = false;
+   _loadSSLCertificates();
+}
+
 int alpn_cb (SSL *ssl, const unsigned char **out, unsigned char *outlen,
              const unsigned char *in, unsigned int inlen, void *arg) {
 
@@ -211,6 +222,20 @@ void Server::_initSSLContext() {
   if (_ssl_ctx == NULL) {
     LOG->critical("Could not initialize SSL context: {}", Util::getSSLErrorString(ERR_get_error()));
     exit(1);
+  }
+
+  _loadSSLCertificates();
+
+  SSL_CTX_set_ecdh_auto(_ssl_ctx, 1);
+  SSL_CTX_set_options(_ssl_ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
+  SSL_CTX_set_alpn_select_cb(_ssl_ctx, alpn_cb, NULL);
+
+  _ssl_enabled = true;
+}
+
+void Server::_loadSSLCertificates() {
+  if (!Config.getBool("ENABLE_SSL")) {
+    return;
   }
 
   const string caCert = Config.getString("SSL_CA_CERTIFICATE");
@@ -244,14 +269,6 @@ void Server::_initSSLContext() {
     stop();
     exit(EXIT_FAILURE);
   }
-
-  SSL_CTX_set_ecdh_auto(_ssl_ctx, 1);
-  //SSL_CTX_set_min_proto_version(_ssl_ctx, TLS1_2_VERSION);
-  //SSL_CTX_set_options(_ssl_ctx, SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_TLSv1_2|SSL_OP_SINGLE_DH_USE|SSL_OP_NO_TLSv1_3);
-  SSL_CTX_set_options(_ssl_ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
-  SSL_CTX_set_alpn_select_cb(_ssl_ctx, alpn_cb, NULL);
-
-  _ssl_enabled = true;
 }
 
 Worker* Server::getWorker() {

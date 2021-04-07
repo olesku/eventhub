@@ -72,7 +72,7 @@ void Parser::clearControlPayload() {
 void Parser::appendDataPayload(const char* data, size_t len) {
   _data_payload_buf.insert(_data_payload_buf.size(), data, len);
 
-  if (_data_payload_buf.size() > WS_MAX_DATA_FRAME_SIZE) {
+  if (_data_payload_buf.size() > MAX_DATA_FRAME_SIZE) {
     _callback(ParserStatus::MAX_DATA_FRAME_SIZE_EXCEEDED, _data_frame_type, _data_payload_buf);
   }
 }

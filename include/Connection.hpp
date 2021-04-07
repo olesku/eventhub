@@ -24,7 +24,6 @@
 #include "http/Parser.hpp"
 #include "jsonrpc/jsonrpcpp.hpp"
 #include "websocket/Parser.hpp"
-#include <openssl/ssl.h>
 
 using namespace std;
 
@@ -53,11 +52,11 @@ struct TopicSubscription {
 class Connection : public std::enable_shared_from_this<Connection> {
 public:
   Connection(int fd, struct sockaddr_in* csin, Server* server, Worker* worker);
-  ~Connection();
+  virtual ~Connection();
 
-  ssize_t write(const string& data);
-  void read();
-  ssize_t flushSendBuffer();
+  void write(const string& data);
+  virtual void read();
+  virtual ssize_t flushSendBuffer();
 
   int addToEpoll(uint32_t epollEvents);
   int removeFromEpoll();
@@ -82,15 +81,13 @@ public:
   void shutdown();
   inline bool isShutdown() { return _is_shutdown; }
 
-private:
+protected:
   int _fd;
   struct sockaddr_in _csin;
   Server* _server;
   Worker* _worker;
-  SSL*  _ssl;
   struct epoll_event _epoll_event;
   string _write_buffer;
-  string _ssl_read_buffer;
   std::vector<char> _read_buffer;
   std::mutex _write_lock;
   std::mutex _subscription_list_lock;
@@ -100,17 +97,13 @@ private:
   ConnectionState _state;
   bool _is_shutdown;
   bool _is_shutdown_after_flush;
-  bool _is_ssl;
-  unsigned int _ssl_handshake_retries;
   std::list<std::shared_ptr<Connection>>::iterator _connection_list_iterator;
-
   std::unordered_map<std::string, TopicSubscription> _subscribedTopics;
 
   void _enableEpollOut();
   void _disableEpollOut();
   size_t _pruneWriteBuffer(size_t bytes);
-  void _initSSL();
-  void _doSSLHandshake();
+  void _parseRequest(size_t bytesRead);
 };
 
 } // namespace eventhub

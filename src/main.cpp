@@ -14,21 +14,38 @@
 
 using namespace std;
 extern atomic<bool> stopEventhub;
+extern atomic<bool> reloadEventhub;
 
-void shutdown(int sigid) {
-  eventhub::LOG->info("Exiting.");
-  stopEventhub = 1;
+void sighandler(int sigid) {
+  switch(sigid) {
+    case SIGINT: goto shutdown;
+    case SIGQUIT: goto shutdown;
+    case SIGTERM: goto shutdown;
+
+    case SIGHUP:
+      reloadEventhub = true;
+      return;
+
+    default:
+      eventhub::LOG->info("No handler for signal {}, ignoring.", sigid);
+      return;
+  }
+
+  shutdown:
+    eventhub::LOG->info("Exiting.");
+    stopEventhub = true;
 }
 
 int main(int argc, char** argv) {
   struct sigaction sa;
 
-  sa.sa_handler = shutdown;
+  sa.sa_handler = sighandler;
   sa.sa_flags   = 0;
 
   sigemptyset(&(sa.sa_mask));
   sigaction(SIGINT, &sa, NULL);
   sigaction(SIGQUIT, &sa, NULL);
+  sigaction(SIGTERM, &sa, NULL);
   sigaction(SIGHUP, &sa, NULL);
 
   try {

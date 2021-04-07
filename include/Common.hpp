@@ -19,11 +19,11 @@ static constexpr size_t NET_READ_BUFFER_SIZE = 128;
 // Max write buffer size.
 static constexpr size_t NET_WRITE_BUFFER_MAX = (1024 * 1000) * 8;
 
+// Hangup connection if data frame is larger than this.
+static constexpr size_t MAX_DATA_FRAME_SIZE = (1024 * 1000) * 8;
+
 // Will split up into continuation frames above this threshold.
 static constexpr size_t WS_MAX_CHUNK_SIZE = 1 << 15;
-
-// Hangup connection if data frame is larger than this.
-static constexpr size_t WS_MAX_DATA_FRAME_SIZE = (1024 * 1000) * 8;
 
 // Hangup connection if control frame is larger than this.
 static constexpr size_t WS_MAX_CONTROL_FRAME_SIZE = 1024;
