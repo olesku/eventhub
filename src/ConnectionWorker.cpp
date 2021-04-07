@@ -266,7 +266,6 @@ void Worker::_workerMain() {
 
       // Flush send buffer if socket is ready for write.
       if (eventConnectionList[i].events & EPOLLOUT) {
-        LOG->trace("EPOLLOUT for client {}", client->getIP());
         client->flushSendBuffer();
         continue;
       }
