@@ -251,21 +251,30 @@ void Worker::_workerMain() {
       }
 
       auto client = static_cast<Connection*>(eventConnectionList[i].data.ptr)->getSharedPtr();
+
+      // Mark the client for shutdown if client disconnects or
+      // if there is an error.
       if ((eventConnectionList[i].events & EPOLLERR) || (eventConnectionList[i].events & EPOLLHUP) || (eventConnectionList[i].events & EPOLLRDHUP)) {
-        client->isShutdown();
+        client->shutdown();
       }
 
+      // If client is marked for shutdown remove the connection.
       if (client->isShutdown()) {
         _removeConnection(client);
         continue;
       }
 
+      // Flush send buffer if socket is ready for write.
       if (eventConnectionList[i].events & EPOLLOUT) {
+        LOG->trace("EPOLLOUT for client {}", client->getIP());
         client->flushSendBuffer();
         continue;
       }
 
-      client->read();
+      // Read data from client if data is available.
+      if (eventConnectionList[i].events & EPOLLIN) {
+        client->read();
+      }
     }
 
     // Process timers and jobs.

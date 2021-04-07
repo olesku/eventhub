@@ -12,7 +12,7 @@ class SSLConnection : public Connection {
     SSLConnection(int fd, struct sockaddr_in* csin, Server* server, Worker* worker);
     ~SSLConnection();
 
-    ssize_t write(const string& data);
+    ssize_t flushSendBuffer();
     void read();
 
   private:

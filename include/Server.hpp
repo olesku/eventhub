@@ -23,6 +23,7 @@ public:
 
   void start();
   void stop();
+  void reload();
   const int getServerSocket();
   Worker* getWorker();
   void publish(const std::string topicName, const std::string data);
@@ -43,6 +44,7 @@ private:
   EventLoop _ev;
 
   void _initSSLContext();
+  void _loadSSLCertificates();
 };
 
 } // namespace eventhub

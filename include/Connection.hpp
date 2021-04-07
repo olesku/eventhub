@@ -54,9 +54,9 @@ public:
   Connection(int fd, struct sockaddr_in* csin, Server* server, Worker* worker);
   virtual ~Connection();
 
-  virtual ssize_t write(const string& data);
+  void write(const string& data);
   virtual void read();
-  ssize_t flushSendBuffer();
+  virtual ssize_t flushSendBuffer();
 
   int addToEpoll(uint32_t epollEvents);
   int removeFromEpoll();

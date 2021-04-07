@@ -69,6 +69,9 @@ Connection::~Connection() {
   unsubscribeAll();
 }
 
+/**
+ * Add EPOLLOUT to the list of monitored events for this client.
+ */
 void Connection::_enableEpollOut() {
   if (_worker->getEpollFileDescriptor() != -1 && !(_epoll_event.events & EPOLLOUT)) {
     _epoll_event.events |= EPOLLOUT;
@@ -76,6 +79,9 @@ void Connection::_enableEpollOut() {
   }
 }
 
+/**
+ * Remove EPOLLOUT from the list of monitored events for this client.
+ */
 void Connection::_disableEpollOut() {
   if (_worker->getEpollFileDescriptor() != -1 && (_epoll_event.events & EPOLLOUT)) {
     _epoll_event.events &= ~EPOLLOUT;
@@ -83,6 +89,9 @@ void Connection::_disableEpollOut() {
   }
 }
 
+/**
+ * Remove n bytes from the beginning og the write buffer.
+ */
 size_t Connection::_pruneWriteBuffer(size_t bytes) {
   if (_write_buffer.length() < 1) {
     return 0;
@@ -97,6 +106,9 @@ size_t Connection::_pruneWriteBuffer(size_t bytes) {
   return _write_buffer.length();
 }
 
+/**
+ * Read from client, parse and call the correct handler.
+ */
 void Connection::read() {
    _read_buffer.clear();
 
@@ -108,13 +120,20 @@ void Connection::read() {
   bytesRead = ::read(_fd, _read_buffer.data(), NET_READ_BUFFER_SIZE);
 
   if (bytesRead <= 0) {
-    shutdown();
+    if (errno != EAGAIN) {
+      shutdown();
+    }
+
     return;
   }
 
   _parseRequest(bytesRead);
 }
 
+
+/**
+ * Parse the request present in our read buffer and call the correct handler.
+ */
 void Connection::_parseRequest(size_t bytesRead) {
   // Redirect request to either HTTP handler or websocket handler
   // based on which state the client is in.
@@ -135,31 +154,49 @@ void Connection::_parseRequest(size_t bytesRead) {
   _read_buffer.clear();
 }
 
-ssize_t Connection::write(const string& data) {
+/**
+ * Add data to send buffer and enable EPOLLOUT on the socket.
+ */
+void Connection::write(const string& data) {
   std::lock_guard<std::mutex> lock(_write_lock);
-  int ret = 0;
 
   if (isShutdown()) {
-    return 0;
+    return;
   }
 
   if ((_write_buffer.length() + data.length()) > NET_WRITE_BUFFER_MAX) {
     _write_buffer.clear();
     shutdown();
     LOG->error("Client {} exceeded max write buffer size of {}.", getIP(), NET_WRITE_BUFFER_MAX);
-    return 0;
+    return;
   }
 
   _write_buffer.append(data);
-  if (_write_buffer.empty()) {
+
+  if (!_write_buffer.empty()) {
+    flushSendBuffer();
+  }
+}
+
+/**
+ * Write send buffer to the client.
+ * This function is only called when we have an EPOLLOUT event.
+ **/
+ssize_t Connection::flushSendBuffer() {
+  if (_write_buffer.empty() || isShutdown()) {
+    _disableEpollOut();
     return 0;
   }
 
-  ret = ::write(_fd, _write_buffer.c_str(), _write_buffer.length());
+  int ret = ::write(_fd, _write_buffer.c_str(), _write_buffer.length());
 
   if (ret <= 0) {
-    LOG->trace("Client {} write error: {}.", getIP(), strerror(errno));
-    _enableEpollOut();
+    if (errno != EAGAIN && errno != EWOULDBLOCK) {
+      LOG->trace("Client {} write error: {}.", getIP(), strerror(errno));
+      shutdown();
+    } else {
+      _enableEpollOut();
+    }
   } else if ((unsigned int)ret < _write_buffer.length()) {
     LOG->trace("Client {} could not write() entire buffer, wrote {} of {} bytes.", ret, _write_buffer.length());
     _pruneWriteBuffer(ret);
@@ -176,10 +213,9 @@ ssize_t Connection::write(const string& data) {
   return ret;
 }
 
-ssize_t Connection::flushSendBuffer() {
-  return write("");
-}
-
+/**
+ * Shut down the connection.
+ */
 void Connection::shutdown() {
   if (!_is_shutdown) {
     ::shutdown(_fd, SHUT_RDWR);
@@ -187,6 +223,10 @@ void Connection::shutdown() {
   }
 }
 
+/**
+ * Shut down the client after all data in our send buffer is succesfully
+ * written to the client.
+ */
 void Connection::shutdownAfterFlush() {
   if (_write_buffer.empty()) {
     shutdown();
@@ -297,7 +337,6 @@ unsigned int Connection::unsubscribeAll() {
   auto& tm           = _worker->getTopicManager();
   unsigned int count = _subscribedTopics.size();
 
-  // TODO: If erase fails here we might end up in a infinite loop.
   for (auto it = _subscribedTopics.begin(); it != _subscribedTopics.end();) {
     auto& subscription = it->second;
     subscription.topic->deleteSubscriberByIterator(subscription.topicListIterator);

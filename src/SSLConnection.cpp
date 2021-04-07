@@ -55,28 +55,14 @@ void SSLConnection::_handshake() {
    _ssl_handshake_retries++;
 }
 
-ssize_t SSLConnection::write(const string& data) {
-  std::lock_guard<std::mutex> lock(_write_lock);
-  int ret = 0;
-
-  if (isShutdown()) {
-    return 0;
-  }
-
-  if ((_write_buffer.length() + data.length()) > NET_WRITE_BUFFER_MAX) {
-    _write_buffer.clear();
-    shutdown();
-    LOG->error("Client {} exceeded max write buffer size of {}.", getIP(), NET_WRITE_BUFFER_MAX);
-    return 0;
-  }
-
-  _write_buffer.append(data);
-  if (_write_buffer.empty()) {
+ssize_t SSLConnection::flushSendBuffer() {
+  if (_write_buffer.empty() || isShutdown()) {
+    _disableEpollOut();
     return 0;
   }
 
   unsigned int pcktSize = _write_buffer.length() > NET_READ_BUFFER_SIZE ? NET_READ_BUFFER_SIZE : _write_buffer.length();
-  ret = SSL_write(_ssl, _write_buffer.c_str(), pcktSize);
+  int ret = SSL_write(_ssl, _write_buffer.c_str(), pcktSize);
 
   if (ret > 0) {
     _pruneWriteBuffer(ret);
@@ -92,10 +78,10 @@ ssize_t SSLConnection::write(const string& data) {
     }
   }
 
-  if (_write_buffer.length() > 0) {
-    _enableEpollOut();
-  } else {
+  if (_write_buffer.empty()) {
     _disableEpollOut();
+  } else {
+    _enableEpollOut();
   }
 
   return ret;
@@ -118,11 +104,10 @@ void SSLConnection::read() {
 
   do {
     // If more read buffer capacity is required increase it by chunks of NET_READ_BUFFER_SIZE.
-    if (bytesRead + NET_READ_BUFFER_SIZE > _read_buffer.capacity()) {
+    if ((bytesRead + NET_READ_BUFFER_SIZE) > _read_buffer.capacity()) {
       size_t newCapacity = _read_buffer.capacity() + NET_READ_BUFFER_SIZE;
 
-      // TODO: Max variable should be called something else.
-      if (newCapacity > WS_MAX_DATA_FRAME_SIZE + NET_READ_BUFFER_SIZE) {
+      if (newCapacity > MAX_DATA_FRAME_SIZE + NET_READ_BUFFER_SIZE) {
         LOG->error("Client {} exceeded max buffer size. Disconnecting.", getIP());
         shutdown();
         return;
@@ -147,7 +132,11 @@ void SSLConnection::read() {
     }
 
     int err = SSL_get_error(_ssl, ret);
-    if (err == SSL_ERROR_ZERO_RETURN || err == SSL_ERROR_SYSCALL) {
+    if (err == SSL_ERROR_ZERO_RETURN) {
+      // Client closed the connection.
+      shutdown();
+      return;
+    } else if (err == SSL_ERROR_SYSCALL) {
       LOG->error("OpenSSL read error: {} for client {}", Util::getSSLErrorString(ERR_get_error()), getIP());
       shutdown();
       return;

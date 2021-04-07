@@ -1,4 +1,4 @@
-add_library( core
+add_library( eventhub_core
   http/picohttpparser.c
   http/Parser.cpp
   http/Handler.cpp
@@ -30,11 +30,10 @@ add_executable(eventhub main.cpp)
 find_library(HIREDIS_LIB hiredis)
 find_library(REDIS_PLUS_PLUS_LIB redis++)
 
-target_link_libraries(eventhub core)
+target_link_libraries(eventhub eventhub_core)
 target_link_libraries(eventhub ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(eventhub ${OPENSSL_CRYPTO_LIBRARIES})
 target_link_libraries(eventhub ${OPENSSL_LIBRARIES})
 target_link_libraries(eventhub ${HIREDIS_LIB})
 target_link_libraries(eventhub ${REDIS_PLUS_PLUS_LIB})
 target_link_libraries(eventhub fmt::fmt)
-#target_link_libraries(eventhub spdlog)
