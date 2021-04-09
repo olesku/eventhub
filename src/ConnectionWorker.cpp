@@ -159,7 +159,7 @@ ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin) {
         }
 
         if (c->getState() == ConnectionState::WEBSOCKET) {
-          websocket::response::sendData(c, "", websocket::FrameType::PING_FRAME);
+          websocket::Response::sendData(c, "", websocket::FrameType::PING_FRAME);
         } else if (c->getState() == ConnectionState::SSE) {
           sse::response::sendPing(c);
         }

@@ -44,7 +44,7 @@ void Topic::publish(const string& data) {
       }
 
       if (c->getState() == ConnectionState::WEBSOCKET) {
-        websocket::response::sendData(c,
+        websocket::Response::sendData(c,
                                       jsonrpcpp::Response(subscriber.second, jsonData).to_json().dump(),
                                       websocket::FrameType::TEXT_FRAME);
       } else if (c->getState() == ConnectionState::SSE) {

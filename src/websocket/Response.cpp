@@ -9,10 +9,7 @@
 
 namespace eventhub {
 namespace websocket {
-// TODO: This should be a static class instead of a namespace.
-namespace response {
-
-void sendFragment(ConnectionPtr conn, const std::string& fragment, uint8_t frameType, bool fin) {
+void Response::_sendFragment(ConnectionPtr conn, const std::string& fragment, uint8_t frameType, bool fin) {
   std::string sndBuf;
   char header[8];
   size_t headerSize   = 0;
@@ -42,11 +39,11 @@ void sendFragment(ConnectionPtr conn, const std::string& fragment, uint8_t frame
   conn->write(sndBuf);
 }
 
-void sendData(ConnectionPtr conn, const std::string& data, FrameType frameType) {
+void Response::sendData(ConnectionPtr conn, const std::string& data, FrameType frameType) {
   size_t dataSize = data.size();
 
   if (dataSize < WS_MAX_CHUNK_SIZE) {
-    sendFragment(conn, data, (uint8_t)frameType, true);
+    _sendFragment(conn, data, (uint8_t)frameType, true);
   } else {
     // First: fin = false, frameType = frameType
     // Following: fin = false, frameType = CONTINUATION_FRAME
@@ -57,11 +54,10 @@ void sendData(ConnectionPtr conn, const std::string& data, FrameType frameType) 
       bool fin               = (i < (nChunks - 1)) ? false : true;
       size_t len             = (i < (nChunks - 1)) ? WS_MAX_CHUNK_SIZE : std::string::npos;
       auto const chunk       = data.substr(i * WS_MAX_CHUNK_SIZE, len);
-      sendFragment(conn, chunk, chunkFrametype, fin);
+      _sendFragment(conn, chunk, chunkFrametype, fin);
     }
   }
 }
 
-} // namespace response
 } // namespace websocket
 } // namespace eventhub

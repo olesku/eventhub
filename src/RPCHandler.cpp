@@ -45,13 +45,13 @@ RPCMethod RPCHandler::getHandler(const std::string& methodName) {
 }
 
 void RPCHandler::_sendInvalidParamsError(HandlerContext& ctx, jsonrpcpp::request_ptr req, const std::string& message) {
-  websocket::response::sendData(ctx.connection(),
+  websocket::Response::sendData(ctx.connection(),
                                 jsonrpcpp::Response(jsonrpcpp::InvalidParamsException(message, req->id())).to_json().dump(),
                                 websocket::FrameType::TEXT_FRAME);
 }
 
 void RPCHandler::_sendSuccessResponse(HandlerContext& ctx, jsonrpcpp::request_ptr req, const nlohmann::json& result) {
-  websocket::response::sendData(ctx.connection(),
+  websocket::Response::sendData(ctx.connection(),
                                 jsonrpcpp::Response(*req, result).to_json().dump(),
                                 websocket::FrameType::TEXT_FRAME);
 }
@@ -306,7 +306,7 @@ void RPCHandler::_handlePing(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
  * @param req RPC request.
  */
 void RPCHandler::_handleDisconnect(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
-  websocket::response::sendData(ctx.connection(), "", websocket::FrameType::CLOSE_FRAME);
+  websocket::Response::sendData(ctx.connection(), "", websocket::FrameType::CLOSE_FRAME);
   ctx.connection()->shutdown();
 }
 

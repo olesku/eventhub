@@ -7,7 +7,7 @@
 
 namespace eventhub {
 
-class SSLConnection : public Connection {
+class SSLConnection final : public Connection {
 public:
   SSLConnection(int fd, struct sockaddr_in* csin, Server* server, Worker* worker);
   ~SSLConnection();

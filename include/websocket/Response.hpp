@@ -9,11 +9,15 @@
 
 namespace eventhub {
 namespace websocket {
-namespace response {
 
-void sendData(ConnectionPtr conn, const std::string& data, FrameType frameType);
+class Response {
+  public:
+    static void sendData(ConnectionPtr conn, const std::string& data, FrameType frameType);
 
-} // namespace response
+  private:
+    static void _sendFragment(ConnectionPtr conn, const std::string& fragment, uint8_t frameType, bool fin);
+};
+
 } // namespace websocket
 } // namespace eventhub
 
