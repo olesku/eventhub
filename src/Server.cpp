@@ -1,30 +1,30 @@
 #include "Server.hpp"
 
+#include <errno.h>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <openssl/err.h>
+#include <openssl/ssl.h>
 #include <signal.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
 
-#include <mutex>
-#include <string>
+#include <atomic>
 #include <chrono>
 #include <future>
-#include <atomic>
 #include <memory>
+#include <mutex>
+#include <string>
 
-#include "jwt/json/json.hpp"
 #include "Common.hpp"
 #include "Config.hpp"
-#include "metrics/Types.hpp"
 #include "Util.hpp"
+#include "jwt/json/json.hpp"
+#include "metrics/Types.hpp"
 
 unsigned const char alpn_protocol[] = "http/1.1";
-unsigned int alpn_protocol_length = 8;
+unsigned int alpn_protocol_length   = 8;
 
 std::atomic<bool> stopEventhub{false};
 std::atomic<bool> reloadEventhub{false};
@@ -32,8 +32,8 @@ std::atomic<bool> reloadEventhub{false};
 namespace eventhub {
 
 Server::Server(const string redisHost, int redisPort, const std::string redisPassword, int redisPoolSize)
-    :  _server_socket(-1), _ssl_enabled(false), _ssl_ctx(nullptr),
-       _redis(redisHost, redisPort, redisPassword, redisPoolSize) {}
+    : _server_socket(-1), _ssl_enabled(false), _ssl_ctx(nullptr),
+      _redis(redisHost, redisPort, redisPassword, redisPoolSize) {}
 
 Server::~Server() {
   LOG->trace("Server destructor called.");
@@ -99,10 +99,9 @@ void Server::start() {
   _cur_worker = _connection_workers.begin();
   _connection_workers_lock.unlock();
 
-
   // Set up cronjob handler thread.
   auto cronJobs = std::thread([&]() {
-    while(!stopEventhub) {
+    while (!stopEventhub) {
       _ev.process();
       auto delay = _ev.getNextTimerDelay();
 
@@ -119,7 +118,7 @@ void Server::start() {
     }
   });
 
-  _metrics.worker_count = numWorkerThreads;
+  _metrics.worker_count          = numWorkerThreads;
   _metrics.server_start_unixtime = Util::getTimeSinceEpoch();
 
   _redis.setPrefix(Config.getString("REDIS_PREFIX"));
@@ -128,12 +127,13 @@ void Server::start() {
     // Calculate publish delay.
     if (topic == "$metrics$/system_unixtime") {
       try {
-        auto j = nlohmann::json::parse(msg);
-        auto ts = stol(static_cast<std::string>(j["message"]), nullptr, 10);;
-        auto diff = Util::getTimeSinceEpoch() - ts;
+        auto j  = nlohmann::json::parse(msg);
+        auto ts = stol(static_cast<std::string>(j["message"]), nullptr, 10);
+        ;
+        auto diff                       = Util::getTimeSinceEpoch() - ts;
         _metrics.redis_publish_delay_ms = (diff < 0) ? 0 : diff;
         return;
-      } catch(...) {}
+      } catch (...) {}
 
       return;
     }
@@ -148,21 +148,25 @@ void Server::start() {
 
   // Add cache purge cronjob if cache functionality is enabled.
   if (Config.getBool("ENABLE_CACHE")) {
-    _ev.addTimer(CACHE_PURGER_INTERVAL_MS, [&](TimerCtx *ctx) {
-      try {
-        LOG->debug("Running cache purger.");
-        auto purgedItems = _redis.purgeExpiredCacheItems();
-        LOG->debug("Purged {} items.", purgedItems);
-      } catch(...) {}
-    }, true);
+    _ev.addTimer(
+        CACHE_PURGER_INTERVAL_MS, [&](TimerCtx* ctx) {
+          try {
+            LOG->debug("Running cache purger.");
+            auto purgedItems = _redis.purgeExpiredCacheItems();
+            LOG->debug("Purged {} items.", purgedItems);
+          } catch (...) {}
+        },
+        true);
   }
 
   // Add redis publish latency sampler cronjob.
-   _ev.addTimer(METRIC_DELAY_SAMPLE_RATE_MS, [&](TimerCtx *ctx) {
-     try {
-      _redis.publishMessage("$metrics$/system_unixtime", "0", to_string(Util::getTimeSinceEpoch()));
-     } catch(...) {}
-   }, true);
+  _ev.addTimer(
+      METRIC_DELAY_SAMPLE_RATE_MS, [&](TimerCtx* ctx) {
+        try {
+          _redis.publishMessage("$metrics$/system_unixtime", "0", to_string(Util::getTimeSinceEpoch()));
+        } catch (...) {}
+      },
+      true);
 
   bool reconnect = false;
   while (!stopEventhub) {
@@ -195,16 +199,15 @@ void Server::start() {
 void Server::reload() {
   LOG->info("Reloading Eventhub");
   reloadEventhub = false;
-   _loadSSLCertificates();
+  _loadSSLCertificates();
 }
 
-int alpn_cb (SSL *ssl, const unsigned char **out, unsigned char *outlen,
-             const unsigned char *in, unsigned int inlen, void *arg) {
-
+int alpn_cb(SSL* ssl, const unsigned char** out, unsigned char* outlen,
+            const unsigned char* in, unsigned int inlen, void* arg) {
   auto reqProto = fmt::format("{}", in);
 
   if (reqProto.find(reinterpret_cast<const char*>(alpn_protocol)) != string::npos) {
-    *out = alpn_protocol;
+    *out    = alpn_protocol;
     *outlen = alpn_protocol_length;
 
     LOG->trace("HTTP/1.1 ALPN accepted ALPN: {}", reqProto);
@@ -217,7 +220,7 @@ int alpn_cb (SSL *ssl, const unsigned char **out, unsigned char *outlen,
 
 void Server::_initSSLContext() {
   const SSL_METHOD* method = TLS_server_method();
-  _ssl_ctx = SSL_CTX_new(method);
+  _ssl_ctx                 = SSL_CTX_new(method);
 
   if (_ssl_ctx == NULL) {
     LOG->critical("Could not initialize SSL context: {}", Util::getSSLErrorString(ERR_get_error()));
@@ -239,8 +242,8 @@ void Server::_loadSSLCertificates() {
   }
 
   const string caCert = Config.getString("SSL_CA_CERTIFICATE");
-  const string cert = Config.getString("SSL_CERTIFICATE");
-  const string key = Config.getString("SSL_PRIVATE_KEY");
+  const string cert   = Config.getString("SSL_CERTIFICATE");
+  const string key    = Config.getString("SSL_PRIVATE_KEY");
 
   if (caCert.empty()) {
     SSL_CTX_set_default_verify_paths(_ssl_ctx);
@@ -252,19 +255,19 @@ void Server::_loadSSLCertificates() {
     }
   }
 
-	if (SSL_CTX_use_certificate_chain_file(_ssl_ctx, cert.c_str()) <= 0) {
+  if (SSL_CTX_use_certificate_chain_file(_ssl_ctx, cert.c_str()) <= 0) {
     LOG->error("Error loading certificate: {}", Util::getSSLErrorString(ERR_get_error()));
     stop();
     exit(EXIT_FAILURE);
   }
 
-  if (SSL_CTX_use_PrivateKey_file(_ssl_ctx, key.c_str(), SSL_FILETYPE_PEM) <= 0 ) {
+  if (SSL_CTX_use_PrivateKey_file(_ssl_ctx, key.c_str(), SSL_FILETYPE_PEM) <= 0) {
     LOG->error("Error loading private key: {}", Util::getSSLErrorString(ERR_get_error()));
     stop();
     exit(EXIT_FAILURE);
   }
 
-  if (!SSL_CTX_check_private_key(_ssl_ctx) ) {
+  if (!SSL_CTX_check_private_key(_ssl_ctx)) {
     LOG->error("Error validating private key: {}", Util::getSSLErrorString(ERR_get_error()));
     stop();
     exit(EXIT_FAILURE);
@@ -303,10 +306,10 @@ metrics::AggregatedMetrics Server::getAggregatedMetrics() {
   std::lock_guard<std::mutex> lock(_connection_workers_lock);
   metrics::AggregatedMetrics m;
 
-  m.worker_count = _metrics.worker_count.load();
-  m.redis_publish_delay_ms = _metrics.redis_publish_delay_ms.load();
-  m.server_start_unixtime =  _metrics.server_start_unixtime.load();
-  m.publish_count = _metrics.publish_count.load();
+  m.worker_count                = _metrics.worker_count.load();
+  m.redis_publish_delay_ms      = _metrics.redis_publish_delay_ms.load();
+  m.server_start_unixtime       = _metrics.server_start_unixtime.load();
+  m.publish_count               = _metrics.publish_count.load();
   m.redis_connection_fail_count = _metrics.redis_connection_fail_count.load();
 
   for (auto& wrk : _connection_workers) {

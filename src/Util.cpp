@@ -2,14 +2,14 @@
 
 #include <openssl/bio.h>
 #include <openssl/buffer.h>
-#include <openssl/evp.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
 #include <stdint.h>
 
 #include <algorithm>
+#include <chrono>
 #include <sstream>
 #include <string>
-#include <chrono>
 
 #include "Common.hpp"
 
@@ -77,9 +77,9 @@ int64_t Util::getTimeSinceEpoch() {
 }
 
 std::string Util::getSSLErrorString(unsigned long e) {
-    char buf[512] = {'\0'};
-    ERR_error_string_n(e, buf, 512);
-    ERR_clear_error();
-    return buf;
+  char buf[512] = {'\0'};
+  ERR_error_string_n(e, buf, 512);
+  ERR_clear_error();
+  return buf;
 }
 } // namespace eventhub

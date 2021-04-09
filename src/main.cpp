@@ -4,9 +4,9 @@
 #include <string>
 #include <time.h>
 
+#include <atomic>
 #include <iostream>
 #include <memory>
-#include <atomic>
 
 #include "Common.hpp"
 #include "Config.hpp"
@@ -17,10 +17,13 @@ extern atomic<bool> stopEventhub;
 extern atomic<bool> reloadEventhub;
 
 void sighandler(int sigid) {
-  switch(sigid) {
-    case SIGINT: goto shutdown;
-    case SIGQUIT: goto shutdown;
-    case SIGTERM: goto shutdown;
+  switch (sigid) {
+    case SIGINT:
+      goto shutdown;
+    case SIGQUIT:
+      goto shutdown;
+    case SIGTERM:
+      goto shutdown;
 
     case SIGHUP:
       reloadEventhub = true;
@@ -31,9 +34,9 @@ void sighandler(int sigid) {
       return;
   }
 
-  shutdown:
-    eventhub::LOG->info("Exiting.");
-    stopEventhub = true;
+shutdown:
+  eventhub::LOG->info("Exiting.");
+  stopEventhub = true;
 }
 
 int main(int argc, char** argv) {

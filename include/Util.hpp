@@ -1,8 +1,8 @@
 #ifndef INCLUDE_UTIL_HPP_
 #define INCLUDE_UTIL_HPP_
 
-#include <string>
 #include <chrono>
+#include <string>
 
 namespace eventhub {
 class Util {

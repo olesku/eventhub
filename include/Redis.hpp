@@ -30,7 +30,7 @@ public:
 
   void publishMessage(const string topic, const string id, const string payload);
   void psubscribe(const std::string pattern, RedisMsgCallback callback);
-  const std::string cacheMessage(const string topic, const string payload, long long timestamp=0, unsigned int ttl=0);
+  const std::string cacheMessage(const string topic, const string payload, long long timestamp = 0, unsigned int ttl = 0);
   size_t getCacheSince(const string topicPattern, long long since, long long limit, bool isPattern, nlohmann::json& result);
   size_t getCacheSinceId(const string topicPattern, const string sinceId, long long limit, bool isPattern, nlohmann::json& result);
   size_t purgeExpiredCacheItems();

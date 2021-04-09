@@ -6,9 +6,9 @@
 
 #include "Common.hpp"
 #include "Connection.hpp"
+#include "sse/Response.hpp"
 #include "websocket/Response.hpp"
 #include "websocket/Types.hpp"
-#include "sse/Response.hpp"
 
 using namespace std;
 
@@ -68,7 +68,6 @@ void Topic::deleteSubscriberByIterator(TopicSubscriberList::iterator it) {
   std::lock_guard<std::mutex> lock(_subscriber_lock);
   _subscriber_list.erase(it);
 }
-
 
 /**
  * Returns the number of subscribers on the topic.

@@ -4,11 +4,10 @@
 
 namespace eventhub {
 
-SSLConnection::SSLConnection(int fd, struct sockaddr_in* csin, Server* server, Worker* worker) :
-  Connection(fd, csin, server, worker) {
-    _ssl = nullptr;
-    _ssl_handshake_retries = 0;
-    _init();
+SSLConnection::SSLConnection(int fd, struct sockaddr_in* csin, Server* server, Worker* worker) : Connection(fd, csin, server, worker) {
+  _ssl                   = nullptr;
+  _ssl_handshake_retries = 0;
+  _init();
 }
 
 SSLConnection::~SSLConnection() {
@@ -42,7 +41,7 @@ void SSLConnection::_handshake() {
 
   if (ret <= 0) {
     int errorCode = SSL_get_error(_ssl, ret);
-    if (errorCode == SSL_ERROR_WANT_READ  ||
+    if (errorCode == SSL_ERROR_WANT_READ ||
         errorCode == SSL_ERROR_WANT_WRITE) {
       LOG->trace("OpenSSL retry handshake. Try #{}", _ssl_handshake_retries);
     } else {
@@ -52,7 +51,7 @@ void SSLConnection::_handshake() {
     }
   }
 
-   _ssl_handshake_retries++;
+  _ssl_handshake_retries++;
 }
 
 ssize_t SSLConnection::flushSendBuffer() {
@@ -62,7 +61,7 @@ ssize_t SSLConnection::flushSendBuffer() {
   }
 
   unsigned int pcktSize = _write_buffer.length() > NET_READ_BUFFER_SIZE ? NET_READ_BUFFER_SIZE : _write_buffer.length();
-  int ret = SSL_write(_ssl, _write_buffer.c_str(), pcktSize);
+  int ret               = SSL_write(_ssl, _write_buffer.c_str(), pcktSize);
 
   if (ret > 0) {
     _pruneWriteBuffer(ret);
@@ -70,8 +69,7 @@ ssize_t SSLConnection::flushSendBuffer() {
     int err = SSL_get_error(_ssl, ret);
 
     if (!(err == SSL_ERROR_SYSCALL && (errno == EAGAIN || errno == EWOULDBLOCK)) &&
-        err != SSL_ERROR_WANT_WRITE && err != SSL_ERROR_WANT_READ)
-    {
+        err != SSL_ERROR_WANT_WRITE && err != SSL_ERROR_WANT_READ) {
       LOG->trace("write: SSL err: {} for client {}", Util::getSSLErrorString(err), getIP());
       shutdown();
       return ret;
@@ -100,7 +98,7 @@ void SSLConnection::read() {
   }
 
   size_t bytesRead = 0;
-  int ret = 0;
+  int ret          = 0;
 
   do {
     // If more read buffer capacity is required increase it by chunks of NET_READ_BUFFER_SIZE.
@@ -124,7 +122,7 @@ void SSLConnection::read() {
       memcpy(_read_buffer.data(), retain.data(), bytesRead);
     }
 
-    ret = SSL_read(_ssl, _read_buffer.data()+bytesRead, NET_READ_BUFFER_SIZE);
+    ret = SSL_read(_ssl, _read_buffer.data() + bytesRead, NET_READ_BUFFER_SIZE);
 
     if (ret > 0) {
       bytesRead += ret;
@@ -146,4 +144,4 @@ void SSLConnection::read() {
   _parseRequest(bytesRead);
 }
 
-}
+} // namespace eventhub

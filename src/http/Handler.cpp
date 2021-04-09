@@ -1,20 +1,20 @@
 #include <string.h>
 
-#include <string>
 #include <sstream>
+#include <string>
 
 #include "Common.hpp"
 #include "Config.hpp"
 #include "ConnectionWorker.hpp"
 #include "HandlerContext.hpp"
+#include "Server.hpp"
 #include "TopicManager.hpp"
 #include "Util.hpp"
-#include "Server.hpp"
-#include "metrics/JsonRenderer.hpp"
-#include "metrics/PrometheusRenderer.hpp"
 #include "http/Handler.hpp"
 #include "http/Parser.hpp"
 #include "http/Response.hpp"
+#include "metrics/JsonRenderer.hpp"
+#include "metrics/PrometheusRenderer.hpp"
 #include "sse/Handler.hpp"
 
 using namespace std;

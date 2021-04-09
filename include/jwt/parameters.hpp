@@ -23,12 +23,12 @@ SOFTWARE.
 #ifndef CPP_JWT_PARAMETERS_HPP
 #define CPP_JWT_PARAMETERS_HPP
 
-#include <map>
 #include <chrono>
+#include <map>
 #include <string>
-#include <vector>
-#include <utility>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include "jwt/algorithm.hpp"
 #include "jwt/detail/meta.hpp"
@@ -39,7 +39,6 @@ namespace jwt {
 using system_time_t = std::chrono::time_point<std::chrono::system_clock>;
 
 namespace params {
-
 
 namespace detail {
 /**
@@ -54,11 +53,9 @@ namespace detail {
  * Modeled as ParameterConcept.
  */
 template <typename MappingConcept>
-struct payload_param
-{
+struct payload_param {
   payload_param(MappingConcept&& mc)
-    : payload_(std::forward<MappingConcept>(mc))
-  {}
+      : payload_(std::forward<MappingConcept>(mc)) {}
 
   MappingConcept get() && { return std::move(payload_); }
   const MappingConcept& get() const& { return payload_; }
@@ -74,22 +71,19 @@ struct payload_param
  *
  * Modeled as ParameterConcept.
  */
-struct secret_param
-{
+struct secret_param {
   secret_param(string_view sv)
-    : secret_(sv)
-  {}
+      : secret_(sv) {}
 
   string_view get() { return secret_; }
   string_view secret_;
 };
 
 template <typename T>
-struct secret_function_param
-{
+struct secret_function_param {
   T get() const { return fun_; }
   template <typename U>
-  std::string get(U&& u) const { return fun_(u);}
+  std::string get(U&& u) const { return fun_(u); }
   T fun_;
 };
 
@@ -100,18 +94,14 @@ struct secret_function_param
  *
  * Modeled as ParameterConcept.
  */
-struct algorithm_param
-{
+struct algorithm_param {
   algorithm_param(const string_view alg)
-    : alg_(str_to_alg(alg))
-  {}
+      : alg_(str_to_alg(alg)) {}
 
   algorithm_param(jwt::algorithm alg)
-    : alg_(alg)
-  {}
+      : alg_(alg) {}
 
-  jwt::algorithm get() const noexcept
-  {
+  jwt::algorithm get() const noexcept {
     return alg_;
   }
 
@@ -126,11 +116,9 @@ struct algorithm_param
  * Modeled as ParameterConcept.
  */
 template <typename MappingConcept>
-struct headers_param
-{
+struct headers_param {
   headers_param(MappingConcept&& mc)
-    : headers_(std::forward<MappingConcept>(mc))
-  {}
+      : headers_(std::forward<MappingConcept>(mc)) {}
 
   MappingConcept get() && { return std::move(headers_); }
   const MappingConcept& get() const& { return headers_; }
@@ -140,11 +128,9 @@ struct headers_param
 
 /**
  */
-struct verify_param
-{
+struct verify_param {
   verify_param(bool v)
-    : verify_(v)
-  {}
+      : verify_(v) {}
 
   bool get() const { return verify_; }
 
@@ -154,11 +140,9 @@ struct verify_param
 /**
  */
 template <typename Sequence>
-struct algorithms_param
-{
+struct algorithms_param {
   algorithms_param(Sequence&& seq)
-    : seq_(std::forward<Sequence>(seq))
-  {}
+      : seq_(std::forward<Sequence>(seq)) {}
 
   Sequence get() && { return std::move(seq_); }
   const Sequence& get() const& { return seq_; }
@@ -168,11 +152,9 @@ struct algorithms_param
 
 /**
  */
-struct leeway_param
-{
+struct leeway_param {
   leeway_param(uint32_t v)
-    : leeway_(v)
-  {}
+      : leeway_(v) {}
 
   uint32_t get() const noexcept { return leeway_; }
 
@@ -181,11 +163,9 @@ struct leeway_param
 
 /**
  */
-struct audience_param
-{
+struct audience_param {
   audience_param(std::string aud)
-    : aud_(std::move(aud))
-  {}
+      : aud_(std::move(aud)) {}
 
   const std::string& get() const& noexcept { return aud_; }
   std::string get() && noexcept { return aud_; }
@@ -195,11 +175,9 @@ struct audience_param
 
 /**
  */
-struct issuer_param
-{
+struct issuer_param {
   issuer_param(std::string iss)
-    : iss_(std::move(iss))
-  {}
+      : iss_(std::move(iss)) {}
 
   const std::string& get() const& noexcept { return iss_; }
   std::string get() && noexcept { return iss_; }
@@ -209,11 +187,9 @@ struct issuer_param
 
 /**
  */
-struct subject_param
-{
+struct subject_param {
   subject_param(std::string sub)
-    : sub_(std::move(sub))
-  {}
+      : sub_(std::move(sub)) {}
 
   const std::string& get() const& noexcept { return sub_; }
   std::string get() && noexcept { return sub_; }
@@ -223,11 +199,9 @@ struct subject_param
 
 /**
  */
-struct validate_iat_param
-{
+struct validate_iat_param {
   validate_iat_param(bool v)
-    : iat_(v)
-  {}
+      : iat_(v) {}
 
   bool get() const noexcept { return iat_; }
 
@@ -236,11 +210,9 @@ struct validate_iat_param
 
 /**
  */
-struct validate_jti_param
-{
+struct validate_jti_param {
   validate_jti_param(bool v)
-    : jti_(v)
-  {}
+      : jti_(v) {}
 
   bool get() const noexcept { return jti_; }
 
@@ -249,17 +221,15 @@ struct validate_jti_param
 
 /**
  */
-struct nbf_param
-{
+struct nbf_param {
   nbf_param(const jwt::system_time_t tp)
-    : duration_(std::chrono::duration_cast<
-        std::chrono::seconds>(tp.time_since_epoch()).count())
-  {}
+      : duration_(std::chrono::duration_cast<
+                      std::chrono::seconds>(tp.time_since_epoch())
+                      .count()) {}
 
   nbf_param(const uint64_t epoch)
-    : duration_(epoch)
-  {}
- 
+      : duration_(epoch) {}
+
   uint64_t get() const noexcept { return duration_; }
 
   uint64_t duration_;
@@ -271,178 +241,159 @@ struct nbf_param
 using param_init_list_t = std::initializer_list<std::pair<jwt::string_view, jwt::string_view>>;
 using param_seq_list_t  = std::initializer_list<jwt::string_view>;
 
-
 /**
  */
 inline detail::payload_param<std::unordered_map<std::string, std::string>>
-payload(const param_init_list_t& kvs)
-{
+payload(const param_init_list_t& kvs) {
   std::unordered_map<std::string, std::string> m;
 
   for (const auto& elem : kvs) {
     m.emplace(elem.first.data(), elem.second.data());
   }
 
-  return { std::move(m) };
+  return {std::move(m)};
 }
 
 /**
  */
 template <typename MappingConcept>
 detail::payload_param<MappingConcept>
-payload(MappingConcept&& mc)
-{
-  static_assert (jwt::detail::meta::is_mapping_concept<MappingConcept>::value,
-      "Template parameter does not meet the requirements for MappingConcept.");
+payload(MappingConcept&& mc) {
+  static_assert(jwt::detail::meta::is_mapping_concept<MappingConcept>::value,
+                "Template parameter does not meet the requirements for MappingConcept.");
 
-  return { std::forward<MappingConcept>(mc) };
+  return {std::forward<MappingConcept>(mc)};
 }
-
 
 /**
  */
-inline detail::secret_param secret(const string_view sv)
-{
-  return { sv };
+inline detail::secret_param secret(const string_view sv) {
+  return {sv};
 }
 
 template <typename T>
-inline std::enable_if_t<!std::is_convertible<T, string_view>::value, detail::secret_function_param<T>>  
-secret(T&& fun)
-{
-  return detail::secret_function_param<T>{ fun };
+inline std::enable_if_t<!std::is_convertible<T, string_view>::value, detail::secret_function_param<T>>
+secret(T&& fun) {
+  return detail::secret_function_param<T>{fun};
 }
 
 /**
  */
-inline detail::algorithm_param algorithm(const string_view sv)
-{
-  return { sv };
+inline detail::algorithm_param algorithm(const string_view sv) {
+  return {sv};
 }
 
 /**
  */
-inline detail::algorithm_param algorithm(jwt::algorithm alg)
-{
-  return { alg };
+inline detail::algorithm_param algorithm(jwt::algorithm alg) {
+  return {alg};
 }
 
 /**
  */
 inline detail::headers_param<std::map<std::string, std::string>>
-headers(const param_init_list_t& kvs)
-{
+headers(const param_init_list_t& kvs) {
   std::map<std::string, std::string> m;
 
   for (const auto& elem : kvs) {
     m.emplace(elem.first.data(), elem.second.data());
   }
 
-  return { std::move(m) };
+  return {std::move(m)};
 }
 
 /**
  */
 template <typename MappingConcept>
 detail::headers_param<MappingConcept>
-headers(MappingConcept&& mc)
-{
-  static_assert (jwt::detail::meta::is_mapping_concept<MappingConcept>::value,
-       "Template parameter does not meet the requirements for MappingConcept.");
+headers(MappingConcept&& mc) {
+  static_assert(jwt::detail::meta::is_mapping_concept<MappingConcept>::value,
+                "Template parameter does not meet the requirements for MappingConcept.");
 
-  return { std::forward<MappingConcept>(mc) };
+  return {std::forward<MappingConcept>(mc)};
 }
 
 /**
  */
 inline detail::verify_param
-verify(bool v)
-{
-  return { v };
+verify(bool v) {
+  return {v};
 }
 
 /**
  */
 inline detail::leeway_param
-leeway(uint32_t l)
-{
-  return { l };
+leeway(uint32_t l) {
+  return {l};
 }
 
 /**
  */
 inline detail::algorithms_param<std::vector<std::string>>
-algorithms(const param_seq_list_t& seq)
-{
+algorithms(const param_seq_list_t& seq) {
   std::vector<std::string> vec;
   vec.reserve(seq.size());
 
-  for (const auto& e: seq) { vec.emplace_back(e.data(), e.length()); }
+  for (const auto& e : seq) {
+    vec.emplace_back(e.data(), e.length());
+  }
 
-  return { std::move(vec) };
+  return {std::move(vec)};
 }
 
 template <typename SequenceConcept>
 detail::algorithms_param<SequenceConcept>
-algorithms(SequenceConcept&& sc)
-{
-  return { std::forward<SequenceConcept>(sc) };
+algorithms(SequenceConcept&& sc) {
+  return {std::forward<SequenceConcept>(sc)};
 }
 
 /**
  */
 inline detail::audience_param
-aud(const jwt::string_view aud)
-{
-  return { aud.data() };
+aud(const jwt::string_view aud) {
+  return {aud.data()};
 }
 
 /**
  */
 inline detail::issuer_param
-issuer(const jwt::string_view iss)
-{
-  return { iss.data() };
+issuer(const jwt::string_view iss) {
+  return {iss.data()};
 }
 
 /**
  */
 inline detail::subject_param
-sub(const jwt::string_view subj)
-{
-  return { subj.data() };
+sub(const jwt::string_view subj) {
+  return {subj.data()};
 }
 
 /**
  */
 inline detail::validate_iat_param
-validate_iat(bool v)
-{
-  return { v };
+validate_iat(bool v) {
+  return {v};
 }
 
 /**
  */
 inline detail::validate_jti_param
-validate_jti(bool v)
-{
-  return { v };
+validate_jti(bool v) {
+  return {v};
 }
 
 /**
  */
 inline detail::nbf_param
-nbf(const system_time_t tp)
-{
-  return { tp };
+nbf(const system_time_t tp) {
+  return {tp};
 }
 
 /**
  */
 inline detail::nbf_param
-nbf(const uint64_t epoch)
-{
-  return { epoch };
+nbf(const uint64_t epoch) {
+  return {epoch};
 }
 
 } // END namespace params

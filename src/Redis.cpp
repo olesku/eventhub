@@ -1,19 +1,19 @@
 #include "Redis.hpp"
 
 #include <chrono>
-#include <memory>
-#include <mutex>
-#include <string>
-#include <sstream>
-#include <utility>
-#include <vector>
 #include <deque>
 #include <fmt/format.h>
+#include <memory>
+#include <mutex>
+#include <sstream>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include "Common.hpp"
 #include "Config.hpp"
-#include "Util.hpp"
 #include "TopicManager.hpp"
+#include "Util.hpp"
 #include "jwt/json/json.hpp"
 
 namespace eventhub {
@@ -68,9 +68,9 @@ const std::string Redis::_getNextCacheId(long long timestamp) {
 // Takes in a string in the form of <HSET-ID>-<ExpireAt> and returns
 // the id and expire time as a pair.
 const std::pair<std::string, int64_t> Redis::_parseIdAndExpireAt(const std::string& input) {
-  auto delimPos = input.find(':');
-  auto id = input.substr(0, delimPos);
-  auto expireAtStr = input.substr(delimPos+1, std::string::npos);
+  auto delimPos    = input.find(':');
+  auto id          = input.substr(0, delimPos);
+  auto expireAtStr = input.substr(delimPos + 1, std::string::npos);
   return {id, std::stol(expireAtStr, nullptr, 10)};
 }
 
@@ -87,13 +87,12 @@ const std::string Redis::cacheMessage(const string topic, const string payload, 
     return cacheId;
   }
 
-
   if (ttl == 0) {
     ttl = Config.getInt("DEFAULT_CACHE_TTL");
   }
 
   auto expireAt = Util::getTimeSinceEpoch() + (ttl * 1000);
-  auto zKey = fmt::format("{}:{}", cacheId, expireAt);
+  auto zKey     = fmt::format("{}:{}", cacheId, expireAt);
 
   _redisInstance->hset(REDIS_CACHE_DATA_PATH(topic), cacheId, payload);
   _redisInstance->zadd(REDIS_CACHE_SCORE_PATH(topic), zKey, timestamp);
@@ -121,7 +120,7 @@ size_t Redis::getCacheSince(const string topicPattern, long long since, long lon
   // and request the eventlog for each of them.
   if (isPattern) {
     for (auto& topic : _getTopicsSeen(topicPattern)) {
-       topics.push_back(topic);
+      topics.push_back(topic);
     }
   }
   // If it is a single topic then only look up eventlog for that.
@@ -138,13 +137,13 @@ size_t Redis::getCacheSince(const string topicPattern, long long since, long lon
     // We do this to reverse the order of returned items. We are interested in the newest cache items from <since> to <now>
     // up to <limit> items, but we want the order to be from oldest to newest while ZREVRANGEBYSCORE gives us the opposite.
     _redisInstance->zrevrangebyscore(REDIS_CACHE_SCORE_PATH(topic), sw::redis::LeftBoundedInterval<double>(since, sw::redis::BoundType::RIGHT_OPEN),
-            sw::redis::LimitOptions{0, limit}, std::front_inserter(zcacheKeys));
+                                     sw::redis::LimitOptions{0, limit}, std::front_inserter(zcacheKeys));
 
     // Only look up keys that is not expired.
     std::vector<std::string> cacheKeys;
 
     for (auto zKey : zcacheKeys) {
-      auto p  = _parseIdAndExpireAt(zKey);
+      auto p = _parseIdAndExpireAt(zKey);
       if (p.second >= now) {
         cacheKeys.push_back(p.first);
       }
@@ -190,10 +189,10 @@ std::pair<long long, long long> _splitIdAndSeq(const string cacheId) {
     throw invalid_argument("Invalid cache id.");
   }
 
-  auto tsStr = cacheId.substr(0, hyphenPos);
+  auto tsStr     = cacheId.substr(0, hyphenPos);
   auto timestamp = std::stoull(tsStr, nullptr, 10);
-  auto seqStr = cacheId.substr(hyphenPos+1, std::string::npos);
-  auto seq = std::stoull(seqStr, nullptr, 10);
+  auto seqStr    = cacheId.substr(hyphenPos + 1, std::string::npos);
+  auto seq       = std::stoull(seqStr, nullptr, 10);
 
   return {timestamp, seq};
 }
@@ -222,7 +221,7 @@ size_t Redis::getCacheSinceId(const string topicPattern, const string sinceId, l
 
     // The loop below removes entries with equal timestamp and same or lower sequence id.
     bool sinceIdFound = false;
-    auto it = result.begin();
+    auto it           = result.begin();
 
     while (it != result.end()) {
       long long elm_Timestamp, elm_seqNo;
@@ -232,7 +231,7 @@ size_t Redis::getCacheSinceId(const string topicPattern, const string sinceId, l
       // object is found.
       if (!elm.is_object() || !elm.contains("id") || !elm.contains("topic") || !elm.contains("message")) {
         LOG->error("Found invalid cache object in getCacheSinceId.\n  topicPattern: {} sinceId: {} isPattern: {} limit: {}\n cacheElement: {}\n",
-          topicPattern, sinceId, isPattern, limit, elm.dump());
+                   topicPattern, sinceId, isPattern, limit, elm.dump());
 
         result.clear();
         return 0;
@@ -266,7 +265,7 @@ size_t Redis::getCacheSinceId(const string topicPattern, const string sinceId, l
       result.clear();
       return 0;
     }
-  } catch(...) {
+  } catch (...) {
     result.clear();
     return 0;
   }
@@ -274,11 +273,10 @@ size_t Redis::getCacheSinceId(const string topicPattern, const string sinceId, l
   return result.size();
 }
 
-
 // Delete expired items from the cache.
 size_t Redis::purgeExpiredCacheItems() {
   std::vector<std::string> allTopics;
-  std::vector<std::pair<std::string,std::string>> expiredItems;
+  std::vector<std::pair<std::string, std::string>> expiredItems;
   auto now = Util::getTimeSinceEpoch();
 
   _redisInstance->hkeys(REDIS_PREFIX("pub_count"), std::back_inserter(allTopics));
@@ -296,16 +294,16 @@ size_t Redis::purgeExpiredCacheItems() {
         }
       }
     } else {
-        // Remove topic from pub_count if it has no more cached
-        // elements left.
-       _redisInstance->hdel(REDIS_PREFIX("pub_count"), topic);
+      // Remove topic from pub_count if it has no more cached
+      // elements left.
+      _redisInstance->hdel(REDIS_PREFIX("pub_count"), topic);
     }
   }
 
   for (auto exp : expiredItems) {
     auto topic = exp.first;
-    auto key = exp.second;
-    auto p = _parseIdAndExpireAt(key);
+    auto key   = exp.second;
+    auto p     = _parseIdAndExpireAt(key);
 
     _redisInstance->zrem(REDIS_CACHE_SCORE_PATH(topic), key);
     _redisInstance->hdel(REDIS_CACHE_DATA_PATH(topic), p.first);

@@ -1,9 +1,9 @@
 #ifndef INCLUDE_METRICS_TYPES_HPP_
 #define INCLUDE_METRICS_TYPES_HPP_
 
-#include <vector>
 #include <atomic>
 #include <cstdint>
+#include <vector>
 
 namespace eventhub {
 namespace metrics {
@@ -24,16 +24,15 @@ struct ServerMetrics {
 };
 
 struct AggregatedMetrics {
-  AggregatedMetrics() :
-    server_start_unixtime(0),
-    worker_count(0),
-    publish_count(0),
-    redis_connection_fail_count(0),
-    redis_publish_delay_ms(0),
-    current_connections_count(0),
-    total_connect_count(0),
-    total_disconnect_count(0),
-    eventloop_delay_ms(0) {};
+  AggregatedMetrics() : server_start_unixtime(0),
+                        worker_count(0),
+                        publish_count(0),
+                        redis_connection_fail_count(0),
+                        redis_publish_delay_ms(0),
+                        current_connections_count(0),
+                        total_connect_count(0),
+                        total_disconnect_count(0),
+                        eventloop_delay_ms(0){};
 
   unsigned long server_start_unixtime;
   unsigned int worker_count;
@@ -47,8 +46,7 @@ struct AggregatedMetrics {
   unsigned long eventloop_delay_ms;
 };
 
-} // metrics
-} // eventhub
+} // namespace metrics
+} // namespace eventhub
 
 #endif // INCLUDE_METRICS_TYPES_HPP_
-

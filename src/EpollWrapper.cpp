@@ -2,11 +2,11 @@
 
 #include "EpollWrapper.hpp"
 
+#include <map>
+#include <mutex>
 #include <poll.h>
 #include <stdio.h>
 #include <sys/select.h>
-#include <map>
-#include <mutex>
 #include <utility>
 
 #include <iostream>
@@ -15,7 +15,7 @@ namespace {
 unsigned int epfd_index = 0;
 std::map<int, std::map<int, struct epoll_event*>> _events;
 std::mutex mutex;
-}
+} // namespace
 
 int epoll_create1(int flags) {
   std::lock_guard<std::mutex> lock(mutex);
@@ -23,7 +23,7 @@ int epoll_create1(int flags) {
 }
 
 int epoll_ctl(int epfd, int op, int fd,
-              struct epoll_event *event) {
+              struct epoll_event* event) {
   std::lock_guard<std::mutex> lock(mutex);
 
   if (op == EPOLL_CTL_DEL) {
@@ -35,7 +35,7 @@ int epoll_ctl(int epfd, int op, int fd,
   return 0;
 }
 
-int epoll_wait_select(int epfd, struct epoll_event *events,
+int epoll_wait_select(int epfd, struct epoll_event* events,
                       int maxevents, int timeout) {
   fd_set rfds, wfds, efds;
   FD_ZERO(&rfds);
@@ -60,28 +60,29 @@ int epoll_wait_select(int epfd, struct epoll_event *events,
         FD_SET(fd, &efds);
       }
 
-      if (fd > maxfd) maxfd = fd;
+      if (fd > maxfd)
+        maxfd = fd;
     }
   }
 
   struct timeval tv;
-  tv.tv_sec = timeout / 1000;
+  tv.tv_sec  = timeout / 1000;
   tv.tv_usec = (timeout % 1000) * 1000;
 
-  int retval = select(maxfd+1, &rfds, &wfds, &efds, (timeout < 0) ? nullptr : &tv);
+  int retval = select(maxfd + 1, &rfds, &wfds, &efds, (timeout < 0) ? nullptr : &tv);
 
   if (retval > 0) {
     int i = 0;
     for (int fd = 0; fd <= maxfd; fd++) {
-      bool readyToRead = FD_ISSET(fd, &rfds);
+      bool readyToRead  = FD_ISSET(fd, &rfds);
       bool readyToWrite = FD_ISSET(fd, &wfds);
-      bool readyToErr = FD_ISSET(fd, &efds);
+      bool readyToErr   = FD_ISSET(fd, &efds);
 
       if (readyToRead || readyToWrite || readyToErr) {
         std::lock_guard<std::mutex> lock(mutex);
         auto it = _events[epfd].find(fd);
         if (it != _events[epfd].end()) {
-          struct epoll_event *e = it->second;
+          struct epoll_event* e = it->second;
 
           events[i].events = 0;
 
@@ -95,7 +96,7 @@ int epoll_wait_select(int epfd, struct epoll_event *events,
             events[i].events |= EPOLLERR;
           }
 
-          events[i].data.fd = fd;
+          events[i].data.fd  = fd;
           events[i].data.ptr = e->data.ptr;
 
           i++;
@@ -107,7 +108,7 @@ int epoll_wait_select(int epfd, struct epoll_event *events,
   return retval;
 }
 
-int epoll_wait_poll(int epfd, struct epoll_event *events,
+int epoll_wait_poll(int epfd, struct epoll_event* events,
                     int maxevents, int timeout) {
   int nfds;
   {
@@ -115,7 +116,8 @@ int epoll_wait_poll(int epfd, struct epoll_event *events,
     nfds = _events[epfd].size();
   }
 
-  if (nfds == 0) return 0;
+  if (nfds == 0)
+    return 0;
 
   struct pollfd fds[nfds];
 
@@ -158,13 +160,12 @@ int epoll_wait_poll(int epfd, struct epoll_event *events,
       bool pollHup = fds[j].revents & POLLHUP;
 
       if (pollIn || pollOut || pollErr || pollHup) {
-
         int fd = fds[j].fd;
 
         std::lock_guard<std::mutex> lock(mutex);
         auto it = _events[epfd].find(fd);
         if (it != _events[epfd].end()) {
-          struct epoll_event *e = it->second;
+          struct epoll_event* e = it->second;
 
           events[i].events = 0;
 
@@ -181,7 +182,7 @@ int epoll_wait_poll(int epfd, struct epoll_event *events,
             events[i].events |= EPOLLHUP;
           }
 
-          events[i].data.fd = fd;
+          events[i].data.fd  = fd;
           events[i].data.ptr = e->data.ptr;
 
           i++;
@@ -193,10 +194,9 @@ int epoll_wait_poll(int epfd, struct epoll_event *events,
   return retval;
 }
 
-int epoll_wait(int epfd, struct epoll_event *events,
-               int maxevents, int timeout)
-{
-    return epoll_wait_poll(epfd, events, maxevents, timeout);
+int epoll_wait(int epfd, struct epoll_event* events,
+               int maxevents, int timeout) {
+  return epoll_wait_poll(epfd, events, maxevents, timeout);
 }
 
 #endif

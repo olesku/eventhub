@@ -29,7 +29,6 @@ std::pair<TopicPtr, TopicSubscriberList::iterator> TopicManager::subscribeConnec
   return std::make_pair(_topic_list[topicFilter], it);
 }
 
-
 /*
 * Publish to a topic.
 * @param topicName topic to publish to.
@@ -68,7 +67,7 @@ void TopicManager::deleteTopic(const std::string& topicFilter) {
 * @returns true if valid, false otherwise.
 */
 bool TopicManager::isValidTopic(const std::string& topicName) {
-    if (topicName.empty()) {
+  if (topicName.empty()) {
     return false;
   }
 
@@ -85,7 +84,7 @@ bool TopicManager::isValidTopic(const std::string& topicName) {
       return false;
     }
 
-    if (it+1 == topicName.end() && *it == '/') {
+    if (it + 1 == topicName.end() && *it == '/') {
       return false;
     }
   }
@@ -116,7 +115,7 @@ bool TopicManager::isValidTopicFilter(const std::string& filterName) {
   }
 
   // A # must always be at the end.
-  if (hashBangPos != std::string::npos && (hashBangPos+1) != filterName.length()) {
+  if (hashBangPos != std::string::npos && (hashBangPos + 1) != filterName.length()) {
     return false;
   }
 
@@ -125,7 +124,7 @@ bool TopicManager::isValidTopicFilter(const std::string& filterName) {
       return false;
     }
 
-    if (*it == '+' && (it+1) != filterName.end() && ((*(it + 1) != '/' || (*(it - 1) != '/' && (it) != filterName.begin() )))) {
+    if (*it == '+' && (it + 1) != filterName.end() && ((*(it + 1) != '/' || (*(it - 1) != '/' && (it) != filterName.begin())))) {
       return false;
     }
 
@@ -163,7 +162,6 @@ bool TopicManager::isFilterMatched(const std::string& filterName, const string& 
   // Loop through filterName and topicName one character at the time.
   for (auto fnIt = filterName.begin(), tnIt = topicName.begin();
        tnIt != topicName.end(); fnIt++, tnIt++) {
-
     // We reached the end of our filter without a match.
     if (fnIt == filterName.end()) {
       return false;
@@ -174,8 +172,8 @@ bool TopicManager::isFilterMatched(const std::string& filterName, const string& 
       // Match the root topic in addition to every subtopic
       // when we have a match-all (#) on that path.
       // Example: topic/foo/# should also match topic/foo.
-      if ((fnIt+2 != filterName.end() && fnIt+3 == filterName.end()) &&
-            *(fnIt+1) == '/' && *(fnIt+2) == '#') {
+      if ((fnIt + 2 != filterName.end() && fnIt + 3 == filterName.end()) &&
+          *(fnIt + 1) == '/' && *(fnIt + 2) == '#') {
         return true;
       }
 
@@ -190,10 +188,11 @@ bool TopicManager::isFilterMatched(const std::string& filterName, const string& 
     // If we hit a + in the filter we should increment the pos of
     // the topicName until we match a '/'.
     if (*fnIt == '+') {
-      for (; tnIt != topicName.end() && *(tnIt + 1) != '/'; tnIt++);
+      for (; tnIt != topicName.end() && *(tnIt + 1) != '/'; tnIt++)
+        ;
       // If we reached the end of the topicName before we found a '/'
       // it means we don't have a match.
-      if (tnIt == topicName.end() && fnIt+1 == filterName.end())
+      if (tnIt == topicName.end() && fnIt + 1 == filterName.end())
         return true;
       else if (tnIt == topicName.end())
         return false;
@@ -202,7 +201,7 @@ bool TopicManager::isFilterMatched(const std::string& filterName, const string& 
 
     // We matched up until now and the filter ends with a '#'
     // which means we should match.
-    if (*fnIt == '#' && fnIt+1 == filterName.end()) {
+    if (*fnIt == '#' && fnIt + 1 == filterName.end()) {
       break;
     }
 

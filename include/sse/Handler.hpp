@@ -23,7 +23,7 @@ private:
   ~Handler() {}
 };
 
-} // namespace SSE
+} // namespace sse
 } // namespace eventhub
 
 #endif // INCLUDE_SSE_HANDLER_HPP_

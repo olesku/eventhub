@@ -5,8 +5,8 @@
 #include <future>
 #include <vector>
 
-#include "Util.hpp"
 #include "Redis.hpp"
+#include "Util.hpp"
 
 using namespace std;
 using namespace eventhub;
@@ -129,7 +129,7 @@ TEST_CASE("Test redis", "[Redis") {
     }
   }
 
-  GIVEN("That we want to get cached elements since a given message id")  {
+  GIVEN("That we want to get cached elements since a given message id") {
     nlohmann::json res;
     std::vector<std::string> cacheIds;
 
