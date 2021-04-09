@@ -18,7 +18,7 @@ jobs:
       uses: actions/checkout@v1
 
     - name: Install required packages
-      run: sudo apt-get -f install git make cmake cmake-data ninja libhiredis-dev libssl-dev libfmt-dev libspdlog-dev
+      run: sudo apt-get -f install git make cmake cmake-data ninja-build libhiredis-dev libssl-dev libfmt-dev libspdlog-dev
       env:
         DEBIAN_FRONTEND: noninteractive
 
