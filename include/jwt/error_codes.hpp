@@ -29,8 +29,7 @@ namespace jwt {
 /**
  * All the algorithm errors
  */
-enum class AlgorithmErrc
-{
+enum class AlgorithmErrc {
   SigningErr = 1,
   VerificationErr,
   KeyNotFoundErr,
@@ -41,20 +40,18 @@ enum class AlgorithmErrc
  * Algorithm error conditions
  * TODO: Remove it or use it!
  */
-enum class AlgorithmFailureSource
-{
+enum class AlgorithmFailureSource {
 };
 
 /**
  * Decode error conditions
  */
-enum class DecodeErrc
-{
+enum class DecodeErrc {
   // No algorithms provided in decode API
   EmptyAlgoList = 1,
   // The JWT signature has incorrect format
   SignatureFormatError,
-  // The JSON library failed to parse 
+  // The JSON library failed to parse
   JsonParseError,
   // Algorithm field in header is missing
   AlgHeaderMiss,
@@ -74,8 +71,7 @@ enum class DecodeErrc
 /**
  * Errors handled during verification process.
  */
-enum class VerificationErrc
-{
+enum class VerificationErrc {
   //Algorithms provided does not match with header
   InvalidAlgorithm = 1,
   //Token is expired at the time of decoding
@@ -113,22 +109,20 @@ std::error_code make_error_code(VerificationErrc err);
 
 } // END namespace jwt
 
-
 /**
  * Make the custom enum classes as error code
  * adaptable.
  */
-namespace std
-{
-  template <>
-  struct is_error_code_enum<jwt::AlgorithmErrc> : true_type {};
+namespace std {
+template <>
+struct is_error_code_enum<jwt::AlgorithmErrc> : true_type {};
 
-  template <>
-  struct is_error_code_enum<jwt::DecodeErrc>: true_type {};
+template <>
+struct is_error_code_enum<jwt::DecodeErrc> : true_type {};
 
-  template <>
-  struct is_error_code_enum<jwt::VerificationErrc>: true_type {};
-}
+template <>
+struct is_error_code_enum<jwt::VerificationErrc> : true_type {};
+} // namespace std
 
 #include "jwt/impl/error_codes.ipp"
 

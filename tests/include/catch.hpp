@@ -6714,7 +6714,7 @@ public:
     return m_tokenBuffer.front();
   }
 
-  auto operator-> () const -> Token const* {
+  auto operator->() const -> Token const* {
     assert(!m_tokenBuffer.empty());
     return &m_tokenBuffer.front();
   }
@@ -7123,8 +7123,8 @@ public:
   auto set(std::string const& newName) -> ParserResult {
     auto lastSlash = newName.find_last_of("\\/");
     auto filename  = (lastSlash == std::string::npos)
-                        ? newName
-                        : newName.substr(lastSlash + 1);
+                         ? newName
+                         : newName.substr(lastSlash + 1);
 
     *m_name = filename;
     if (m_ref)
@@ -12638,7 +12638,8 @@ const char* passedString() { return "passed"; }
 Catch::Colour::Code dimColour() { return Catch::Colour::FileName; }
 
 std::string bothOrAll(std::size_t count) {
-  return count == 1 ? std::string() : count == 2 ? "both " : "all ";
+  return count == 1 ? std::string() : count == 2 ? "both "
+                                                 : "all ";
 }
 
 } // namespace

@@ -22,7 +22,7 @@
 #ifndef CPP_JWT_CONFIG_HPP
 #define CPP_JWT_CONFIG_HPP
 
-#ifdef _MSC_VER 
+#ifdef _MSC_VER
 #define strncasecmp _strnicmp
 #define strcasecmp _stricmp
 #endif
@@ -41,11 +41,10 @@
 //  Copied the solution as described in:
 //  https://akrzemi1.wordpress.com/2017/05/18/asserts-in-constexpr-functions/
 #if defined NDEBUG
-# define X_ASSERT(CHECK) void(0)
+#define X_ASSERT(CHECK) void(0)
 #else
-# define X_ASSERT(CHECK) \
-    ( (CHECK) ? void(0) : []{assert(!#CHECK);}() )
+#define X_ASSERT(CHECK) \
+  ((CHECK) ? void(0) : [] { assert(!#CHECK); }())
 #endif
-
 
 #endif

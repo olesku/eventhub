@@ -1,14 +1,14 @@
 #include "Connection.hpp"
 
 #include <arpa/inet.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <netinet/tcp.h>
+#include <openssl/err.h>
+#include <openssl/ssl.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <errno.h>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
 
 #include <ctime>
 #include <memory>
@@ -18,20 +18,19 @@
 
 #include "Common.hpp"
 #include "Config.hpp"
-#include "Server.hpp"
 #include "ConnectionWorker.hpp"
+#include "Server.hpp"
 #include "Topic.hpp"
 #include "TopicManager.hpp"
+#include "Util.hpp"
 #include "http/Parser.hpp"
 #include "websocket/Parser.hpp"
-#include "Util.hpp"
 
 namespace eventhub {
 using namespace std;
 
-
 Connection::Connection(int fd, struct sockaddr_in* csin, Server* server, Worker* worker) : _fd(fd), _server(server), _worker(worker) {
-  _is_shutdown = false;
+  _is_shutdown             = false;
   _is_shutdown_after_flush = false;
 
   memcpy(&_csin, csin, sizeof(struct sockaddr_in));
@@ -110,14 +109,14 @@ size_t Connection::_pruneWriteBuffer(size_t bytes) {
  * Read from client, parse and call the correct handler.
  */
 void Connection::read() {
-   _read_buffer.clear();
+  _read_buffer.clear();
 
   if (isShutdown()) {
     return;
   }
 
   size_t bytesRead = 0;
-  bytesRead = ::read(_fd, _read_buffer.data(), NET_READ_BUFFER_SIZE);
+  bytesRead        = ::read(_fd, _read_buffer.data(), NET_READ_BUFFER_SIZE);
 
   if (bytesRead <= 0) {
     if (errno != EAGAIN) {
@@ -130,7 +129,6 @@ void Connection::read() {
   _parseRequest(bytesRead);
 }
 
-
 /**
  * Parse the request present in our read buffer and call the correct handler.
  */
@@ -140,11 +138,11 @@ void Connection::_parseRequest(size_t bytesRead) {
   switch (getState()) {
     case ConnectionState::HTTP:
       _http_parser->parse(_read_buffer.data(), bytesRead);
-    break;
+      break;
 
     case ConnectionState::WEBSOCKET:
       _websocket_parser.parse(_read_buffer.data(), bytesRead);
-    break;
+      break;
 
     default:
       LOG->debug("Connection {} has invalid state, disconnecting.", getIP());

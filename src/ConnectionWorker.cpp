@@ -5,34 +5,34 @@
 #include <netinet/in.h>
 #include <string.h>
 #ifdef __linux__
-# include <sys/epoll.h>
+#include <sys/epoll.h>
 #else
-# include "EpollWrapper.hpp"
+#include "EpollWrapper.hpp"
 #endif
+#include <stdlib.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <stdlib.h>
 
+#include <chrono>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
 #include <string>
-#include <chrono>
 
 #include "Common.hpp"
 #include "Config.hpp"
 #include "Connection.hpp"
-#include "SSLConnection.hpp"
 #include "EventLoop.hpp"
 #include "HandlerContext.hpp"
+#include "SSLConnection.hpp"
 #include "Server.hpp"
+#include "Util.hpp"
 #include "Worker.hpp"
 #include "http/Handler.hpp"
+#include "sse/Response.hpp"
 #include "websocket/Handler.hpp"
 #include "websocket/Parser.hpp"
 #include "websocket/Response.hpp"
-#include "sse/Response.hpp"
-#include "Util.hpp"
 
 using namespace std;
 
@@ -71,7 +71,7 @@ void Worker::_acceptConnection() {
 
   // Accept the connection.
   memset(reinterpret_cast<char*>(&csin), '\0', sizeof(csin));
-  clen = sizeof(csin);
+  clen     = sizeof(csin);
   clientFd = accept(_server->getServerSocket(), (struct sockaddr*)&csin, &clen);
 
   if (clientFd == -1) {
@@ -103,8 +103,7 @@ ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin) {
   std::lock_guard<std::mutex> lock(_connection_list_mutex);
 
   auto connectionIterator = _connection_list.insert(_connection_list.end(),
-    _server->isSSL() ? make_shared<SSLConnection>(fd, csin, _server, this) :
-                       make_shared<Connection>(fd, csin, _server, this));
+                                                    _server->isSSL() ? make_shared<SSLConnection>(fd, csin, _server, this) : make_shared<Connection>(fd, csin, _server, this));
 
   auto client = connectionIterator->get()->getSharedPtr();
 
@@ -208,13 +207,15 @@ void Worker::_workerMain() {
   _ev_delay_sample_start = Util::getTimeSinceEpoch();
 
   // Sample eventloop delay every <METRIC_DELAY_SAMPLE_RATE_MS> and store it in our metrics.
-  _ev.addTimer(METRIC_DELAY_SAMPLE_RATE_MS, [&](TimerCtx *ctx) {
-    const auto epoch = Util::getTimeSinceEpoch();
-    long diff = epoch - _ev_delay_sample_start - METRIC_DELAY_SAMPLE_RATE_MS;
+  _ev.addTimer(
+      METRIC_DELAY_SAMPLE_RATE_MS, [&](TimerCtx* ctx) {
+        const auto epoch = Util::getTimeSinceEpoch();
+        long diff        = epoch - _ev_delay_sample_start - METRIC_DELAY_SAMPLE_RATE_MS;
 
-    _metrics.eventloop_delay_ms = (diff < 0) ? 0 : diff;
-    _ev_delay_sample_start = Util::getTimeSinceEpoch();
-  }, true);
+        _metrics.eventloop_delay_ms = (diff < 0) ? 0 : diff;
+        _ev_delay_sample_start      = Util::getTimeSinceEpoch();
+      },
+      true);
 
   if (_epoll_fd == -1) {
     LOG->critical("epoll_create1() failed in worker {}: {}.", getWorkerId(), strerror(errno));

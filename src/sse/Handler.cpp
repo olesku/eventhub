@@ -3,31 +3,31 @@
 #include <string>
 #include <vector>
 
-#include "sse/Handler.hpp"
-#include "sse/Response.hpp"
-#include "http/Response.hpp"
 #include "Common.hpp"
-#include "Util.hpp"
-#include "Server.hpp"
 #include "Config.hpp"
 #include "Connection.hpp"
 #include "ConnectionWorker.hpp"
 #include "HandlerContext.hpp"
+#include "Server.hpp"
 #include "TopicManager.hpp"
+#include "Util.hpp"
+#include "http/Response.hpp"
+#include "sse/Handler.hpp"
+#include "sse/Response.hpp"
 
 namespace eventhub {
 namespace sse {
 
 void Handler::HandleRequest(HandlerContext& ctx, http::Parser* req) {
-  auto conn = ctx.connection();
-  auto& redis = ctx.server()->getRedis();
+  auto conn              = ctx.connection();
+  auto& redis            = ctx.server()->getRedis();
   auto& accessController = conn->getAccessController();
 
-  auto path = Util::uriDecode(req->getPath());
+  auto path        = Util::uriDecode(req->getPath());
   auto lastEventId = req->getHeader("Last-Event-ID");
-  auto sinceStr = req->getQueryString("since");
-  auto limitStr = req->getQueryString("limit");
-  long long limit = Config.getInt("MAX_CACHE_REQUEST_LIMIT");
+  auto sinceStr    = req->getQueryString("since");
+  auto limitStr    = req->getQueryString("limit");
+  long long limit  = Config.getInt("MAX_CACHE_REQUEST_LIMIT");
 
   if (path.at(0) == '/') {
     path = path.substr(1, std::string::npos);
@@ -57,7 +57,7 @@ void Handler::HandleRequest(HandlerContext& ctx, http::Parser* req) {
       if (limitParam < (unsigned long long)Config.getInt("MAX_CACHE_REQUEST_LIMIT")) {
         limit = limitParam;
       }
-    } catch(...) {}
+    } catch (...) {}
   }
 
   response::ok(conn);
@@ -69,12 +69,12 @@ void Handler::HandleRequest(HandlerContext& ctx, http::Parser* req) {
   if (!lastEventId.empty()) {
     try {
       redis.getCacheSinceId(path, lastEventId, limit, TopicManager::isValidTopicFilter(path), result);
-    } catch(...) {}
+    } catch (...) {}
   } else if (!sinceStr.empty()) {
     try {
       auto since = std::stoull(sinceStr, nullptr, 10);
       redis.getCacheSince(path, since, limit, TopicManager::isValidTopicFilter(path), result);
-    } catch(...) {}
+    } catch (...) {}
   }
 
   for (const auto& cacheItem : result) {
@@ -82,5 +82,5 @@ void Handler::HandleRequest(HandlerContext& ctx, http::Parser* req) {
   }
 }
 
-} // namespace SSE
+} // namespace sse
 } // namespace eventhub

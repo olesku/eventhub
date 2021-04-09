@@ -3,14 +3,14 @@
 
 #include <memory>
 #include <mutex>
-#include <string>
 #include <openssl/ssl.h>
+#include <string>
 
 #include "ConnectionWorker.hpp"
+#include "EventLoop.hpp"
 #include "Redis.hpp"
 #include "Worker.hpp"
 #include "metrics/Types.hpp"
-#include "EventLoop.hpp"
 
 using namespace std;
 
@@ -30,7 +30,11 @@ public:
   inline Redis& getRedis() { return _redis; }
   metrics::AggregatedMetrics getAggregatedMetrics();
   inline bool isSSL() { return _ssl_enabled; }
-  inline SSL_CTX* getSSLContext() { assert(isSSL()); assert(_ssl_ctx != nullptr); return _ssl_ctx; }
+  inline SSL_CTX* getSSLContext() {
+    assert(isSSL());
+    assert(_ssl_ctx != nullptr);
+    return _ssl_ctx;
+  }
 
 private:
   int _server_socket;

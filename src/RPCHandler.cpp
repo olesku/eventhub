@@ -1,5 +1,6 @@
 #include "RPCHandler.hpp"
 #include "Common.hpp"
+#include "Config.hpp"
 #include "Connection.hpp"
 #include "ConnectionWorker.hpp"
 #include "HandlerContext.hpp"
@@ -8,7 +9,6 @@
 #include "TopicManager.hpp"
 #include "Util.hpp"
 #include "websocket/Response.hpp"
-#include "Config.hpp"
 
 #include <sstream>
 #include <stdexcept>
@@ -29,7 +29,7 @@ RPCMethod RPCHandler::getHandler(const std::string& methodName) {
       {"publish", _handlePublish},
       {"list", _handleList},
       {"history", _handleHistory},
-      {"ping" , _handlePing},
+      {"ping", _handlePing},
       {"disconnect", _handleDisconnect}};
 
   std::string methodNameLC = methodName;
@@ -71,7 +71,7 @@ void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr re
   std::stringstream msg;
 
   try {
-    topicName = params.get("topic").get<std::string>();
+    topicName    = params.get("topic").get<std::string>();
     sinceEventId = params.get("sinceEventId").get<std::string>();
   } catch (...) {}
 
@@ -122,7 +122,7 @@ void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr re
   if (!sinceEventId.empty() || since > 0) {
     try {
       nlohmann::json result;
-      auto& redis      = ctx.server()->getRedis();
+      auto& redis = ctx.server()->getRedis();
 
       if (!sinceEventId.empty()) {
         redis.getCacheSinceId(topicName, sinceEventId, limit, TopicManager::isValidTopicFilter(topicName), result);
@@ -230,7 +230,7 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
   }
 
   try {
-    ttl       = params.get("ttl").get<unsigned int>();
+    ttl = params.get("ttl").get<unsigned int>();
   } catch (...) {
     ttl = 0;
   }

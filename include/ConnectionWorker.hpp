@@ -1,18 +1,18 @@
 #ifndef INCLUDE_CONNECTIONWORKER_HPP_
 #define INCLUDE_CONNECTIONWORKER_HPP_
 
+#include <chrono>
+#include <cstdint>
 #include <list>
 #include <memory>
 #include <mutex>
 #include <string>
-#include <chrono>
-#include <cstdint>
 
 #include "Connection.hpp"
 #include "EventLoop.hpp"
 #include "TopicManager.hpp"
-#include "metrics/Types.hpp"
 #include "Worker.hpp"
+#include "metrics/Types.hpp"
 
 namespace eventhub {
 class Server; // Forward declaration.
