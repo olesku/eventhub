@@ -1,5 +1,5 @@
+cmake_minimum_required (VERSION 2.9)
 project (eventhub)
-cmake_minimum_required (VERSION 2.6)
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 set(CMAKE_C_FLAGS "-Wall")
@@ -15,6 +15,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 set(CMAKE_CXX_FLAGS_DEBUG "-ggdb")
 set(CMAKE_C_FLAGS_DEBUG "-ggdb")
 
+OPTION(SKIP_TESTS "Skip building tests" 0)
 
 # To detect data race with thread sanitizer, uncomment those 2 lines
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread")
@@ -34,8 +35,6 @@ find_package(Threads REQUIRED)
 include_directories(${Threads_INCLUDE_DIR})
 
 # OpenSSL
-#set(OPENSSL_USE_STATIC_LIBS TRUE)
-#set(OPENSSL_ROOT_DIR "/usr/lib")
 find_package(OpenSSL REQUIRED)
 include_directories(${OPENSSL_INCLUDE_DIR})
 
@@ -48,7 +47,12 @@ find_path(REDIS_PLUS_PLUS_HEADER sw)
 include_directories(${REDIS_PLUS_PLUS_HEADER})
 
 add_subdirectory(src)
-add_subdirectory(tests)
+
+if (NOT ${SKIP_TESTS})
+        add_subdirectory(tests)
+        include(CTest)
+        add_test(eventhub_tests eventhub_tests)
+endif()
 
 file(GLOB_RECURSE ALL_SOURCE_FILES *.cpp *.hpp *.h)
 

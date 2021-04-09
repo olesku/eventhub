@@ -1,7 +1,7 @@
 FROM alpine:3.11
 
 RUN apk update && \
-    apk add gcc g++ make cmake git openssl-dev hiredis-dev git gdb bash vim psmisc procps htop curl sudo && \
+    apk add gcc g++ make cmake ninja git openssl-dev hiredis-dev git gdb bash vim psmisc procps htop curl sudo && \
     apk add --no-cache -X http://dl-cdn.alpinelinux.org/alpine/edge/community spdlog && \
     apk add --no-cache -X http://dl-cdn.alpinelinux.org/alpine/edge/community spdlog-dev && \
     apk add --no-cache -X http://dl-cdn.alpinelinux.org/alpine/edge/community fmt-dev && \
@@ -11,8 +11,8 @@ RUN apk update && \
 RUN mkdir -p /usr/src/redis-plus-plus && cd /usr/src/redis-plus-plus && \
     git clone https://github.com/sewenew/redis-plus-plus.git . && \
     git checkout tags/1.1.2 && \
-    mkdir compile && cd compile && cmake -DCMAKE_BUILD_TYPE=Debug .. && \
-    make && make install
+    mkdir compile && cd compile && cmake -GNinja -DCMAKE_BUILD_TYPE=Debug .. && \
+    ninja -j0 && ninja install
 
 RUN mkdir -p /usr/src/eventhub
 WORKDIR /usr/src/eventhub
@@ -20,8 +20,8 @@ COPY . .
 RUN mkdir -p build && cd build && \
     sed -i 's/clang++/g++/' ../CMakeLists.txt && \
     sed -i 's/clang/gcc/' ../CMakeLists.txt && \
-    cmake -DSKIP_TESTS=1 -DCMAKE_BUILD_TYPE=Debug .. && \
-    make -j && \
+    cmake -GNinja -DSKIP_TESTS=1 -DCMAKE_BUILD_TYPE=Debug .. && \
+    ninja -j0 && \
     cp -a eventhub /usr/bin/eventhub
 
 WORKDIR /tmp

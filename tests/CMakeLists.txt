@@ -1,7 +1,7 @@
 
 include_directories ("${PROJECT_SOURCE_DIR}/tests/include" "${PROJECT_SOURCE_DIR}/include")
 
-add_executable(eventhub_tests
+set(SOURCES
   src/TopicTest.cpp
   src/EventLoopTest.cpp
   src/RedisTest.cpp
@@ -9,6 +9,8 @@ add_executable(eventhub_tests
   src/ConfigTest.cpp
   src/main.cpp
 )
+
+add_executable(eventhub_tests ${SOURCES})
 
 target_link_libraries(eventhub_tests eventhub_core)
 target_link_libraries(eventhub_tests fmt::fmt)
@@ -22,7 +24,3 @@ target_link_libraries(eventhub_tests ${HIREDIS_LIB})
 # Redis++https://github.com/sewenew/redis-plus-plus
 find_library(REDIS_PLUS_PLUS_LIB redis++)
 target_link_libraries(eventhub_tests ${REDIS_PLUS_PLUS_LIB})
-
-if (NOT DEFINED SKIP_TESTS)
-  add_custom_command(TARGET eventhub_tests POST_BUILD COMMAND ../eventhub_tests)
-endif()

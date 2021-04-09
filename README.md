@@ -128,14 +128,15 @@ Required libraries:
 Required tooling:
 * Git
 * CMake
-* GCC and G++
+* Ninja
+* Clang
 
 ```
 git clone git@github.com:olesku/eventhub.git && \
 mkdir build && \
 cd build && \
-cmake -DSKIP_TESTS=1 .. && \
-make
+cmake -GNinja -DSKIP_TESTS=1 .. && \
+ninja
 ```
 
 ## Clustering

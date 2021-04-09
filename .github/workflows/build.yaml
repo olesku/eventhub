@@ -18,7 +18,7 @@ jobs:
       uses: actions/checkout@v1
 
     - name: Install required packages
-      run: sudo apt-get -f install git make cmake cmake-data libhiredis-dev libssl-dev libfmt-dev libspdlog-dev
+      run: sudo apt-get -f install git make cmake cmake-data ninja libhiredis-dev libssl-dev libfmt-dev libspdlog-dev
       env:
         DEBIAN_FRONTEND: noninteractive
 
@@ -29,16 +29,16 @@ jobs:
         git checkout tags/1.1.1 && \
         mkdir compile && \
         cd compile && \
-        cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr .. && \
-        make && \
-        sudo make install && \
+        cmake -GNinja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr .. && \
+        ninja -j0 && \
+        sudo ninja install && \
         cd ../..
 
     - name: Build Eventhub
       run: |
         mkdir -p build && cd build && \
-        cmake -DSKIP_TESTS=1 -DCMAKE_BUILD_TYPE=Release .. && \
-        make
+        cmake -GNinja -DCMAKE_BUILD_TYPE=Release .. && \
+        ninja -j0
 
     - name: Start Redis
       uses: supercharge/redis-github-action@1.1.0

@@ -1,4 +1,4 @@
-add_library( eventhub_core
+set (SOURCES
   http/picohttpparser.c
   http/Parser.cpp
   http/Handler.cpp
@@ -24,6 +24,8 @@ add_library( eventhub_core
   AccessController.cpp
   EpollWrapper.cpp
 )
+
+add_library(eventhub_core ${SOURCES})
 
 add_executable(eventhub main.cpp)
 
