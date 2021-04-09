@@ -8,13 +8,15 @@
 
 namespace eventhub {
 namespace sse {
-namespace response {
 
-void ok(ConnectionPtr conn);
-void sendPing(ConnectionPtr conn);
-void sendEvent(ConnectionPtr conn, const std::string& id, const std::string& message, const std::string event = "");
-void error(ConnectionPtr conn, const std::string& message, unsigned int statusCode = 404);
-} // namespace response
+class Response {
+  public:
+    static void ok(ConnectionPtr conn);
+    static void sendPing(ConnectionPtr conn);
+    static void sendEvent(ConnectionPtr conn, const std::string& id, const std::string& message, const std::string event = "");
+    static void error(ConnectionPtr conn, const std::string& message, unsigned int statusCode = 404);
+};
+
 } // namespace sse
 } // namespace eventhub
 

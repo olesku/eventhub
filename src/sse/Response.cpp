@@ -1,21 +1,16 @@
-#ifndef INCLUDE_SSE_RESPONSE_HPP_
-#define INCLUDE_SSE_RESPONSE_HPP_
-
 #include "sse/Response.hpp"
 #include "http/Response.hpp"
 
 #include <fmt/format.h>
 #include <memory>
 #include <string>
-//#include <nlohmann/json.hpp>
 
 #include "Connection.hpp"
 
 namespace eventhub {
 namespace sse {
-namespace response {
 
-void ok(ConnectionPtr conn) {
+void Response::ok(ConnectionPtr conn) {
   http::Response resp(200, ":ok\n\n");
   resp.setHeader("Access-Control-Allow-Headers", "Accept, Cache-Control, X-Requested-With, Last-Event-ID");
   resp.setHeader("Access-Control-Allow-Origin", "*");
@@ -25,11 +20,11 @@ void ok(ConnectionPtr conn) {
   conn->write(resp.get());
 }
 
-void sendPing(ConnectionPtr conn) {
+void Response::sendPing(ConnectionPtr conn) {
   conn->write(":\n\n");
 }
 
-void sendEvent(ConnectionPtr conn, const std::string& id, const std::string& message, const std::string event) {
+void Response::sendEvent(ConnectionPtr conn, const std::string& id, const std::string& message, const std::string event) {
   std::string data;
 
   if (event.empty()) {
@@ -41,7 +36,7 @@ void sendEvent(ConnectionPtr conn, const std::string& id, const std::string& mes
   conn->write(data);
 }
 
-void error(ConnectionPtr conn, const std::string& message, unsigned int statusCode) {
+void Response::error(ConnectionPtr conn, const std::string& message, unsigned int statusCode) {
   nlohmann::json j;
   j["error"] = message;
 
@@ -50,8 +45,5 @@ void error(ConnectionPtr conn, const std::string& message, unsigned int statusCo
   conn->shutdownAfterFlush();
 }
 
-} // namespace response
 } // namespace sse
 } // namespace eventhub
-
-#endif // INCLUDE_SSE_RESPONSE_HPP_

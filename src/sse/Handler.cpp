@@ -34,13 +34,13 @@ void Handler::HandleRequest(HandlerContext& ctx, http::Parser* req) {
   }
 
   if (path.empty() || !TopicManager::isValidTopicOrFilter(path)) {
-    response::error(conn, "Invalid topic requested.");
+    Response::error(conn, "Invalid topic requested.");
     return;
   }
 
   // Check authorization.
   if (!accessController.allowSubscribe(path)) {
-    response::error(conn, "Insufficient access.", 401);
+    Response::error(conn, "Insufficient access.", 401);
     return;
   }
 
@@ -60,7 +60,7 @@ void Handler::HandleRequest(HandlerContext& ctx, http::Parser* req) {
     } catch (...) {}
   }
 
-  response::ok(conn);
+  Response::ok(conn);
   conn->setState(ConnectionState::SSE);
   conn->subscribe(path, 0);
 
@@ -78,7 +78,7 @@ void Handler::HandleRequest(HandlerContext& ctx, http::Parser* req) {
   }
 
   for (const auto& cacheItem : result) {
-    response::sendEvent(conn, cacheItem["id"], cacheItem["message"]);
+    Response::sendEvent(conn, cacheItem["id"], cacheItem["message"]);
   }
 }
 

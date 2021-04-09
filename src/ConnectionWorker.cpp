@@ -161,7 +161,7 @@ ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin) {
         if (c->getState() == ConnectionState::WEBSOCKET) {
           websocket::Response::sendData(c, "", websocket::FrameType::PING_FRAME);
         } else if (c->getState() == ConnectionState::SSE) {
-          sse::response::sendPing(c);
+          sse::Response::sendPing(c);
         }
 
         // TODO: Disconnect client if lastPong was Config.getPingInterval() * 1000 * 3 ago.
