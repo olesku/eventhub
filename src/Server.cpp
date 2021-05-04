@@ -33,9 +33,8 @@ std::atomic<bool> reloadEventhub{false};
 namespace eventhub {
 
 Server::Server(evconfig::Config& cfg)
-    : _server_socket(-1), _ssl_enabled(false), _ssl_ctx(nullptr), _config(cfg) {
+    : _config(cfg), _server_socket(-1), _ssl_enabled(false), _ssl_ctx(nullptr), _redis(this) {
 
-      _redis = make_unique<Redis>(this);
 }
 
 Server::~Server() {
@@ -145,7 +144,7 @@ void Server::start() {
   };
 
   // Connect to redis.
-  _redis->psubscribe("*", cb);
+  _redis.psubscribe("*", cb);
 
   // Add cache purge cronjob if cache functionality is enabled.
   if (config().get<bool>("enable_cache")) {
@@ -153,7 +152,7 @@ void Server::start() {
         CACHE_PURGER_INTERVAL_MS, [&](TimerCtx* ctx) {
           try {
             LOG->debug("Running cache purger.");
-            auto purgedItems = _redis->purgeExpiredCacheItems();
+            auto purgedItems = _redis.purgeExpiredCacheItems();
             LOG->debug("Purged {} items.", purgedItems);
           } catch (...) {}
         },
@@ -164,7 +163,7 @@ void Server::start() {
   _ev.addTimer(
       METRIC_DELAY_SAMPLE_RATE_MS, [&](TimerCtx* ctx) {
         try {
-          _redis->publishMessage("$metrics$/system_unixtime", "0", to_string(Util::getTimeSinceEpoch()));
+          _redis.publishMessage("$metrics$/system_unixtime", "0", to_string(Util::getTimeSinceEpoch()));
         } catch (...) {}
       },
       true);
@@ -176,12 +175,12 @@ void Server::start() {
         _metrics.redis_connection_fail_count++;
         std::this_thread::sleep_for(std::chrono::milliseconds(5000));
         reconnect = false;
-        _redis->resetSubscribers();
-        _redis->psubscribe("*", cb);
+        _redis.resetSubscribers();
+        _redis.psubscribe("*", cb);
         LOG->info("Connection to Redis regained.");
       }
 
-      _redis->consume();
+      _redis.consume();
     }
 
     catch (sw::redis::TimeoutError& e) {

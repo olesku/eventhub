@@ -63,7 +63,7 @@ void RPCHandler::_sendSuccessResponse(HandlerContext& ctx, jsonrpcpp::request_pt
  * @param req RPC request.
  */
 void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
-  auto accessController = ctx.connection()->getAccessController();
+  auto& accessController = ctx.connection()->getAccessController();
   auto params            = req->params();
   std::string topicName;
   std::string sinceEventId;
@@ -102,7 +102,7 @@ void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr re
     return;
   }
 
-  if (!accessController->allowSubscribe(topicName)) {
+  if (!accessController.allowSubscribe(topicName)) {
     msg << "You are not allowed to subscribe to topic: " << topicName;
     _sendInvalidParamsError(ctx, req, msg.str());
     return;
@@ -122,12 +122,12 @@ void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr re
   if (!sinceEventId.empty() || since > 0) {
     try {
       nlohmann::json result;
-      auto redis = ctx.server()->getRedis();
+      auto& redis = ctx.server()->getRedis();
 
       if (!sinceEventId.empty()) {
-        redis->getCacheSinceId(topicName, sinceEventId, limit, TopicManager::isValidTopicFilter(topicName), result);
+        redis.getCacheSinceId(topicName, sinceEventId, limit, TopicManager::isValidTopicFilter(topicName), result);
       } else {
-        redis->getCacheSince(topicName, since, limit, TopicManager::isValidTopicFilter(topicName), result);
+        redis.getCacheSince(topicName, since, limit, TopicManager::isValidTopicFilter(topicName), result);
       }
 
       for (auto& cacheItem : result) {
@@ -156,7 +156,7 @@ void RPCHandler::_handleUnsubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr 
   auto topics        = req->params().to_json();
   unsigned int count = 0;
   for (auto topic : topics) {
-    if (!TopicManager::isValidTopicOrFilter(topic) || !accessController->allowSubscribe(topic)) {
+    if (!TopicManager::isValidTopicOrFilter(topic) || !accessController.allowSubscribe(topic)) {
       continue;
     }
 
@@ -198,7 +198,7 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
   unsigned int ttl;
 
   auto accessController = ctx.connection()->getAccessController();
-  auto params            = req->params();
+  auto params           = req->params();
 
   try {
     topicName = params.get("topic").get<std::string>();
@@ -211,7 +211,7 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
     return;
   }
 
-  if (!accessController->allowPublish(topicName)) {
+  if (!accessController.allowPublish(topicName)) {
     msg << "Insufficient access to topic: " << topicName;
     _sendInvalidParamsError(ctx, req, msg.str());
     return;
@@ -236,8 +236,8 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
   }
 
   try {
-    auto redis = ctx.server()->getRedis();
-    auto id     = redis->cacheMessage(topicName, message, timestamp, ttl);
+    auto& redis = ctx.server()->getRedis();
+    auto id     = redis.cacheMessage(topicName, message, timestamp, ttl);
 
     if (id.length() == 0) {
       msg << "Failed to cache message to Redis, discarding.";
@@ -245,7 +245,7 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
       return;
     }
 
-    redis->publishMessage(topicName, id, message);
+    redis.publishMessage(topicName, id, message);
     LOG->debug("{} - PUBLISH {}", ctx.connection()->getIP(), topicName);
 
     nlohmann::json result;

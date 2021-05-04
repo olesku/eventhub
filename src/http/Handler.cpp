@@ -111,7 +111,7 @@ void Handler::_handlePath(HandlerContext& ctx, Parser* req) {
     return;
   }
 
-  if (!ctx.connection()->getAccessController()->authenticate(authToken, ctx.server()->config().get<std::string>("jwt_secret"))) {
+  if (!ctx.connection()->getAccessController().authenticate(authToken, ctx.server()->config().get<std::string>("jwt_secret"))) {
     _badRequest(ctx, "Authentication failed.", 401);
     return;
   }

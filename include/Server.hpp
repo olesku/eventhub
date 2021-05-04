@@ -28,7 +28,7 @@ public:
   const int getServerSocket();
   Worker* getWorker();
   void publish(const std::string topicName, const std::string data);
-  inline Redis* getRedis() { return _redis.get(); }
+  inline Redis& getRedis() { return _redis; }
   metrics::AggregatedMetrics getAggregatedMetrics();
   inline bool isSSL() { return _ssl_enabled; }
   inline SSL_CTX* getSSLContext() {
@@ -38,16 +38,16 @@ public:
   }
 
 private:
+  evconfig::Config& _config;
   int _server_socket;
   bool _ssl_enabled;
   SSL_CTX* _ssl_ctx;
   WorkerGroup<Worker> _connection_workers;
   WorkerGroup<Worker>::iterator _cur_worker;
   std::mutex _connection_workers_lock;
-  unique_ptr<Redis> _redis;
+  Redis _redis;
   metrics::ServerMetrics _metrics;
   EventLoop _ev;
-  evconfig::Config& _config;
 
   void _initSSLContext();
   void _loadSSLCertificates();
