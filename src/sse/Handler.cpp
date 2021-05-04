@@ -8,6 +8,7 @@
 #include "Connection.hpp"
 #include "ConnectionWorker.hpp"
 #include "HandlerContext.hpp"
+#include "Redis.hpp"
 #include "Server.hpp"
 #include "TopicManager.hpp"
 #include "Util.hpp"
@@ -20,14 +21,14 @@ namespace sse {
 
 void Handler::HandleRequest(HandlerContext& ctx, http::Parser* req) {
   auto conn              = ctx.connection();
-  auto& redis            = ctx.server()->getRedis();
-  auto& accessController = conn->getAccessController();
+  auto redis             = ctx.server()->getRedis();
+  auto accessController  = conn->getAccessController();
 
   auto path        = Util::uriDecode(req->getPath());
   auto lastEventId = req->getHeader("Last-Event-ID");
   auto sinceStr    = req->getQueryString("since");
   auto limitStr    = req->getQueryString("limit");
-  long long limit  = Config.getInt("MAX_CACHE_REQUEST_LIMIT");
+  long long limit  = ctx.server()->config().get<int>("max_cache_request_limit");
 
   if (path.at(0) == '/') {
     path = path.substr(1, std::string::npos);
@@ -39,7 +40,7 @@ void Handler::HandleRequest(HandlerContext& ctx, http::Parser* req) {
   }
 
   // Check authorization.
-  if (!accessController.allowSubscribe(path)) {
+  if (!accessController->allowSubscribe(path)) {
     Response::error(conn, "Insufficient access.", 401);
     return;
   }
@@ -54,7 +55,7 @@ void Handler::HandleRequest(HandlerContext& ctx, http::Parser* req) {
     try {
       auto limitParam = std::stoull(limitStr, nullptr, 10);
 
-      if (limitParam < (unsigned long long)Config.getInt("MAX_CACHE_REQUEST_LIMIT")) {
+      if (limitParam < (unsigned long long)ctx.server()->config().get<int>("max_cache_request_limit")) {
         limit = limitParam;
       }
     } catch (...) {}
@@ -68,12 +69,12 @@ void Handler::HandleRequest(HandlerContext& ctx, http::Parser* req) {
   nlohmann::json result;
   if (!lastEventId.empty()) {
     try {
-      redis.getCacheSinceId(path, lastEventId, limit, TopicManager::isValidTopicFilter(path), result);
+      redis->getCacheSinceId(path, lastEventId, limit, TopicManager::isValidTopicFilter(path), result);
     } catch (...) {}
   } else if (!sinceStr.empty()) {
     try {
       auto since = std::stoull(sinceStr, nullptr, 10);
-      redis.getCacheSince(path, since, limit, TopicManager::isValidTopicFilter(path), result);
+      redis->getCacheSince(path, since, limit, TopicManager::isValidTopicFilter(path), result);
     } catch (...) {}
   }
 

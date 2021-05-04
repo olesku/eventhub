@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "Forward.hpp"
 #include "jwt/json/json.hpp"
 
 namespace eventhub {
@@ -20,12 +21,12 @@ using RedisMsgCallback = std::function<void(std::string pattern,
 
 class Redis {
 #define CONST_24HRS_MS (86400 * 1000)
-#define REDIS_PREFIX(key) std::string((_prefix.length() > 0) ? _prefix + ":" + key : key)
-#define REDIS_CACHE_SCORE_PATH(key) std::string(REDIS_PREFIX(key) + ":scores")
-#define REDIS_CACHE_DATA_PATH(key) std::string(REDIS_PREFIX(key) + ":cache")
+#define redis_prefix(key) std::string((_prefix.length() > 0) ? _prefix + ":" + key : key)
+#define REDIS_CACHE_SCORE_PATH(key) std::string(redis_prefix(key) + ":scores")
+#define REDIS_CACHE_DATA_PATH(key) std::string(redis_prefix(key) + ":cache")
 
 public:
-  explicit Redis(const string host, int port = 6379, const string password = "", int poolSize = 5);
+  explicit Redis(Server *server);
   ~Redis() {}
 
   void publishMessage(const string topic, const string id, const string payload);
@@ -36,7 +37,6 @@ public:
   size_t purgeExpiredCacheItems();
   void consume();
   void resetSubscribers();
-  inline void setPrefix(const std::string& prefix) { _prefix = prefix; }
   inline sw::redis::Redis* getRedisInstance() { return _redisInstance.get(); }
 
   void _incrTopicPubCount(const string& topicName);
@@ -49,6 +49,7 @@ private:
   std::unique_ptr<sw::redis::Subscriber> _redisSubscriber;
   std::string _prefix;
   std::mutex _publish_mtx;
+  Server* _server;
 };
 
 } // namespace eventhub

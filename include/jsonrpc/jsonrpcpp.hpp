@@ -22,7 +22,7 @@
 #ifndef JSON_RPC_HPP
 #define JSON_RPC_HPP
 
-//#include "../jwt/json/json.hpp"
+#include "../jwt/json/json.hpp"
 #include <exception>
 #include <string>
 #include <vector>

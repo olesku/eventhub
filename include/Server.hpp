@@ -18,16 +18,17 @@ namespace eventhub {
 
 class Server {
 public:
-  Server(const string redisHost, int redisPort, const std::string redisPassword, int redisPoolSize);
+  Server(evconfig::Config& cfg);
   ~Server();
 
   void start();
   void stop();
   void reload();
+  evconfig::Config& config() { return _config; }
   const int getServerSocket();
   Worker* getWorker();
   void publish(const std::string topicName, const std::string data);
-  inline Redis& getRedis() { return _redis; }
+  inline Redis* getRedis() { return _redis.get(); }
   metrics::AggregatedMetrics getAggregatedMetrics();
   inline bool isSSL() { return _ssl_enabled; }
   inline SSL_CTX* getSSLContext() {
@@ -43,9 +44,10 @@ private:
   WorkerGroup<Worker> _connection_workers;
   WorkerGroup<Worker>::iterator _cur_worker;
   std::mutex _connection_workers_lock;
-  Redis _redis;
+  unique_ptr<Redis> _redis;
   metrics::ServerMetrics _metrics;
   EventLoop _ev;
+  evconfig::Config& _config;
 
   void _initSSLContext();
   void _loadSSLCertificates();

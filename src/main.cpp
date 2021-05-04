@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string>
 #include <time.h>
+#include <getopt.h>
 
 #include <atomic>
 #include <iostream>
@@ -51,42 +52,80 @@ int main(int argc, char** argv) {
   sigaction(SIGTERM, &sa, NULL);
   sigaction(SIGHUP, &sa, NULL);
 
-  try {
-    eventhub::Config.addString("LOG_LEVEL", "info");
-    eventhub::Logger::getInstance().setLevel(eventhub::Config.getString("LOG_LEVEL"));
+  static struct option long_options[] = {
+    { "help",    no_argument,       0, 'h'  },
+    { "config",  required_argument, 0,  'c' },
+    { 0,         0,                 0,  0   }
+  };
 
-    eventhub::Config.addInt("LISTEN_PORT", 8080);
-    eventhub::Config.addInt("WORKER_THREADS", 0);
-    eventhub::Config.addString("JWT_SECRET", "eventhub_secret");
-    eventhub::Config.addString("REDIS_HOST", "127.0.0.1");
-    eventhub::Config.addInt("REDIS_PORT", 6379);
-    eventhub::Config.addString("REDIS_PASSWORD", "");
-    eventhub::Config.addString("REDIS_PREFIX", "eventhub");
-    eventhub::Config.addInt("REDIS_POOL_SIZE", 5);
-    eventhub::Config.addInt("MAX_CACHE_LENGTH", 1000);
-    eventhub::Config.addInt("PING_INTERVAL", 30);
-    eventhub::Config.addInt("HANDSHAKE_TIMEOUT", 15);
-    eventhub::Config.addInt("DEFAULT_CACHE_TTL", 60);
-    eventhub::Config.addInt("MAX_CACHE_REQUEST_LIMIT", 1000);
-    eventhub::Config.addBool("DISABLE_AUTH", false);
-    eventhub::Config.addBool("ENABLE_SSE", false);
-    eventhub::Config.addBool("ENABLE_CACHE", true);
-    eventhub::Config.addBool("ENABLE_SSL", false);
-    eventhub::Config.addString("SSL_CERTIFICATE", "");
-    eventhub::Config.addString("SSL_PRIVATE_KEY", "");
-    eventhub::Config.addString("SSL_CA_CERTIFICATE", "");
-    eventhub::Config.addString("PROMETHEUS_METRIC_PREFIX", "eventhub");
+  int option_index = 0;
+  string cfgFile;
+
+  while(1) {
+    auto c = getopt_long(argc, argv, "hc:", long_options, &option_index);
+
+    if (c == -1) {
+      break;
+    }
+
+    switch (c) {
+      case 'c':
+        cfgFile.assign(optarg);
+      break;
+
+      case 'h':
+        printf("HELP\n");
+      break;
+
+      case '?':
+        break;
+    }
+  }
+
+  evconfig::ConfigMap cfgMap = {
+      { "listen_port",              evconfig::ValueType::INT,    "8080",      evconfig::ValueSettings::REQUIRED },
+      { "worker_threads",           evconfig::ValueType::INT,    "0",         evconfig::ValueSettings::REQUIRED },
+      { "jwt_secret",               evconfig::ValueType::STRING, "FooBarBaz", evconfig::ValueSettings::REQUIRED },
+      { "log_level",                evconfig::ValueType::STRING, "info",      evconfig::ValueSettings::REQUIRED },
+      { "disable_auth",             evconfig::ValueType::BOOL,   "false",     evconfig::ValueSettings::REQUIRED },
+      { "prometheus_metric_prefix", evconfig::ValueType::STRING, "eventhub",  evconfig::ValueSettings::REQUIRED },
+      { "redis_host",               evconfig::ValueType::STRING, "localhost", evconfig::ValueSettings::REQUIRED },
+      { "redis_port",               evconfig::ValueType::INT,    "6379",      evconfig::ValueSettings::REQUIRED },
+      { "redis_password",           evconfig::ValueType::STRING, "",          evconfig::ValueSettings::OPTIONAL },
+      { "redis_prefix",             evconfig::ValueType::STRING, "eventhub",  evconfig::ValueSettings::OPTIONAL },
+      { "redis_pool_size",          evconfig::ValueType::INT,    "5",         evconfig::ValueSettings::REQUIRED },
+      { "enable_cache",             evconfig::ValueType::BOOL,   "false",     evconfig::ValueSettings::REQUIRED },
+      { "max_cache_length",         evconfig::ValueType::INT,    "1000",      evconfig::ValueSettings::REQUIRED },
+      { "max_cache_request_limit",  evconfig::ValueType::INT,    "100",       evconfig::ValueSettings::REQUIRED },
+      { "default_cache_ttl",        evconfig::ValueType::INT,    "60",        evconfig::ValueSettings::REQUIRED },
+      { "ping_interval",            evconfig::ValueType::INT,    "30",        evconfig::ValueSettings::REQUIRED },
+      { "handshake_timeout",        evconfig::ValueType::INT,    "5",         evconfig::ValueSettings::REQUIRED },
+      { "enable_sse",               evconfig::ValueType::BOOL,   "false",     evconfig::ValueSettings::REQUIRED },
+      { "enable_ssl",               evconfig::ValueType::BOOL,   "false",     evconfig::ValueSettings::REQUIRED },
+      { "ssl_ca_certificate",       evconfig::ValueType::STRING, "",          evconfig::ValueSettings::OPTIONAL },
+      { "ssl_certificate",          evconfig::ValueType::STRING, "",          evconfig::ValueSettings::OPTIONAL },
+      { "ssl_private_key",          evconfig::ValueType::STRING, "",          evconfig::ValueSettings::OPTIONAL }
+    };
+
+  evconfig::Config cfg(cfgMap);
+
+  try {
+    if (!cfgFile.empty()) {
+      cout << "Loading config from " << cfgFile << endl;
+      cfg.setFile(cfgFile);
+    }
+
+    cfg.setLoadFromEnv(true);
+    cfg.load();
+    eventhub::Logger::getInstance().setLevel(cfg.get<std::string>("log_level"));
   } catch (std::exception& e) {
     eventhub::LOG->error("Error reading configuration: {}", e.what());
     return 1;
   }
 
-  eventhub::Server server(
-      eventhub::Config.getString("REDIS_HOST"),
-      eventhub::Config.getInt("REDIS_PORT"),
-      eventhub::Config.getString("REDIS_PASSWORD"),
-      eventhub::Config.getInt("REDIS_POOL_SIZE"));
 
+
+  eventhub::Server server(cfg);
   server.start();
 
   return 0;

@@ -6,6 +6,7 @@
 
 #include "Config.hpp"
 #include "TopicManager.hpp"
+#include "Server.hpp"
 
 /*
 {
@@ -24,15 +25,9 @@ namespace eventhub {
     return false;
 
 #define BYPASS_AUTH_IF_DISABLED(x)    \
-  if (Config.getBool("DISABLE_AUTH")) \
+  if (_server->config().get<bool>("disable_auth")) \
     return true;
 
-AccessController::AccessController() {
-  _token_loaded = false;
-}
-
-AccessController::~AccessController() {
-}
 
 // authenticate loads a a JWT token and extracts ACL's for publish and subscribe.
 bool AccessController::authenticate(const std::string& jwtToken, const std::string& secret) {

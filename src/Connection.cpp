@@ -54,6 +54,7 @@ Connection::Connection(int fd, struct sockaddr_in* csin, Server* server, Worker*
   LOG->trace("Client {} connected.", getIP());
 
   _http_parser = std::make_unique<http::Parser>();
+  _access_controller = std::make_unique<AccessController>(server);
 
   // Set initial state.
   setState(ConnectionState::HTTP);
@@ -292,8 +293,8 @@ void Connection::onHTTPRequest(http::ParserCallback callback) {
   _http_parser->setCallback(callback);
 }
 
-AccessController& Connection::getAccessController() {
-  return _access_controller;
+AccessController* Connection::getAccessController() {
+  return _access_controller.get();
 }
 
 void Connection::assignConnectionListIterator(std::list<ConnectionPtr>::iterator connectionIterator) {

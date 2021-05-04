@@ -5,11 +5,14 @@
 #include <string>
 #include <vector>
 
+#include "Config.hpp"
+#include "Forward.hpp"
 #include "jwt/jwt.hpp"
 
 namespace eventhub {
 class AccessController {
 private:
+  Server* _server;
   bool _token_loaded;
   std::string _jwt_secret;
   jwt::jwt_object _token;
@@ -17,8 +20,8 @@ private:
   std::vector<std::string> _subscribe_acl;
 
 public:
-  AccessController();
-  ~AccessController();
+  AccessController(Server* server) : _server(server), _token_loaded(false) {};
+  ~AccessController() {};
 
   bool authenticate(const std::string& jwtToken, const std::string& secret);
   bool isAuthenticated();

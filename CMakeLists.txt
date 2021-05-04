@@ -5,7 +5,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 set(CMAKE_C_FLAGS "-Wall")
 set(CMAKE_C_COMPILER "clang")
 set(CMAKE_CXX_COMPILER "clang++")
-set(CMAKE_CXX_FLAGS "-Wall -std=c++14 -DSPDLOG_FMT_EXTERNAL")
+set(CMAKE_CXX_FLAGS "-Wall -std=c++17 -DSPDLOG_FMT_EXTERNAL")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -48,11 +48,11 @@ include_directories(${REDIS_PLUS_PLUS_HEADER})
 
 add_subdirectory(src)
 
-if (NOT ${SKIP_TESTS})
-        add_subdirectory(tests)
-        include(CTest)
-        add_test(eventhub_tests eventhub_tests)
-endif()
+#if (NOT ${SKIP_TESTS})
+#        add_subdirectory(tests)
+#        include(CTest)
+#        add_test(eventhub_tests eventhub_tests)
+#endif()
 
 file(GLOB_RECURSE ALL_SOURCE_FILES *.cpp *.hpp *.h)
 

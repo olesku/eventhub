@@ -1,141 +1,128 @@
 #include "Config.hpp"
-
-#include <string.h>
-
-#include <cstdlib>
+#include <fstream>
+#include <iostream>
 #include <memory>
-#include <mutex>
+#include <sstream>
+#include <stdexcept>
 #include <string>
+#include <tuple>
+#include <type_traits>
 #include <unordered_map>
-#include <utility>
+#include <variant>
+#include <stdlib.h>
 
-using namespace std;
+namespace evconfig {
+Config::Config() {}
 
-namespace eventhub {
-namespace config {
+void Config::_loadFromStream(std::istream& data, const std::string& path) {
+  std::fstream f;
+  std::string line;
+  unsigned int lineNo = 0;
 
-void EventhubConfig::addInt(const std::string& name, int defaultValue) {
-  std::lock_guard<std::mutex> lock(_configMapLock);
-  ConfigValue val;
-  val.valueType = ValueType::INT;
+  while (std::getline(data, line)) {
+    std::string parsedKey, parsedValue;
+    unsigned int pos = 0;
 
-  if (_configMap.find(name) != _configMap.end()) {
-    throw AlreadyAdded(name);
-  }
+    lineNo++;
 
-  auto envVal = getenv(name.c_str());
-  if (envVal == NULL) {
-    val.intValue = defaultValue;
-  } else {
-    try {
-      val.intValue = std::stoi(envVal);
-    } catch (...) {
-      throw InvalidValue(name, "integer");
+    // Ignore all leading whitespaces.
+    for (char c = line[pos]; pos < line.length() && (c == ' ' || c == '\t'); c = line[++pos]);
+
+    // Ignore empty lines and comments.
+    if (pos == line.length() || line[pos] == '#')
+      continue;
+
+    // Parse key name until space, tab or equal sign is reached.
+    for (char c = line[pos]; pos < line.length(); c = line[++pos]) {
+      if (c == ' ' || c == '\t' || c == '=')
+        break;
+
+      parsedKey += c;
     }
-  }
 
-  _configMap.emplace(std::make_pair(name, val));
+    // Key should not be empty.
+    if (parsedKey.empty())
+      throw SyntaxErrorException{path, lineNo};
+
+    // We should now be at the equal sign before the value.
+    for (char c = line[pos]; pos < line.length() && c != '='; c = line[++pos]);
+
+    if (line[pos] != '=')
+      throw SyntaxErrorException{path, lineNo};
+
+    // Parse value ignoring leading whitespace and quotes.
+    for (char c = line[++pos]; pos < line.length() && (c == ' ' || c == '\t' || c == '"' || c == '\''); c = line[++pos]);
+    while (pos < line.length()) {
+      if (pos+1 == line.length() && (line[pos] == '"' || line[pos] == '\''))
+        break;
+      if (line[pos] != '\r')
+        parsedValue += line[pos];
+      pos++;
+    }
+
+    if (parsedValue.empty())
+      throw SyntaxErrorException{path, lineNo};
+
+    // Update config object with parsed key and value.
+    auto opt = _options.find(parsedKey);
+    if (opt == _options.end())
+      throw InvalidConfigOptionException{parsedKey, path, lineNo};
+
+    opt->second->_set(parsedValue);
+  }
 }
 
-void EventhubConfig::addString(const std::string& name, const std::string& defaultValue) {
-  std::lock_guard<std::mutex> lock(_configMapLock);
-  ConfigValue val;
-  val.valueType = ValueType::STRING;
-
-  if (_configMap.find(name) != _configMap.end()) {
-    throw AlreadyAdded(name);
-  }
-
-  auto envVal = getenv(name.c_str());
-  if (envVal == NULL) {
-    val.strValue = defaultValue;
-  } else {
-    val.strValue = envVal;
-  }
-
-  _configMap.emplace(std::make_pair(name, val));
+void Config::_loadFromFile(const std::string& path) {
+  std::fstream f;
+  f.open(path, std::fstream::in);
+  _loadFromStream(f, path);
+  f.close();
 }
 
-void EventhubConfig::addBool(const std::string& name, bool defaultValue) {
-  std::lock_guard<std::mutex> lock(_configMapLock);
-  ConfigValue val;
-  val.valueType = ValueType::BOOL;
-  val.boolValue = false;
-
-  if (_configMap.find(name) != _configMap.end()) {
-    throw AlreadyAdded(name);
+void strToUpper(std::string& str) {
+  for (auto it = str.begin(); it != str.end(); it++) {
+    *it = toupper(*it);
   }
+}
 
-  auto envVal = getenv(name.c_str());
-  if (envVal == NULL) {
-    val.boolValue = defaultValue;
-  } else {
-    size_t envLen = strlen(envVal);
-    if (memcmp(envVal, "true", envLen) == 0 ||
-        memcmp(envVal, "TRUE", envLen) == 0 ||
-        memcmp(envVal, "1", envLen) == 0) {
-      val.boolValue = true;
-    } else if (memcmp(envVal, "false", envLen) == 0 ||
-               memcmp(envVal, "FALSE", envLen) == 0 ||
-               memcmp(envVal, "0", envLen) == 0) {
-      val.boolValue = false;
+void Config::_loadFromEnv() {
+  for (const auto& it_opt : _options) {
+    auto optName = it_opt.first;
+    auto val = getenv(optName.c_str());
+    if (val != NULL) {
+      it_opt.second->_set(val);
+      it_opt.second->_hasValue = true;
     } else {
-      throw InvalidValue(name, "boolean");
+      strToUpper(optName);
+      val = getenv(optName.c_str());
+      if (val != NULL) {
+        it_opt.second->_set(val);
+        it_opt.second->_hasValue = true;
+      }
     }
   }
-
-  _configMap.emplace(std::make_pair(name, val));
 }
 
-const std::string EventhubConfig::getString(const std::string& parameter) {
-  std::lock_guard<std::mutex> lock(_configMapLock);
-  if (_configMap.find(parameter) == _configMap.end()) {
-    throw InvalidParameter(parameter);
-  }
+void Config::load() {
+  if (!_cfgStreamBuf.str().empty())
+    _loadFromStream(_cfgStreamBuf, "");
 
-  if (_configMap[parameter].valueType != ValueType::STRING) {
-    throw InvalidTypeRequested("<string>", parameter);
-  }
+  if (!_cfgFile.empty())
+    _loadFromFile(_cfgFile);
 
-  return _configMap[parameter].strValue;
+  if (_loadEnv)
+    _loadFromEnv();
+
+  for (const auto& it_opt : _options) {
+    auto const& opt = *it_opt.second;
+    if (opt._settings == ValueSettings::REQUIRED && !opt._hasValue)
+      throw RequiredOptionMissingException(opt.name());
+  }
 }
 
-bool EventhubConfig::del(const std::string parameter) {
-  std::lock_guard<std::mutex> lock(_configMapLock);
-  auto it = _configMap.find(parameter);
-  if (it != _configMap.end()) {
-    _configMap.erase(it);
-    return true;
+void Config::clearValues() {
+  for (auto& opt : _options) {
+    opt.second->clear();
   }
-
-  return false;
 }
-
-const int EventhubConfig::getInt(const std::string& parameter) {
-  std::lock_guard<std::mutex> lock(_configMapLock);
-  if (_configMap.find(parameter) == _configMap.end()) {
-    throw InvalidParameter(parameter);
-  }
-
-  if (_configMap[parameter].valueType != ValueType::INT) {
-    throw InvalidTypeRequested("<int>", parameter);
-  }
-
-  return _configMap[parameter].intValue;
-}
-
-const bool EventhubConfig::getBool(const std::string& parameter) {
-  std::lock_guard<std::mutex> lock(_configMapLock);
-  if (_configMap.find(parameter) == _configMap.end()) {
-    throw InvalidParameter(parameter);
-  }
-
-  if (_configMap[parameter].valueType != ValueType::BOOL) {
-    throw InvalidTypeRequested("<bool>", parameter);
-  }
-
-  return _configMap[parameter].boolValue;
-}
-
-} // namespace config
-} // namespace eventhub
+} // namespace evconfig

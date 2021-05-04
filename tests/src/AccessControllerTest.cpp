@@ -24,8 +24,8 @@ using namespace eventhub;
 
 TEST_CASE("Test authorization", "[access_controller]") {
   GIVEN("A valid test token") {
-    Config.del("DISABLE_AUTH");
-    Config.addBool("DISABLE_AUTH", false);
+    Config.del("disable_auth");
+    Config.addBool("disable_auth", false);
     std::string token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjIyMTQ2OTQ5MjMsInN1YiI6Im9sZS5za3Vkc3Zpa0BnbWFpbC5jb20iLCJ3cml0ZSI6WyJ0ZXN0MS8jIiwidGVzdDIvIyIsInRlc3QzLyMiXSwicmVhZCI6WyJ0ZXN0MS8jIiwidGVzdDIvIyIsInRlc3QzLyMiXSwiY3JlYXRlVG9rZW4iOlsidGVzdDEiLCJ0ZXN0MiIsInRlc3QzIl19.FSSecEiStcElHu0AqpmcIvfyMElwKZQUkiO5X_r0_3g";
 
     AccessController acs;
@@ -59,8 +59,8 @@ TEST_CASE("Test authorization", "[access_controller]") {
   }
 
   GIVEN("An invalid token") {
-    Config.del("DISABLE_AUTH");
-    Config.addBool("DISABLE_AUTH", false);
+    Config.del("disable_auth");
+    Config.addBool("disable_auth", false);
     AccessController acs;
 
     THEN("Authenticate should fail") {
@@ -79,8 +79,8 @@ TEST_CASE("Test authorization", "[access_controller]") {
   }
 
   GIVEN("Authentication is disabled through config") {
-    Config.del("DISABLE_AUTH");
-    Config.addBool("DISABLE_AUTH", true);
+    Config.del("disable_auth");
+    Config.addBool("disable_auth", true);
     AccessController acs;
 
     THEN("Authenticate should always return true") {

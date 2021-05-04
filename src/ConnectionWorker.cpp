@@ -139,18 +139,18 @@ ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin) {
   });
 
   // Disconnect client if successful websocket handshake hasn't occurred in 10 seconds.
-  addTimer(Config.getInt("HANDSHAKE_TIMEOUT") * 1000, [wptrConnection](TimerCtx* ctx) {
+  addTimer(_server->config().get<int>("handshake_timeout") * 1000, [wptrConnection, this](TimerCtx* ctx) {
     auto c = wptrConnection.lock();
 
     if (c && c->getState() != ConnectionState::WEBSOCKET && c->getState() != ConnectionState::SSE) {
-      LOG->debug("Client {} failed to handshake in {} seconds. Removing.", c->getIP(), Config.getInt("HANDSHAKE_TIMEOUT"));
+      LOG->debug("Client {} failed to handshake in {} seconds. Removing.", c->getIP(), _server->config().get<int>("handshake_timeout"));
       c->shutdown();
     }
   });
 
   // Send a websocket PING frame to the client every Config.getPingInterval() second.
   addTimer(
-      Config.getInt("PING_INTERVAL") * 1000, [wptrConnection](TimerCtx* ctx) {
+      _server->config().get<int>("ping_interval") * 1000, [wptrConnection](TimerCtx* ctx) {
         auto c = wptrConnection.lock();
 
         if (!c || c->isShutdown()) {

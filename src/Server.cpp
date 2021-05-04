@@ -20,6 +20,7 @@
 #include "Common.hpp"
 #include "Config.hpp"
 #include "Util.hpp"
+#include "Server.hpp"
 #include "jwt/json/json.hpp"
 #include "metrics/Types.hpp"
 
@@ -31,9 +32,11 @@ std::atomic<bool> reloadEventhub{false};
 
 namespace eventhub {
 
-Server::Server(const string redisHost, int redisPort, const std::string redisPassword, int redisPoolSize)
-    : _server_socket(-1), _ssl_enabled(false), _ssl_ctx(nullptr),
-      _redis(redisHost, redisPort, redisPassword, redisPoolSize) {}
+Server::Server(evconfig::Config& cfg)
+    : _server_socket(-1), _ssl_enabled(false), _ssl_ctx(nullptr), _config(cfg) {
+
+      _redis = make_unique<Redis>(this);
+}
 
 Server::~Server() {
   LOG->trace("Server destructor called.");
@@ -59,10 +62,10 @@ void Server::start() {
   struct sockaddr_in sin;
   memset(reinterpret_cast<char*>(&sin), '\0', sizeof(sin));
   sin.sin_family = AF_INET;
-  sin.sin_port   = htons(Config.getInt("LISTEN_PORT"));
+  sin.sin_port   = htons(config().get<int>("listen_port"));
 
   if (::bind(_server_socket, (struct sockaddr*)&sin, sizeof(sin)) == -1) {
-    LOG->critical("Could not bind server socket to port {}: {}.", Config.getInt("LISTEN_PORT"), strerror(errno));
+    LOG->critical("Could not bind server socket to port {}: {}.", config().get<int>("listen_port"), strerror(errno));
     exit(1);
   }
 
@@ -76,21 +79,21 @@ void Server::start() {
     exit(1);
   }
 
-  LOG->info("Listening on port {}.", Config.getInt("LISTEN_PORT"));
+  LOG->info("Listening on port {}.", config().get<int>("listen_port"));
 
-  if (Config.getBool("DISABLE_AUTH")) {
-    LOG->warn("WARNING: Server is running with DISABLE_AUTH=true. Everything is allowed by any client.");
+  if (config().get<bool>("disable_auth")) {
+    LOG->warn("WARNING: Server is running with disable_auth=true. Everything is allowed by any client.");
   }
 
   // Set up SSL context.
-  if (Config.getBool("ENABLE_SSL")) {
+  if (config().get<bool>("enable_ssl")) {
     _initSSLContext();
   }
 
   // Start the connection workers.
   _connection_workers_lock.lock();
 
-  unsigned int numWorkerThreads = Config.getInt("WORKER_THREADS") == 0 ? std::thread::hardware_concurrency() : Config.getInt("WORKER_THREADS");
+  unsigned int numWorkerThreads = config().get<int>("worker_threads") == 0 ? std::thread::hardware_concurrency() : config().get<int>("worker_threads");
 
   for (unsigned i = 0; i < numWorkerThreads; i++) {
     _connection_workers.addWorker(new Worker(this, i + 1));
@@ -121,8 +124,6 @@ void Server::start() {
   _metrics.worker_count          = numWorkerThreads;
   _metrics.server_start_unixtime = Util::getTimeSinceEpoch();
 
-  _redis.setPrefix(Config.getString("REDIS_PREFIX"));
-
   RedisMsgCallback cb = [&](std::string pattern, std::string topic, std::string msg) {
     // Calculate publish delay.
     if (topic == "$metrics$/system_unixtime") {
@@ -144,15 +145,15 @@ void Server::start() {
   };
 
   // Connect to redis.
-  _redis.psubscribe("*", cb);
+  _redis->psubscribe("*", cb);
 
   // Add cache purge cronjob if cache functionality is enabled.
-  if (Config.getBool("ENABLE_CACHE")) {
+  if (config().get<bool>("enable_cache")) {
     _ev.addTimer(
         CACHE_PURGER_INTERVAL_MS, [&](TimerCtx* ctx) {
           try {
             LOG->debug("Running cache purger.");
-            auto purgedItems = _redis.purgeExpiredCacheItems();
+            auto purgedItems = _redis->purgeExpiredCacheItems();
             LOG->debug("Purged {} items.", purgedItems);
           } catch (...) {}
         },
@@ -163,7 +164,7 @@ void Server::start() {
   _ev.addTimer(
       METRIC_DELAY_SAMPLE_RATE_MS, [&](TimerCtx* ctx) {
         try {
-          _redis.publishMessage("$metrics$/system_unixtime", "0", to_string(Util::getTimeSinceEpoch()));
+          _redis->publishMessage("$metrics$/system_unixtime", "0", to_string(Util::getTimeSinceEpoch()));
         } catch (...) {}
       },
       true);
@@ -175,12 +176,12 @@ void Server::start() {
         _metrics.redis_connection_fail_count++;
         std::this_thread::sleep_for(std::chrono::milliseconds(5000));
         reconnect = false;
-        _redis.resetSubscribers();
-        _redis.psubscribe("*", cb);
+        _redis->resetSubscribers();
+        _redis->psubscribe("*", cb);
         LOG->info("Connection to Redis regained.");
       }
 
-      _redis.consume();
+      _redis->consume();
     }
 
     catch (sw::redis::TimeoutError& e) {
@@ -237,13 +238,13 @@ void Server::_initSSLContext() {
 }
 
 void Server::_loadSSLCertificates() {
-  if (!Config.getBool("ENABLE_SSL")) {
+  if (!config().get<bool>("enable_ssl")) {
     return;
   }
 
-  const string caCert = Config.getString("SSL_CA_CERTIFICATE");
-  const string cert   = Config.getString("SSL_CERTIFICATE");
-  const string key    = Config.getString("SSL_PRIVATE_KEY");
+  const string caCert = config().get<std::string>("ssl_ca_certificate");
+  const string cert   = config().get<std::string>("ssl_certificate");
+  const string key    = config().get<std::string>("ssl_private_key");
 
   if (caCert.empty()) {
     SSL_CTX_set_default_verify_paths(_ssl_ctx);

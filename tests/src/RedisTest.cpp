@@ -59,14 +59,14 @@ TEST_CASE("Test redis", "[Redis") {
   }
 
   GIVEN("If we cache some items") {
-    Config.del("DEFAULT_CACHE_TTL");
-    Config.addInt("DEFAULT_CACHE_TTL", 60);
+    Config.del("default_cache_ttl");
+    Config.addInt("default_cache_ttl", 60);
 
-    Config.del("MAX_CACHE_LENGTH");
-    Config.addInt("MAX_CACHE_LENGTH", 1000);
+    Config.del("max_cache_length");
+    Config.addInt("max_cache_length", 1000);
 
-    Config.del("ENABLE_CACHE");
-    Config.addBool("ENABLE_CACHE", true);
+    Config.del("enable_cache");
+    Config.addBool("enable_cache", true);
 
     redis.cacheMessage("test/channel1", "Test 1", 0, 0);
     redis.cacheMessage("test/channel1", "Test 2", 0, 0);
