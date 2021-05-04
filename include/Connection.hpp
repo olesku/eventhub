@@ -19,6 +19,7 @@
 #include <utility>
 #include <vector>
 
+#include "Forward.hpp"
 #include "AccessController.hpp"
 #include "Common.hpp"
 #include "http/Parser.hpp"
@@ -29,13 +30,9 @@ using namespace std;
 
 namespace eventhub {
 
-using ConnectionPtr          = std::shared_ptr<class Connection>;
-using ConnectionWeakPtr      = std::weak_ptr<class Connection>;
+using ConnectionPtr          = std::shared_ptr<Connection>;
+using ConnectionWeakPtr      = std::weak_ptr<Connection>;
 using ConnectionListIterator = std::list<ConnectionPtr>::iterator;
-
-class Server;
-class Worker;
-class Topic;
 
 enum class ConnectionState {
   HTTP,

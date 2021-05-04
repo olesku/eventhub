@@ -2,12 +2,9 @@
 #define INCLUDE_HANDLERCONTEXT_HPP_
 
 #include <memory>
+#include "Forward.hpp"
 
 namespace eventhub {
-
-class Server;
-class Worker;
-class Connection;
 
 class HandlerContext {
 public:
@@ -20,9 +17,9 @@ public:
   inline std::shared_ptr<Connection> connection() { return _connection; }
 
 private:
-  class Server* _server;
-  class Worker* _worker;
-  std::shared_ptr<class Connection> _connection;
+  Server* _server;
+  Worker* _worker;
+  std::shared_ptr<Connection> _connection;
 };
 
 } // namespace eventhub
