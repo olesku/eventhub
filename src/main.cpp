@@ -52,10 +52,10 @@ int main(int argc, char** argv) {
   sigaction(SIGTERM, &sa, NULL);
   sigaction(SIGHUP, &sa, NULL);
 
-  static struct option long_options[] = {
-    { "help",    no_argument,       0, 'h'  },
+  struct option long_options[] = {
+    { "help",    no_argument,       0,  'h' },
     { "config",  required_argument, 0,  'c' },
-    { 0,         0,                 0,  0   }
+    { 0,         0,                 0,   0  }
   };
 
   int option_index = 0;

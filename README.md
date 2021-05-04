@@ -72,10 +72,13 @@ Protocol specification for Eventhub is documented [here](./docs/protocol.md).
 
 **Eventhub depends on a Redis server with pub/sub and streams support (version 5.0 or higher).**
 
-## Configuration options
-Eventhub is configured through [environment variables](https://en.wikipedia.org/wiki/Environment_variable).
+## Configuration
+Configuration file is specified using the ```--config``` command-line flag.
+Example config file can be found [here](./example.conf).
 
-|Environment variable         |Description                          |Default value           |
+All configuration options can also be set with [environment variables](https://en.wikipedia.org/wiki/Environment_variable). If an option is specified in both the config file and environment variable the value from the environment will take precedence.
+
+|Option name                  |Description                          |Default value           |
 |-----------------------------|-------------------------------------|------------------------|
 |listen_port                  | Port to listen on                   | 8080
 |worker_threads               | Number of workers                   | 0 (number of cpu cores)
@@ -147,9 +150,6 @@ It's using Redis for intercommunication, so the only thing you have to do is to 
 
 Runtime metrics in [Prometheus](https://prometheus.io/) format is available at the `/metrics` endpoint.
 JSON is available at `/metrics?format=json`
-
-# TLS/SSL
-Eventhub fully supports SSL termination.
 
 # License
 Eventhub is licensed under MIT. See [LICENSE](https://github.com/olesku/eventhub/blob/LICENSE).
