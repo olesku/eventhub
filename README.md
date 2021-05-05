@@ -5,9 +5,10 @@
 [![Build Status](https://github.com/olesku/eventhub/workflows/Build/badge.svg)](https://travis-ci.com/olesku/eventhub)
 [![Docker Repository on Quay](https://quay.io/repository/olesku/eventhub/status "Docker Repository on Quay")](https://quay.io/repository/olesku/eventhub)
 
-Eventhub is a WebSocket message broker written in modern C++.
+Eventhub is a pub/sub over WebSocket server written in modern C++.
+It implements the [publish-subscribe pattern](https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern) and concept of topics.
 
-It's written with focus on high performance and availability, and implements the [publish-subscribe pattern](https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern) and the concept of topics.
+The key focus of the project is to deliver high performance, availability, and easy integration.
 
 <p align="center">
 <a href="./docs/images/grafana_dashboard.png">
