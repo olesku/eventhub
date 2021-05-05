@@ -6,7 +6,7 @@
 
 namespace eventhub {
 
-SSLConnection::SSLConnection(int fd, struct sockaddr_in* csin, Worker* worker, evconfig::Config& cfg, SSL_CTX* ctx) :
+SSLConnection::SSLConnection(int fd, struct sockaddr_in* csin, Worker* worker, Config& cfg, SSL_CTX* ctx) :
   Connection(fd, csin, worker, cfg), _ssl_ctx(ctx) {
   _ssl                   = nullptr;
   _ssl_handshake_retries = 0;

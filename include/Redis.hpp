@@ -27,7 +27,7 @@ class Redis final : public EventhubBase {
 #define REDIS_CACHE_DATA_PATH(key) std::string(redis_prefix(key) + ":cache")
 
 public:
-  explicit Redis(evconfig::Config &cfg);
+  explicit Redis(Config &cfg);
   ~Redis() {}
 
   void publishMessage(const string topic, const string id, const string payload);

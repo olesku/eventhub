@@ -4,7 +4,6 @@
 #include "Config.hpp"
 
 namespace eventhub {
-using namespace evconfig;
 
 class EventhubBase {
 public:

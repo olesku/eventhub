@@ -9,28 +9,28 @@
 #include <variant>
 #include <vector>
 
-namespace evconfig {
+namespace eventhub {
 
-enum class ValueSettings : uint8_t {
+enum class ConfigValueSettings : uint8_t {
   REQUIRED,
   OPTIONAL
 };
 
-enum class ValueType : uint8_t {
+enum class ConfigValueType : uint8_t {
   INT,
   BOOL,
   STRING
 };
 
-struct OptionDefinition {
+struct ConfigOptionDefinition {
   std::string name;
-  ValueType type;
+  ConfigValueType type;
   std::string defaultValue;
-  ValueSettings settings;
+  ConfigValueSettings settings;
 };
 
 using ConfigValue = std::variant<int, bool, std::string>;
-using ConfigMap = std::vector<OptionDefinition>;
+using ConfigMap = std::vector<ConfigOptionDefinition>;
 
 template <class... Ts>
 struct overload : Ts... { using Ts::operator()...; };
@@ -67,7 +67,7 @@ class ConfigOption {
   friend class Config;
 
 public:
-  ConfigOption(const std::string& optName, ValueSettings settings) : _name(optName), _settings(settings), _hasValue(false){};
+  ConfigOption(const std::string& optName, ConfigValueSettings settings) : _name(optName), _settings(settings), _hasValue(false){};
 
   ~ConfigOption(){};
 
@@ -124,7 +124,7 @@ protected:
 
 private:
   std::string _name;
-  ValueSettings _settings;
+  ConfigValueSettings _settings;
   ConfigValue _value;
   bool _hasValue;
 };
@@ -136,15 +136,15 @@ public:
   Config(const ConfigMap& cfgMap) {
         for (const auto& cfgElm : cfgMap) {
       switch(cfgElm.type) {
-        case ValueType::INT:
+        case ConfigValueType::INT:
           defineOption<int>(cfgElm.name, cfgElm.settings);
         break;
 
-        case ValueType::BOOL:
+        case ConfigValueType::BOOL:
           defineOption<bool>(cfgElm.name, cfgElm.settings);
         break;
 
-        case ValueType::STRING:
+        case ConfigValueType::STRING:
           defineOption<std::string>(cfgElm.name, cfgElm.settings);
         break;
       }
@@ -155,7 +155,7 @@ public:
   };
 
   template <typename T>
-  void defineOption(const std::string& optName, ValueSettings settings = ValueSettings::REQUIRED) {
+  void defineOption(const std::string& optName, ConfigValueSettings settings = ConfigValueSettings::REQUIRED) {
     if (_options.find(optName) != _options.end())
       throw(std::runtime_error{"Redefinition of option \"" + optName + " \""});
 
@@ -192,6 +192,6 @@ private:
   void _loadFromFile(const std::string& path);
   void _loadFromEnv();
 };
-} // namespace evconfig
+}
 
 #endif

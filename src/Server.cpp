@@ -32,7 +32,7 @@ std::atomic<bool> reloadEventhub{false};
 
 namespace eventhub {
 
-Server::Server(evconfig::Config& cfg)
+Server::Server(Config& cfg)
     : _config(cfg), _server_socket(-1), _ssl_enabled(false), _ssl_ctx(nullptr), _redis(cfg) {
 
 }

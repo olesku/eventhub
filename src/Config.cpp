@@ -11,7 +11,7 @@
 #include <variant>
 #include <stdlib.h>
 
-namespace evconfig {
+namespace eventhub {
 Config::Config() {}
 
 void Config::_loadFromStream(std::istream& data, const std::string& path) {
@@ -115,7 +115,7 @@ void Config::load() {
 
   for (const auto& it_opt : _options) {
     auto const& opt = *it_opt.second;
-    if (opt._settings == ValueSettings::REQUIRED && !opt._hasValue)
+    if (opt._settings == ConfigValueSettings::REQUIRED && !opt._hasValue)
       throw RequiredOptionMissingException(opt.name());
   }
 }
@@ -125,4 +125,4 @@ void Config::clearValues() {
     opt.second->clear();
   }
 }
-} // namespace evconfig
+}

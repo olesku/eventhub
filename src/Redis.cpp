@@ -21,7 +21,7 @@ namespace eventhub {
 
 using namespace std;
 
-Redis::Redis(evconfig::Config &cfg) : EventhubBase(cfg) {
+Redis::Redis(Config &cfg) : EventhubBase(cfg) {
   sw::redis::ConnectionOptions connOpts;
   sw::redis::ConnectionPoolOptions poolOpts;
 

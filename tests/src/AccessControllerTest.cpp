@@ -23,12 +23,12 @@ secret: eventhub_secret
 using namespace eventhub;
 
 TEST_CASE("Test authorization", "[access_controller]") {
-  evconfig::ConfigMap cfgMap = {
-    { "disable_auth", evconfig::ValueType::BOOL, "", evconfig::ValueSettings::REQUIRED }
+  ConfigMap cfgMap = {
+    { "disable_auth", ConfigValueType::BOOL, "", ConfigValueSettings::REQUIRED }
   };
 
   GIVEN("A valid test token") {
-    evconfig::Config cfg(cfgMap);
+    Config cfg(cfgMap);
     cfg << "disable_auth = 0";
     cfg.load();
     std::string token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjIyMTQ2OTQ5MjMsInN1YiI6Im9sZS5za3Vkc3Zpa0BnbWFpbC5jb20iLCJ3cml0ZSI6WyJ0ZXN0MS8jIiwidGVzdDIvIyIsInRlc3QzLyMiXSwicmVhZCI6WyJ0ZXN0MS8jIiwidGVzdDIvIyIsInRlc3QzLyMiXSwiY3JlYXRlVG9rZW4iOlsidGVzdDEiLCJ0ZXN0MiIsInRlc3QzIl19.FSSecEiStcElHu0AqpmcIvfyMElwKZQUkiO5X_r0_3g";
@@ -64,7 +64,7 @@ TEST_CASE("Test authorization", "[access_controller]") {
   }
 
   GIVEN("An invalid token") {
-    evconfig::Config cfg(cfgMap);
+    Config cfg(cfgMap);
     cfg << "disable_auth = 0";
     cfg.load();
 
@@ -86,7 +86,7 @@ TEST_CASE("Test authorization", "[access_controller]") {
   }
 
   GIVEN("Authentication is disabled through config") {
-    evconfig::Config cfg(cfgMap);
+    Config cfg(cfgMap);
     cfg << "disable_auth = 1";
     cfg.load();
 

@@ -13,9 +13,9 @@
 #include "Config.hpp"
 #include "Server.hpp"
 
-using namespace std;
-extern atomic<bool> stopEventhub;
-extern atomic<bool> reloadEventhub;
+using namespace eventhub;
+extern std::atomic<bool> stopEventhub;
+extern std::atomic<bool> reloadEventhub;
 
 void sighandler(int sigid) {
   switch (sigid) {
@@ -31,12 +31,12 @@ void sighandler(int sigid) {
       return;
 
     default:
-      eventhub::LOG->info("No handler for signal {}, ignoring.", sigid);
+      LOG->info("No handler for signal {}, ignoring.", sigid);
       return;
   }
 
 shutdown:
-  eventhub::LOG->info("Exiting.");
+  LOG->info("Exiting.");
   stopEventhub = true;
 }
 
@@ -82,32 +82,32 @@ int main(int argc, char** argv) {
     }
   }
 
-  evconfig::ConfigMap cfgMap = {
-      { "listen_port",              evconfig::ValueType::INT,    "8080",      evconfig::ValueSettings::REQUIRED },
-      { "worker_threads",           evconfig::ValueType::INT,    "0",         evconfig::ValueSettings::REQUIRED },
-      { "jwt_secret",               evconfig::ValueType::STRING, "FooBarBaz", evconfig::ValueSettings::REQUIRED },
-      { "log_level",                evconfig::ValueType::STRING, "info",      evconfig::ValueSettings::REQUIRED },
-      { "disable_auth",             evconfig::ValueType::BOOL,   "false",     evconfig::ValueSettings::REQUIRED },
-      { "prometheus_metric_prefix", evconfig::ValueType::STRING, "eventhub",  evconfig::ValueSettings::REQUIRED },
-      { "redis_host",               evconfig::ValueType::STRING, "localhost", evconfig::ValueSettings::REQUIRED },
-      { "redis_port",               evconfig::ValueType::INT,    "6379",      evconfig::ValueSettings::REQUIRED },
-      { "redis_password",           evconfig::ValueType::STRING, "",          evconfig::ValueSettings::OPTIONAL },
-      { "redis_prefix",             evconfig::ValueType::STRING, "eventhub",  evconfig::ValueSettings::OPTIONAL },
-      { "redis_pool_size",          evconfig::ValueType::INT,    "5",         evconfig::ValueSettings::REQUIRED },
-      { "enable_cache",             evconfig::ValueType::BOOL,   "false",     evconfig::ValueSettings::REQUIRED },
-      { "max_cache_length",         evconfig::ValueType::INT,    "1000",      evconfig::ValueSettings::REQUIRED },
-      { "max_cache_request_limit",  evconfig::ValueType::INT,    "100",       evconfig::ValueSettings::REQUIRED },
-      { "default_cache_ttl",        evconfig::ValueType::INT,    "60",        evconfig::ValueSettings::REQUIRED },
-      { "ping_interval",            evconfig::ValueType::INT,    "30",        evconfig::ValueSettings::REQUIRED },
-      { "handshake_timeout",        evconfig::ValueType::INT,    "5",         evconfig::ValueSettings::REQUIRED },
-      { "enable_sse",               evconfig::ValueType::BOOL,   "false",     evconfig::ValueSettings::REQUIRED },
-      { "enable_ssl",               evconfig::ValueType::BOOL,   "false",     evconfig::ValueSettings::REQUIRED },
-      { "ssl_ca_certificate",       evconfig::ValueType::STRING, "",          evconfig::ValueSettings::OPTIONAL },
-      { "ssl_certificate",          evconfig::ValueType::STRING, "",          evconfig::ValueSettings::OPTIONAL },
-      { "ssl_private_key",          evconfig::ValueType::STRING, "",          evconfig::ValueSettings::OPTIONAL }
+  ConfigMap cfgMap = {
+      { "listen_port",              ConfigValueType::INT,    "8080",      ConfigValueSettings::REQUIRED },
+      { "worker_threads",           ConfigValueType::INT,    "0",         ConfigValueSettings::REQUIRED },
+      { "jwt_secret",               ConfigValueType::STRING, "FooBarBaz", ConfigValueSettings::REQUIRED },
+      { "log_level",                ConfigValueType::STRING, "info",      ConfigValueSettings::REQUIRED },
+      { "disable_auth",             ConfigValueType::BOOL,   "false",     ConfigValueSettings::REQUIRED },
+      { "prometheus_metric_prefix", ConfigValueType::STRING, "eventhub",  ConfigValueSettings::REQUIRED },
+      { "redis_host",               ConfigValueType::STRING, "localhost", ConfigValueSettings::REQUIRED },
+      { "redis_port",               ConfigValueType::INT,    "6379",      ConfigValueSettings::REQUIRED },
+      { "redis_password",           ConfigValueType::STRING, "",          ConfigValueSettings::OPTIONAL },
+      { "redis_prefix",             ConfigValueType::STRING, "eventhub",  ConfigValueSettings::OPTIONAL },
+      { "redis_pool_size",          ConfigValueType::INT,    "5",         ConfigValueSettings::REQUIRED },
+      { "enable_cache",             ConfigValueType::BOOL,   "false",     ConfigValueSettings::REQUIRED },
+      { "max_cache_length",         ConfigValueType::INT,    "1000",      ConfigValueSettings::REQUIRED },
+      { "max_cache_request_limit",  ConfigValueType::INT,    "100",       ConfigValueSettings::REQUIRED },
+      { "default_cache_ttl",        ConfigValueType::INT,    "60",        ConfigValueSettings::REQUIRED },
+      { "ping_interval",            ConfigValueType::INT,    "30",        ConfigValueSettings::REQUIRED },
+      { "handshake_timeout",        ConfigValueType::INT,    "5",         ConfigValueSettings::REQUIRED },
+      { "enable_sse",               ConfigValueType::BOOL,   "false",     ConfigValueSettings::REQUIRED },
+      { "enable_ssl",               ConfigValueType::BOOL,   "false",     ConfigValueSettings::REQUIRED },
+      { "ssl_ca_certificate",       ConfigValueType::STRING, "",          ConfigValueSettings::OPTIONAL },
+      { "ssl_certificate",          ConfigValueType::STRING, "",          ConfigValueSettings::OPTIONAL },
+      { "ssl_private_key",          ConfigValueType::STRING, "",          ConfigValueSettings::OPTIONAL }
     };
 
-  evconfig::Config cfg(cfgMap);
+  Config cfg(cfgMap);
 
   try {
     if (!cfgFile.empty()) {
@@ -117,15 +117,15 @@ int main(int argc, char** argv) {
 
     cfg.setLoadFromEnv(true);
     cfg.load();
-    eventhub::Logger::getInstance().setLevel(cfg.get<std::string>("log_level"));
+    Logger::getInstance().setLevel(cfg.get<std::string>("log_level"));
   } catch (std::exception& e) {
-    eventhub::LOG->error("Error reading configuration: {}", e.what());
+    LOG->error("Error reading configuration: {}", e.what());
     return 1;
   }
 
 
 
-  eventhub::Server server(cfg);
+  Server server(cfg);
   server.start();
 
   return 0;

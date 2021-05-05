@@ -20,7 +20,7 @@ private:
   std::vector<std::string> _subscribe_acl;
 
 public:
-  AccessController(evconfig::Config &cfg) :
+  AccessController(Config &cfg) :
     EventhubBase(cfg), _token_loaded(false) {};
 
   bool authenticate(const std::string& jwtToken, const std::string& secret);

@@ -49,7 +49,7 @@ struct TopicSubscription {
 
 class Connection : public EventhubBase, std::enable_shared_from_this<Connection> {
 public:
-  Connection(int fd, struct sockaddr_in* csin, Worker* worker, evconfig::Config& cfg);
+  Connection(int fd, struct sockaddr_in* csin, Worker* worker, Config& cfg);
   virtual ~Connection();
 
   void write(const string& data);

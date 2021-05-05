@@ -18,13 +18,13 @@ namespace eventhub {
 
 class Server {
 public:
-  Server(evconfig::Config& cfg);
+  Server(Config& cfg);
   ~Server();
 
   void start();
   void stop();
   void reload();
-  evconfig::Config& config() { return _config; }
+  Config& config() { return _config; }
   const int getServerSocket();
   Worker* getWorker();
   void publish(const std::string topicName, const std::string data);
@@ -38,7 +38,7 @@ public:
   }
 
 private:
-  evconfig::Config& _config;
+  Config& _config;
   int _server_socket;
   bool _ssl_enabled;
   SSL_CTX* _ssl_ctx;

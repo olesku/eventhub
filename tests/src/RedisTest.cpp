@@ -12,19 +12,19 @@ using namespace std;
 using namespace eventhub;
 
 TEST_CASE("Test redis", "[Redis") {
-    evconfig::ConfigMap cfgMap = {
-    { "redis_host",               evconfig::ValueType::STRING, "localhost",     evconfig::ValueSettings::REQUIRED },
-    { "redis_port",               evconfig::ValueType::INT,    "6379",          evconfig::ValueSettings::REQUIRED },
-    { "redis_password",           evconfig::ValueType::STRING, "",              evconfig::ValueSettings::OPTIONAL },
-    { "redis_prefix",             evconfig::ValueType::STRING, "eventhub_test", evconfig::ValueSettings::OPTIONAL },
-    { "redis_pool_size",          evconfig::ValueType::INT,    "5",             evconfig::ValueSettings::REQUIRED },
-    { "max_cache_length",         evconfig::ValueType::INT,    "1000",          evconfig::ValueSettings::REQUIRED },
-    { "max_cache_request_limit",  evconfig::ValueType::INT,    "100",           evconfig::ValueSettings::REQUIRED },
-    { "default_cache_ttl",        evconfig::ValueType::INT,    "60",            evconfig::ValueSettings::REQUIRED },
-    { "enable_cache",             evconfig::ValueType::BOOL,   "true",          evconfig::ValueSettings::REQUIRED }
+    ConfigMap cfgMap = {
+    { "redis_host",               ConfigValueType::STRING, "localhost",     ConfigValueSettings::REQUIRED },
+    { "redis_port",               ConfigValueType::INT,    "6379",          ConfigValueSettings::REQUIRED },
+    { "redis_password",           ConfigValueType::STRING, "",              ConfigValueSettings::OPTIONAL },
+    { "redis_prefix",             ConfigValueType::STRING, "eventhub_test", ConfigValueSettings::OPTIONAL },
+    { "redis_pool_size",          ConfigValueType::INT,    "5",             ConfigValueSettings::REQUIRED },
+    { "max_cache_length",         ConfigValueType::INT,    "1000",          ConfigValueSettings::REQUIRED },
+    { "max_cache_request_limit",  ConfigValueType::INT,    "100",           ConfigValueSettings::REQUIRED },
+    { "default_cache_ttl",        ConfigValueType::INT,    "60",            ConfigValueSettings::REQUIRED },
+    { "enable_cache",             ConfigValueType::BOOL,   "true",          ConfigValueSettings::REQUIRED }
   };
 
-  evconfig::Config cfg(cfgMap);
+  Config cfg(cfgMap);
   cfg.load();
 
   eventhub::Redis redis(cfg);
