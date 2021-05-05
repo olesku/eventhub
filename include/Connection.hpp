@@ -19,6 +19,7 @@
 #include <utility>
 #include <vector>
 
+#include "EventhubBase.hpp"
 #include "Forward.hpp"
 #include "AccessController.hpp"
 #include "Common.hpp"
@@ -46,9 +47,9 @@ struct TopicSubscription {
   jsonrpcpp::Id rpcSubscriptionRequestId;
 };
 
-class Connection : public std::enable_shared_from_this<Connection> {
+class Connection : public EventhubBase, std::enable_shared_from_this<Connection> {
 public:
-  Connection(int fd, struct sockaddr_in* csin, Server* server, Worker* worker);
+  Connection(int fd, struct sockaddr_in* csin, Worker* worker, evconfig::Config& cfg);
   virtual ~Connection();
 
   void write(const string& data);
@@ -81,7 +82,6 @@ public:
 protected:
   int _fd;
   struct sockaddr_in _csin;
-  Server* _server;
   Worker* _worker;
   struct epoll_event _epoll_event;
   string _write_buffer;

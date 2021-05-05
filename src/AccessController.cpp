@@ -8,24 +8,15 @@
 #include "TopicManager.hpp"
 #include "Server.hpp"
 
-/*
-{
-  "exp": 1300819380,
-  "sub": "ole.skudsvik@gmail.com",
-  "read": [ "channel1", "channel2" ],
-  "write": [ "channel1", "channel2" ],
-  "createtoken": [ ".*" ]
-}
- */
-
 namespace eventhub {
+  using namespace std;
 
 #define REQUIRE_TOKEN_LOADED(x) \
   if (!_token_loaded)           \
     return false;
 
 #define BYPASS_AUTH_IF_DISABLED(x)    \
-  if (_server->config().get<bool>("disable_auth")) \
+  if (config().get<bool>("disable_auth")) \
     return true;
 
 

@@ -14,7 +14,8 @@ namespace eventhub {
 namespace metrics {
 
 const std::string PrometheusRenderer::RenderMetrics(Server* server) {
-  auto metrics = server->getAggregatedMetrics();
+  auto  metrics = server->getAggregatedMetrics();
+  auto& config  = server->config();
 
   std::vector<std::pair<std::string, long long>> metricList = {
       {"worker_count", metrics.worker_count},
@@ -34,9 +35,9 @@ const std::string PrometheusRenderer::RenderMetrics(Server* server) {
 
   for (auto& m : metricList) {
     // Add prefix to metric key if set in configuration.
-    const std::string metricKey = !server->config().get<std::string>("prometheus_metric_prefix").empty() ? (server->config().get<std::string>("prometheus_metric_prefix") + "_" + m.first) : m.first;
+    const std::string metricKey = !config.get<std::string>("prometheus_metric_prefix").empty() ? (config.get<std::string>("prometheus_metric_prefix") + "_" + m.first) : m.first;
 
-    ss << metricKey << "{instance=\"" << h_buf << ":" << server->config().get<int>("LISTEN_PORT") << "\""
+    ss << metricKey << "{instance=\"" << h_buf << ":" << config.get<int>("LISTEN_PORT") << "\""
        << "} " << m.second << "\n";
   }
 

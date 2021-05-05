@@ -21,24 +21,24 @@ namespace eventhub {
 
 using namespace std;
 
-Redis::Redis(Server* server) : _server(server) {
+Redis::Redis(evconfig::Config &cfg) : EventhubBase(cfg) {
   sw::redis::ConnectionOptions connOpts;
   sw::redis::ConnectionPoolOptions poolOpts;
 
   connOpts.keep_alive     = true;
-  connOpts.host           = _server->config().get<std::string>("redis_host");
-  connOpts.port           = _server->config().get<int>("redis_port");
+  connOpts.host           = config().get<std::string>("redis_host");
+  connOpts.port           = config().get<int>("redis_port");
   connOpts.socket_timeout = std::chrono::seconds(5);
 
-  _prefix = _server->config().get<std::string>("redis_prefix");
-  const auto& password = _server->config().get<std::string>("redis_password");
+  _prefix = config().get<std::string>("redis_prefix");
+  const auto& password = config().get<std::string>("redis_password");
 
   if (password.length() > 0) {
     connOpts.password = password;
   }
 
   poolOpts.connection_lifetime = std::chrono::milliseconds(0);
-  poolOpts.size                = _server->config().get<int>("redis_pool_size");
+  poolOpts.size                = config().get<int>("redis_pool_size");
   poolOpts.wait_timeout        = std::chrono::seconds(5);
 
   _redisInstance   = std::make_unique<sw::redis::Redis>(connOpts, poolOpts);
@@ -87,12 +87,12 @@ const std::string Redis::cacheMessage(const string topic, const string payload, 
   auto cacheId = _getNextCacheId(timestamp);
 
   // Do not cache message if cache functionality is disabled.
-  if (!_server->config().get<bool>("enable_cache")) {
+  if (!config().get<bool>("enable_cache")) {
     return cacheId;
   }
 
   if (ttl == 0) {
-    ttl = _server->config().get<int>("default_cache_ttl");
+    ttl = config().get<int>("default_cache_ttl");
   }
 
   auto expireAt = Util::getTimeSinceEpoch() + (ttl * 1000);
@@ -114,7 +114,7 @@ size_t Redis::getCacheSince(const string topicPattern, long long since, long lon
   result = nlohmann::json::array();
 
   // If cache is not enabled simply return an empty set.
-  if (!_server->config().get<bool>("enable_cache")) {
+  if (!config().get<bool>("enable_cache")) {
     return 0;
   }
 
@@ -206,7 +206,7 @@ size_t Redis::getCacheSinceId(const string topicPattern, const string sinceId, l
   result = nlohmann::json::array();
 
   // If cache is not enabled simply return an empty set.
-  if (!_server->config().get<bool>("enable_cache")) {
+  if (!config().get<bool>("enable_cache")) {
     return 0;
   }
 

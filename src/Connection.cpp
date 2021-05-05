@@ -29,8 +29,8 @@
 namespace eventhub {
 using namespace std;
 
-Connection::Connection(int fd, struct sockaddr_in* csin, Server* server, Worker* worker) :
-  _fd(fd), _server(server), _worker(worker), _access_controller(server) {
+Connection::Connection(int fd, struct sockaddr_in* csin, Worker* worker, evconfig::Config& cfg) :
+  EventhubBase(cfg), _fd(fd), _worker(worker), _access_controller(cfg) {
 
   _is_shutdown             = false;
   _is_shutdown_after_flush = false;

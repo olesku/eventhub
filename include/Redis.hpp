@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "Forward.hpp"
+#include "EventhubBase.hpp"
 #include "jwt/json/json.hpp"
 
 namespace eventhub {
@@ -19,14 +20,14 @@ using RedisMsgCallback = std::function<void(std::string pattern,
                                             std::string channel,
                                             std::string msg)>;
 
-class Redis {
+class Redis final : public EventhubBase {
 #define CONST_24HRS_MS (86400 * 1000)
 #define redis_prefix(key) std::string((_prefix.length() > 0) ? _prefix + ":" + key : key)
 #define REDIS_CACHE_SCORE_PATH(key) std::string(redis_prefix(key) + ":scores")
 #define REDIS_CACHE_DATA_PATH(key) std::string(redis_prefix(key) + ":cache")
 
 public:
-  explicit Redis(Server *server);
+  explicit Redis(evconfig::Config &cfg);
   ~Redis() {}
 
   void publishMessage(const string topic, const string id, const string payload);
@@ -49,7 +50,6 @@ private:
   std::unique_ptr<sw::redis::Subscriber> _redisSubscriber;
   std::string _prefix;
   std::mutex _publish_mtx;
-  Server* _server;
 };
 
 } // namespace eventhub

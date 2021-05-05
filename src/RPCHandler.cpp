@@ -84,11 +84,11 @@ void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr re
   try {
     limit = params.get("limit").get<long long>();
   } catch (...) {
-    limit = ctx.server()->config().get<int>("max_cache_request_limit");
+    limit = ctx.config().get<int>("max_cache_request_limit");
   }
 
-  if (limit > (unsigned long long)ctx.server()->config().get<int>("max_cache_request_limit")) {
-    limit = ctx.server()->config().get<int>("max_cache_request_limit");
+  if (limit > (unsigned long long)ctx.config().get<int>("max_cache_request_limit")) {
+    limit = ctx.config().get<int>("max_cache_request_limit");
   }
 
   if (topicName.empty()) {

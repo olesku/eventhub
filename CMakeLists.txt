@@ -48,11 +48,11 @@ include_directories(${REDIS_PLUS_PLUS_HEADER})
 
 add_subdirectory(src)
 
-#if (NOT ${SKIP_TESTS})
-#        add_subdirectory(tests)
-#        include(CTest)
-#        add_test(eventhub_tests eventhub_tests)
-#endif()
+if (NOT ${SKIP_TESTS})
+        add_subdirectory(tests)
+        include(CTest)
+        add_test(eventhub_tests eventhub_tests)
+endif()
 
 file(GLOB_RECURSE ALL_SOURCE_FILES *.cpp *.hpp *.h)
 

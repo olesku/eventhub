@@ -9,6 +9,8 @@
 #include <string>
 
 #include "Forward.hpp"
+#include "EventhubBase.hpp"
+#include "Config.hpp"
 #include "Connection.hpp"
 #include "EventLoop.hpp"
 #include "TopicManager.hpp"
@@ -18,7 +20,7 @@
 namespace eventhub {
 typedef std::list<ConnectionPtr> ConnectionList;
 
-class Worker : public WorkerBase {
+class Worker final : public EventhubBase, public WorkerBase {
 public:
   Worker(Server* srv, unsigned int workerId);
   ~Worker();
