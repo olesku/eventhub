@@ -13,9 +13,12 @@
 #include "Config.hpp"
 #include "Server.hpp"
 
-using namespace eventhub;
+namespace eventhub {
 extern std::atomic<bool> stopEventhub;
 extern std::atomic<bool> reloadEventhub;
+}
+
+using namespace eventhub;
 
 void sighandler(int sigid) {
   switch (sigid) {
@@ -40,6 +43,12 @@ shutdown:
   stopEventhub = true;
 }
 
+void printUsage(char** argv) {
+  std::cerr << "Usage:" << std::endl
+            << "\t" << argv[0] << " [--config=<file>]" << std::endl;
+  exit(0);
+}
+
 int main(int argc, char** argv) {
   struct sigaction sa;
 
@@ -53,8 +62,8 @@ int main(int argc, char** argv) {
   sigaction(SIGHUP, &sa, NULL);
 
   struct option long_options[] = {
-    { "help",    no_argument,       0,  'h' },
     { "config",  required_argument, 0,  'c' },
+    { "help",  required_argument,   0,  'h' },
     { 0,         0,                 0,   0  }
   };
 
@@ -62,7 +71,7 @@ int main(int argc, char** argv) {
   string cfgFile;
 
   while(1) {
-    auto c = getopt_long(argc, argv, "hc:", long_options, &option_index);
+    auto c = getopt_long(argc, argv, "c:h", long_options, &option_index);
 
     if (c == -1) {
       break;
@@ -73,12 +82,8 @@ int main(int argc, char** argv) {
         cfgFile.assign(optarg);
       break;
 
-      case 'h':
-        printf("HELP\n");
-      break;
-
-      case '?':
-        break;
+      default:
+        printUsage(argv);
     }
   }
 
@@ -122,8 +127,6 @@ int main(int argc, char** argv) {
     LOG->error("Error reading configuration: {}", e.what());
     return 1;
   }
-
-
 
   Server server(cfg);
   server.start();

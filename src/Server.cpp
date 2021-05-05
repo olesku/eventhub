@@ -24,13 +24,15 @@
 #include "jwt/json/json.hpp"
 #include "metrics/Types.hpp"
 
-unsigned const char alpn_protocol[] = "http/1.1";
-unsigned int alpn_protocol_length   = 8;
+
+
+namespace eventhub {
 
 std::atomic<bool> stopEventhub{false};
 std::atomic<bool> reloadEventhub{false};
 
-namespace eventhub {
+unsigned const char alpn_protocol[] = "http/1.1";
+unsigned int alpn_protocol_length   = 8;
 
 Server::Server(Config& cfg)
     : _config(cfg), _server_socket(-1), _ssl_enabled(false), _ssl_ctx(nullptr), _redis(cfg) {
