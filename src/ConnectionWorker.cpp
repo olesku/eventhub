@@ -38,7 +38,7 @@ using namespace std;
 
 namespace eventhub {
 
-Worker::Worker(Server* srv, unsigned int workerId) : _workerId(workerId) {
+Worker::Worker(Server* srv, unsigned int workerId) : EventhubBase(srv->config()), _workerId(workerId) {
   _server   = srv;
   _epoll_fd = epoll_create1(0);
 }
@@ -103,7 +103,7 @@ ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin) {
   std::lock_guard<std::mutex> lock(_connection_list_mutex);
 
   auto connectionIterator = _connection_list.insert(_connection_list.end(),
-                                                    _server->isSSL() ? make_shared<SSLConnection>(fd, csin, _server, this) : make_shared<Connection>(fd, csin, _server, this));
+                                                    _server->isSSL() ? make_shared<SSLConnection>(fd, csin, this, config(), _server->getSSLContext()) : make_shared<Connection>(fd, csin, this, config()));
 
   auto client = connectionIterator->get()->getSharedPtr();
 
@@ -139,18 +139,18 @@ ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin) {
   });
 
   // Disconnect client if successful websocket handshake hasn't occurred in 10 seconds.
-  addTimer(Config.getInt("HANDSHAKE_TIMEOUT") * 1000, [wptrConnection](TimerCtx* ctx) {
+  addTimer(config().get<int>("handshake_timeout") * 1000, [wptrConnection, this](TimerCtx* ctx) {
     auto c = wptrConnection.lock();
 
     if (c && c->getState() != ConnectionState::WEBSOCKET && c->getState() != ConnectionState::SSE) {
-      LOG->debug("Client {} failed to handshake in {} seconds. Removing.", c->getIP(), Config.getInt("HANDSHAKE_TIMEOUT"));
+      LOG->debug("Client {} failed to handshake in {} seconds. Removing.", c->getIP(), config().get<int>("handshake_timeout"));
       c->shutdown();
     }
   });
 
   // Send a websocket PING frame to the client every Config.getPingInterval() second.
   addTimer(
-      Config.getInt("PING_INTERVAL") * 1000, [wptrConnection](TimerCtx* ctx) {
+      config().get<int>("ping_interval") * 1000, [wptrConnection](TimerCtx* ctx) {
         auto c = wptrConnection.lock();
 
         if (!c || c->isShutdown()) {

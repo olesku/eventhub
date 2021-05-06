@@ -11,6 +11,7 @@
 #include "jsonrpc/jsonrpcpp.hpp"
 
 namespace eventhub {
+
 using RPCMethod      = std::function<void(HandlerContext& hCtx, jsonrpcpp::request_ptr)>;
 using RPCHandlerList = std::vector<std::pair<std::string, RPCMethod>>;
 

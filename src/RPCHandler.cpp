@@ -84,11 +84,11 @@ void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr re
   try {
     limit = params.get("limit").get<long long>();
   } catch (...) {
-    limit = Config.getInt("MAX_CACHE_REQUEST_LIMIT");
+    limit = ctx.config().get<int>("max_cache_request_limit");
   }
 
-  if (limit > (unsigned long long)Config.getInt("MAX_CACHE_REQUEST_LIMIT")) {
-    limit = Config.getInt("MAX_CACHE_REQUEST_LIMIT");
+  if (limit > (unsigned long long)ctx.config().get<int>("max_cache_request_limit")) {
+    limit = ctx.config().get<int>("max_cache_request_limit");
   }
 
   if (topicName.empty()) {
@@ -146,7 +146,7 @@ void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr re
  * @param req RPC request.
  */
 void RPCHandler::_handleUnsubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
-  auto& accessController = ctx.connection()->getAccessController();
+  auto accessController = ctx.connection()->getAccessController();
 
   if (!req->params().is_array()) {
     _sendInvalidParamsError(ctx, req, "Parameter is not array of topics to unsubscribe from.");
@@ -197,8 +197,8 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
   long long timestamp;
   unsigned int ttl;
 
-  auto& accessController = ctx.connection()->getAccessController();
-  auto params            = req->params();
+  auto accessController = ctx.connection()->getAccessController();
+  auto params           = req->params();
 
   try {
     topicName = params.get("topic").get<std::string>();

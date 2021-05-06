@@ -6,33 +6,19 @@
 
 #include "Config.hpp"
 #include "TopicManager.hpp"
-
-/*
-{
-  "exp": 1300819380,
-  "sub": "ole.skudsvik@gmail.com",
-  "read": [ "channel1", "channel2" ],
-  "write": [ "channel1", "channel2" ],
-  "createtoken": [ ".*" ]
-}
- */
+#include "Server.hpp"
 
 namespace eventhub {
+  using namespace std;
 
 #define REQUIRE_TOKEN_LOADED(x) \
   if (!_token_loaded)           \
     return false;
 
 #define BYPASS_AUTH_IF_DISABLED(x)    \
-  if (Config.getBool("DISABLE_AUTH")) \
+  if (config().get<bool>("disable_auth")) \
     return true;
 
-AccessController::AccessController() {
-  _token_loaded = false;
-}
-
-AccessController::~AccessController() {
-}
 
 // authenticate loads a a JWT token and extracts ACL's for publish and subscribe.
 bool AccessController::authenticate(const std::string& jwtToken, const std::string& secret) {

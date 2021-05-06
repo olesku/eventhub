@@ -8,6 +8,9 @@
 #include <mutex>
 #include <string>
 
+#include "Forward.hpp"
+#include "EventhubBase.hpp"
+#include "Config.hpp"
 #include "Connection.hpp"
 #include "EventLoop.hpp"
 #include "TopicManager.hpp"
@@ -15,11 +18,10 @@
 #include "metrics/Types.hpp"
 
 namespace eventhub {
-class Server; // Forward declaration.
 
 typedef std::list<ConnectionPtr> ConnectionList;
 
-class Worker : public WorkerBase {
+class Worker final : public EventhubBase, public WorkerBase {
 public:
   Worker(Server* srv, unsigned int workerId);
   ~Worker();
@@ -51,6 +53,7 @@ private:
 
   void _workerMain();
 };
+
 } // namespace eventhub
 
 #endif // INCLUDE_CONNECTIONWORKER_HPP_

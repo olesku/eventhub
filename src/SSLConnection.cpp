@@ -1,10 +1,13 @@
+#include <openssl/ossl_typ.h>
+
 #include "SSLConnection.hpp"
 #include "Server.hpp"
 #include "Util.hpp"
 
 namespace eventhub {
 
-SSLConnection::SSLConnection(int fd, struct sockaddr_in* csin, Server* server, Worker* worker) : Connection(fd, csin, server, worker) {
+SSLConnection::SSLConnection(int fd, struct sockaddr_in* csin, Worker* worker, Config& cfg, SSL_CTX* ctx) :
+  Connection(fd, csin, worker, cfg), _ssl_ctx(ctx) {
   _ssl                   = nullptr;
   _ssl_handshake_retries = 0;
   _init();
@@ -17,7 +20,7 @@ SSLConnection::~SSLConnection() {
 }
 
 void SSLConnection::_init() {
-  _ssl = SSL_new(_server->getSSLContext());
+  _ssl = SSL_new(_ssl_ctx);
   if (_ssl == NULL) {
     _ssl = nullptr;
     LOG->error("Failed to initialize SSL object for client {}", getIP());

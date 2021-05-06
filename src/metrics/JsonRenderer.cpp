@@ -3,11 +3,14 @@
 #include "jwt/json/json.hpp"
 #include "metrics/JsonRenderer.hpp"
 #include "metrics/Types.hpp"
+#include "Server.hpp"
 
 namespace eventhub {
 namespace metrics {
 
-const std::string JsonRenderer::RenderMetrics(AggregatedMetrics&& metrics) {
+const std::string JsonRenderer::RenderMetrics(Server* server) {
+  auto metrics = server->getAggregatedMetrics();
+
   nlohmann::json j;
 
   j["worker_count"]                = metrics.worker_count;

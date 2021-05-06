@@ -19,6 +19,8 @@
 #include <utility>
 #include <vector>
 
+#include "EventhubBase.hpp"
+#include "Forward.hpp"
 #include "AccessController.hpp"
 #include "Common.hpp"
 #include "http/Parser.hpp"
@@ -29,13 +31,9 @@ using namespace std;
 
 namespace eventhub {
 
-using ConnectionPtr          = std::shared_ptr<class Connection>;
-using ConnectionWeakPtr      = std::weak_ptr<class Connection>;
+using ConnectionPtr          = std::shared_ptr<Connection>;
+using ConnectionWeakPtr      = std::weak_ptr<Connection>;
 using ConnectionListIterator = std::list<ConnectionPtr>::iterator;
-
-class Server;
-class Worker;
-class Topic;
 
 enum class ConnectionState {
   HTTP,
@@ -49,9 +47,9 @@ struct TopicSubscription {
   jsonrpcpp::Id rpcSubscriptionRequestId;
 };
 
-class Connection : public std::enable_shared_from_this<Connection> {
+class Connection : public EventhubBase, std::enable_shared_from_this<Connection> {
 public:
-  Connection(int fd, struct sockaddr_in* csin, Server* server, Worker* worker);
+  Connection(int fd, struct sockaddr_in* csin, Worker* worker, Config& cfg);
   virtual ~Connection();
 
   void write(const string& data);
@@ -84,7 +82,6 @@ public:
 protected:
   int _fd;
   struct sockaddr_in _csin;
-  Server* _server;
   Worker* _worker;
   struct epoll_event _epoll_event;
   string _write_buffer;

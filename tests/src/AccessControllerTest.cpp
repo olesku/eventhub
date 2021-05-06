@@ -23,12 +23,17 @@ secret: eventhub_secret
 using namespace eventhub;
 
 TEST_CASE("Test authorization", "[access_controller]") {
+  ConfigMap cfgMap = {
+    { "disable_auth", ConfigValueType::BOOL, "", ConfigValueSettings::REQUIRED }
+  };
+
   GIVEN("A valid test token") {
-    Config.del("DISABLE_AUTH");
-    Config.addBool("DISABLE_AUTH", false);
+    Config cfg(cfgMap);
+    cfg << "disable_auth = 0";
+    cfg.load();
     std::string token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjIyMTQ2OTQ5MjMsInN1YiI6Im9sZS5za3Vkc3Zpa0BnbWFpbC5jb20iLCJ3cml0ZSI6WyJ0ZXN0MS8jIiwidGVzdDIvIyIsInRlc3QzLyMiXSwicmVhZCI6WyJ0ZXN0MS8jIiwidGVzdDIvIyIsInRlc3QzLyMiXSwiY3JlYXRlVG9rZW4iOlsidGVzdDEiLCJ0ZXN0MiIsInRlc3QzIl19.FSSecEiStcElHu0AqpmcIvfyMElwKZQUkiO5X_r0_3g";
 
-    AccessController acs;
+    AccessController acs(cfg);
     bool tokenLoaded = acs.authenticate(token, "eventhub_secret");
 
     WHEN("Loading our token") {
@@ -59,9 +64,11 @@ TEST_CASE("Test authorization", "[access_controller]") {
   }
 
   GIVEN("An invalid token") {
-    Config.del("DISABLE_AUTH");
-    Config.addBool("DISABLE_AUTH", false);
-    AccessController acs;
+    Config cfg(cfgMap);
+    cfg << "disable_auth = 0";
+    cfg.load();
+
+    AccessController acs(cfg);
 
     THEN("Authenticate should fail") {
       bool tokenLoaded = acs.authenticate("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjIyMTQ2OTQ5MjMsInN1YiI6Im9sZS5za3Vkc3Zpa0BnbWFpbC5jb20iLCJ3cml0ZSI6WyJ0ZXN0MS8jIiwidGVzdDIvIyIsInRlc3QzLyMiXSwicmVhZCI6WyJ0ZXN0MS8jIiwidGVzdDIvIyIsInRlc3QzLyMiXSwiY3JlYXRlVG9rZW4iOlsidGVzdDEiLCJ0ZXN0MiIsInRlc3QzIl19.DMpX-zaifaTt5YbyTqSPjeJfhi8oMSpKsqh2rWGatGY", "Foobar");
@@ -79,9 +86,11 @@ TEST_CASE("Test authorization", "[access_controller]") {
   }
 
   GIVEN("Authentication is disabled through config") {
-    Config.del("DISABLE_AUTH");
-    Config.addBool("DISABLE_AUTH", true);
-    AccessController acs;
+    Config cfg(cfgMap);
+    cfg << "disable_auth = 1";
+    cfg.load();
+
+    AccessController acs(cfg);
 
     THEN("Authenticate should always return true") {
       REQUIRE(acs.authenticate("Foo", "Bar"));

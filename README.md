@@ -5,9 +5,10 @@
 [![Build Status](https://github.com/olesku/eventhub/workflows/Build/badge.svg)](https://travis-ci.com/olesku/eventhub)
 [![Docker Repository on Quay](https://quay.io/repository/olesku/eventhub/status "Docker Repository on Quay")](https://quay.io/repository/olesku/eventhub)
 
-Eventhub is a WebSocket message broker written in modern C++.
+Eventhub is a pub/sub over WebSocket server written in modern C++.
+It implements the [publish-subscribe pattern](https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern) and concept of topics.
 
-It's written with focus on high performance and availability, and implements the [publish-subscribe pattern](https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern) and the concept of topics.
+The key focus of the project is to deliver high performance, availability, and easy integration.
 
 <p align="center">
 <a href="./docs/images/grafana_dashboard.png">
@@ -45,7 +46,7 @@ Eventhub stores all published messages into a log that can be requested by clien
 
 ## Authentication
 
-When authentication is enabled Eventhub require every client to authenticate with a HS256 JWT token. The JWT token specifies which topics a client is allowed to publish and subscribe to. The token has to be hashed with the ```JWT_SECRET``` your Eventhub instance is configured with so it can be verified by the server.
+When authentication is enabled Eventhub require every client to authenticate with a HS256 JWT token. The JWT token specifies which topics a client is allowed to publish and subscribe to. The token has to be hashed with the ```jwt_secret``` your Eventhub instance is configured with so it can be verified by the server.
 
 Authentication token is sent to the Eventhub server either through the `Authorization` header or the ```auth``` HTTP query parameter.
 
@@ -72,33 +73,36 @@ Protocol specification for Eventhub is documented [here](./docs/protocol.md).
 
 **Eventhub depends on a Redis server with pub/sub and streams support (version 5.0 or higher).**
 
-## Configuration options
-Eventhub is configured through [environment variables](https://en.wikipedia.org/wiki/Environment_variable).
+## Configuration
+Configuration file is specified using the ```--config``` command-line flag.
+Example config file can be found [here](./example.conf).
 
-|Environment variable         |Description                          |Default value           |
+All configuration options can also be set using [environment variables](https://en.wikipedia.org/wiki/Environment_variable). If an option is specified in both the config file and environment variable the value from the environment will take precedence.
+
+|Option name                  |Description                          |Default value           |
 |-----------------------------|-------------------------------------|------------------------|
-|LISTEN_PORT                  | Port to listen on                   | 8080
-|WORKER_THREADS               | Number of workers                   | 0 (number of cpu cores)
-|JWT_SECRET                   | JWT Token secret                    | eventhub_secret
-|REDIS_HOST                   | Redis host                          | 127.0.0.1
-|REDIS_PORT                   | Redis port                          | 6379
-|REDIS_PASSWORD               | Redis password                      | None
-|REDIS_PREFIX                 | Prefix to use for all redis keys    | eventhub
-|REDIS_POOL_SIZE              | Number of Redis connections to use  | 5
-|MAX_CACHE_LENGTH             | Maximum records to store in eventlog| 1000 (0 means no limit)
-|PING_INTERVAL                | Websocket ping interval             | 30
-|HANDSHAKE_TIMEOUT            | Client handshake timeout            | 15
-|DISABLE_AUTH                 | Disable client authentication       | false
-|ENABLE_SSE                   | Enable Server-Sent-Events support   | false
-|ENABLE_CACHE                 | Enable retained cache for topics.   | true
-|PROMETHEUS_METRIC_PREFIX     | Prometheus prefix                   | eventhub
-|DEFAULT_CACHE_TTL            | Default message TTL                 | 60
-|MAX_CACHE_REQUEST_LIMIT      | Default returned cache result limit | 1000
-|LOG_LEVEL                    | Log level to use                    | info
-|ENABLE_SSL                   | Enable SSL                          | false
-|SSL_CERTIFICATE              | Path to certificate for SSL         | None
-|SSL_PRIVATE_KEY              | Path to private key for SSL         | None
-|SSL_CA_CERTIFICATE           | Path to CA certificate              | None
+|listen_port                  | Port to listen on                   | 8080
+|worker_threads               | Number of workers                   | 0 (number of cpu cores)
+|jwt_secret                   | JWT Token secret                    | eventhub_secret
+|redis_host                   | Redis host                          | 127.0.0.1
+|redis_port                   | Redis port                          | 6379
+|redis_password               | Redis password                      | None
+|redis_prefix                 | Prefix to use for all redis keys    | eventhub
+|redis_pool_size              | Number of Redis connections to use  | 5
+|max_cache_length             | Maximum records to store in eventlog| 1000 (0 means no limit)
+|ping_interval                | Websocket ping interval             | 30
+|handshake_timeout            | Client handshake timeout            | 15
+|disable_auth                 | Disable client authentication       | false
+|enable_sse                   | Enable Server-Sent-Events support   | false
+|enable_cache                 | Enable retained cache for topics.   | true
+|prometheus_metric_prefix     | Prometheus prefix                   | eventhub
+|default_cache_ttl            | Default message TTL                 | 60
+|max_cache_request_limit      | Default returned cache result limit | 1000
+|log_level                    | Log level to use                    | info
+|enable_ssl                   | Enable SSL                          | false
+|ssl_certificate              | Path to certificate for SSL         | None
+|ssl_private_key              | Path to private key for SSL         | None
+|ssl_ca_certificate           | Path to CA certificate              | None
 
 ## Docker
 The easiest way is to use our docker image.
@@ -109,7 +113,7 @@ docker pull quay.io/olesku/eventhub:latest
 
 # Run locally with authentication disabled (for test).
 # Connect to redis on my-redis-server.local.
-docker run --rm -it -e DISABLE_AUTH=1 -e REDIS_HOST=my-redis-server.local -p 8080:8080 quay.io/olesku/eventhub:latest
+docker run --rm -it -e disable_auth=1 -e redis_host=my-redis-server.local -p 8080:8080 quay.io/olesku/eventhub:latest
 ```
 
 The repo also contains a [docker-compose](https://docs.docker.com/compose/) file which will run both redis and eventhub for you.
@@ -147,9 +151,6 @@ It's using Redis for intercommunication, so the only thing you have to do is to 
 
 Runtime metrics in [Prometheus](https://prometheus.io/) format is available at the `/metrics` endpoint.
 JSON is available at `/metrics?format=json`
-
-# TLS/SSL
-Eventhub fully supports SSL termination.
 
 # License
 Eventhub is licensed under MIT. See [LICENSE](https://github.com/olesku/eventhub/blob/LICENSE).

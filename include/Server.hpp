@@ -18,12 +18,13 @@ namespace eventhub {
 
 class Server {
 public:
-  Server(const string redisHost, int redisPort, const std::string redisPassword, int redisPoolSize);
+  Server(Config& cfg);
   ~Server();
 
   void start();
   void stop();
   void reload();
+  Config& config() { return _config; }
   const int getServerSocket();
   Worker* getWorker();
   void publish(const std::string topicName, const std::string data);
@@ -37,6 +38,7 @@ public:
   }
 
 private:
+  Config& _config;
   int _server_socket;
   bool _ssl_enabled;
   SSL_CTX* _ssl_ctx;

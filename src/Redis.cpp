@@ -14,27 +14,31 @@
 #include "Config.hpp"
 #include "TopicManager.hpp"
 #include "Util.hpp"
+#include "Server.hpp"
 #include "jwt/json/json.hpp"
 
 namespace eventhub {
 
 using namespace std;
 
-Redis::Redis(const string host, int port, const string password, int poolSize) {
+Redis::Redis(Config &cfg) : EventhubBase(cfg) {
   sw::redis::ConnectionOptions connOpts;
   sw::redis::ConnectionPoolOptions poolOpts;
 
   connOpts.keep_alive     = true;
-  connOpts.host           = host;
-  connOpts.port           = port;
+  connOpts.host           = config().get<std::string>("redis_host");
+  connOpts.port           = config().get<int>("redis_port");
   connOpts.socket_timeout = std::chrono::seconds(5);
+
+  _prefix = config().get<std::string>("redis_prefix");
+  const auto& password = config().get<std::string>("redis_password");
 
   if (password.length() > 0) {
     connOpts.password = password;
   }
 
   poolOpts.connection_lifetime = std::chrono::milliseconds(0);
-  poolOpts.size                = poolSize;
+  poolOpts.size                = config().get<int>("redis_pool_size");
   poolOpts.wait_timeout        = std::chrono::seconds(5);
 
   _redisInstance   = std::make_unique<sw::redis::Redis>(connOpts, poolOpts);
@@ -51,12 +55,12 @@ void Redis::publishMessage(const string topic, const string id, const string pay
   j["message"] = payload;
 
   auto jsonData = j.dump();
-  _redisInstance->publish(REDIS_PREFIX(topic), jsonData);
+  _redisInstance->publish(redis_prefix(topic), jsonData);
 }
 
 // Returns a unique ID in the format <timeSinceEpoch>-<sequenceNo>.
 const std::string Redis::_getNextCacheId(long long timestamp) {
-  const auto idKey = REDIS_PREFIX(fmt::format("id:{}", timestamp));
+  const auto idKey = redis_prefix(fmt::format("id:{}", timestamp));
 
   auto id = _redisInstance->incr(idKey);
   _redisInstance->expire(idKey, 1);
@@ -83,12 +87,12 @@ const std::string Redis::cacheMessage(const string topic, const string payload, 
   auto cacheId = _getNextCacheId(timestamp);
 
   // Do not cache message if cache functionality is disabled.
-  if (!Config.getBool("ENABLE_CACHE")) {
+  if (!config().get<bool>("enable_cache")) {
     return cacheId;
   }
 
   if (ttl == 0) {
-    ttl = Config.getInt("DEFAULT_CACHE_TTL");
+    ttl = config().get<int>("default_cache_ttl");
   }
 
   auto expireAt = Util::getTimeSinceEpoch() + (ttl * 1000);
@@ -110,7 +114,7 @@ size_t Redis::getCacheSince(const string topicPattern, long long since, long lon
   result = nlohmann::json::array();
 
   // If cache is not enabled simply return an empty set.
-  if (!Config.getBool("ENABLE_CACHE")) {
+  if (!config().get<bool>("enable_cache")) {
     return 0;
   }
 
@@ -202,7 +206,7 @@ size_t Redis::getCacheSinceId(const string topicPattern, const string sinceId, l
   result = nlohmann::json::array();
 
   // If cache is not enabled simply return an empty set.
-  if (!Config.getBool("ENABLE_CACHE")) {
+  if (!config().get<bool>("enable_cache")) {
     return 0;
   }
 
@@ -279,7 +283,7 @@ size_t Redis::purgeExpiredCacheItems() {
   std::vector<std::pair<std::string, std::string>> expiredItems;
   auto now = Util::getTimeSinceEpoch();
 
-  _redisInstance->hkeys(REDIS_PREFIX("pub_count"), std::back_inserter(allTopics));
+  _redisInstance->hkeys(redis_prefix("pub_count"), std::back_inserter(allTopics));
 
   for (auto topic : allTopics) {
     std::vector<std::string> cacheKeys;
@@ -296,7 +300,7 @@ size_t Redis::purgeExpiredCacheItems() {
     } else {
       // Remove topic from pub_count if it has no more cached
       // elements left.
-      _redisInstance->hdel(REDIS_PREFIX("pub_count"), topic);
+      _redisInstance->hdel(redis_prefix("pub_count"), topic);
     }
   }
 
@@ -343,7 +347,7 @@ void Redis::psubscribe(const std::string pattern, RedisMsgCallback callback) {
     callback(pattern, actualTopic, msg);
   });
 
-  _redisSubscriber->psubscribe(REDIS_PREFIX(pattern));
+  _redisSubscriber->psubscribe(redis_prefix(pattern));
 }
 
 void Redis::consume() {
@@ -353,7 +357,7 @@ void Redis::consume() {
 // _incrTopicPubCount increase the counter of published messages to topicName
 // in our Redis stats HSET.
 void Redis::_incrTopicPubCount(const string& topicName) {
-  _redisInstance->hincrby(REDIS_PREFIX("pub_count"), topicName, 1);
+  _redisInstance->hincrby(redis_prefix("pub_count"), topicName, 1);
 }
 
 // _getTopicsSeen Look up in our pubcount HSET in redis and return
@@ -362,7 +366,7 @@ std::vector<std::string> Redis::_getTopicsSeen(const string& topicPattern) {
   std::vector<std::string> allTopics;
   std::vector<std::string> matchingTopics;
 
-  _redisInstance->hkeys(REDIS_PREFIX("pub_count"), std::back_inserter(allTopics));
+  _redisInstance->hkeys(redis_prefix("pub_count"), std::back_inserter(allTopics));
 
   for (auto& topic : allTopics) {
     if (TopicManager::isFilterMatched(topicPattern, topic)) {

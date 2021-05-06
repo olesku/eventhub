@@ -5,6 +5,7 @@
 #include <utility>
 #include <vector>
 
+#include "Server.hpp"
 #include "Config.hpp"
 #include "metrics/PrometheusRenderer.hpp"
 #include "metrics/Types.hpp"
@@ -12,7 +13,10 @@
 namespace eventhub {
 namespace metrics {
 
-const std::string PrometheusRenderer::RenderMetrics(AggregatedMetrics&& metrics) {
+const std::string PrometheusRenderer::RenderMetrics(Server* server) {
+  auto  metrics = server->getAggregatedMetrics();
+  auto& config  = server->config();
+
   std::vector<std::pair<std::string, long long>> metricList = {
       {"worker_count", metrics.worker_count},
       {"publish_count", metrics.publish_count},
@@ -31,9 +35,9 @@ const std::string PrometheusRenderer::RenderMetrics(AggregatedMetrics&& metrics)
 
   for (auto& m : metricList) {
     // Add prefix to metric key if set in configuration.
-    const std::string metricKey = !Config.getString("PROMETHEUS_METRIC_PREFIX").empty() ? (Config.getString("PROMETHEUS_METRIC_PREFIX") + "_" + m.first) : m.first;
+    const std::string metricKey = !config.get<std::string>("prometheus_metric_prefix").empty() ? (config.get<std::string>("prometheus_metric_prefix") + "_" + m.first) : m.first;
 
-    ss << metricKey << "{instance=\"" << h_buf << ":" << Config.getInt("LISTEN_PORT") << "\""
+    ss << metricKey << "{instance=\"" << h_buf << ":" << config.get<int>("LISTEN_PORT") << "\""
        << "} " << m.second << "\n";
   }
 

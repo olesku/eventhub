@@ -3,6 +3,7 @@
 
 #include <string>
 
+#include "Forward.hpp"
 #include "metrics/Types.hpp"
 
 namespace eventhub {
@@ -10,7 +11,7 @@ namespace metrics {
 
 class JsonRenderer {
 public:
-  static const std::string RenderMetrics(AggregatedMetrics&& metrics);
+  static const std::string RenderMetrics(Server* server);
 };
 
 } // namespace metrics

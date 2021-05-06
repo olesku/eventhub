@@ -11,9 +11,24 @@
 using namespace std;
 using namespace eventhub;
 
-eventhub::Redis redis("127.0.0.1");
-
 TEST_CASE("Test redis", "[Redis") {
+    ConfigMap cfgMap = {
+    { "redis_host",               ConfigValueType::STRING, "localhost",     ConfigValueSettings::REQUIRED },
+    { "redis_port",               ConfigValueType::INT,    "6379",          ConfigValueSettings::REQUIRED },
+    { "redis_password",           ConfigValueType::STRING, "",              ConfigValueSettings::OPTIONAL },
+    { "redis_prefix",             ConfigValueType::STRING, "eventhub_test", ConfigValueSettings::OPTIONAL },
+    { "redis_pool_size",          ConfigValueType::INT,    "5",             ConfigValueSettings::REQUIRED },
+    { "max_cache_length",         ConfigValueType::INT,    "1000",          ConfigValueSettings::REQUIRED },
+    { "max_cache_request_limit",  ConfigValueType::INT,    "100",           ConfigValueSettings::REQUIRED },
+    { "default_cache_ttl",        ConfigValueType::INT,    "60",            ConfigValueSettings::REQUIRED },
+    { "enable_cache",             ConfigValueType::BOOL,   "true",          ConfigValueSettings::REQUIRED }
+  };
+
+  Config cfg(cfgMap);
+  cfg.load();
+
+  eventhub::Redis redis(cfg);
+
   SECTION("Ping connection") {
     bool connected = true;
 
@@ -28,7 +43,6 @@ TEST_CASE("Test redis", "[Redis") {
 
   GIVEN("That we increase pub count for test/channel1") {
     redis.getRedisInstance()->hdel("eventhub_test:pub_count", "test/channel1");
-    redis.setPrefix("eventhub_test");
     redis._incrTopicPubCount("test/channel1");
 
     THEN("Hashentry eventhub_test.test/channel1 should be larger than 0") {
@@ -59,14 +73,6 @@ TEST_CASE("Test redis", "[Redis") {
   }
 
   GIVEN("If we cache some items") {
-    Config.del("DEFAULT_CACHE_TTL");
-    Config.addInt("DEFAULT_CACHE_TTL", 60);
-
-    Config.del("MAX_CACHE_LENGTH");
-    Config.addInt("MAX_CACHE_LENGTH", 1000);
-
-    Config.del("ENABLE_CACHE");
-    Config.addBool("ENABLE_CACHE", true);
 
     redis.cacheMessage("test/channel1", "Test 1", 0, 0);
     redis.cacheMessage("test/channel1", "Test 2", 0, 0);
@@ -102,7 +108,7 @@ TEST_CASE("Test redis", "[Redis") {
       msgRcvd++;
     });
 
-    auto t = std::async(std::launch::async, []() {
+    auto t = std::async(std::launch::async, [&redis]() {
       std::this_thread::sleep_for(std::chrono::milliseconds(500));
       redis.publishMessage("test/topic1", "31337", "Test");
       redis.publishMessage("test/topic2", "31337", "{}");

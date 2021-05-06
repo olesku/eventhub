@@ -3,8 +3,8 @@ services:
   eventhub:
     image: quay.io/olesku/eventhub:latest
     environment:
-      - DISABLE_AUTH=1
-      - REDIS_HOST=redis
+      - disable_auth=1
+      - redis_host=redis
     ports:
       - "8080:8080"
     depends_on:

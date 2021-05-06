@@ -85,11 +85,11 @@ void Handler::_handlePath(HandlerContext& ctx, Parser* req) {
 
     std::string m;
     if (req->getQueryString("format") == "json") {
-      m = metrics::JsonRenderer::RenderMetrics(ctx.server()->getAggregatedMetrics());
+      m = metrics::JsonRenderer::RenderMetrics(ctx.server());
       resp.setHeader("Content-Type", "application/json");
     } else {
       resp.setHeader("Content-Type", "text/plain");
-      m = metrics::PrometheusRenderer::RenderMetrics(ctx.server()->getAggregatedMetrics());
+      m = metrics::PrometheusRenderer::RenderMetrics(ctx.server());
     }
 
     resp.setBody(m);
@@ -106,18 +106,18 @@ void Handler::_handlePath(HandlerContext& ctx, Parser* req) {
     authToken = req->getHeader("authorization");
   } else if (!req->getQueryString("auth").empty()) {
     authToken = Util::uriDecode(req->getQueryString("auth"));
-  } else if (!Config.getBool("DISABLE_AUTH")) {
+  } else if (!ctx.server()->config().get<bool>("disable_auth")) {
     _badRequest(ctx, "No authentication token was given.", 401);
     return;
   }
 
-  if (!ctx.connection()->getAccessController().authenticate(authToken, Config.getString("JWT_SECRET"))) {
+  if (!ctx.connection()->getAccessController().authenticate(authToken, ctx.server()->config().get<std::string>("jwt_secret"))) {
     _badRequest(ctx, "Authentication failed.", 401);
     return;
   }
 
   if (req->getHeader("accept") == "text/event-stream") {
-    if (!Config.getBool("ENABLE_SSE")) {
+    if (!ctx.server()->config().get<bool>("enable_sse")) {
       _badRequest(ctx, "SSE is not enabled in this setup.", 501);
       return;
     }
@@ -154,6 +154,7 @@ bool Handler::_websocketHandshake(HandlerContext& ctx, Parser* req) {
   resp.setHeader("connection", "upgrade");
   resp.setHeader("sec-websocket-accept", secWsAccept);
 
+  // FIXME: We should check against a list of supported protocols here.
   if (!req->getHeader("Sec-WebSocket-Protocol").empty()) {
     resp.setHeader("Sec-WebSocket-Protocol", req->getHeader("Sec-WebSocket-Protocol"));
   }
