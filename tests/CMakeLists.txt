@@ -2,6 +2,7 @@
 include_directories ("${PROJECT_SOURCE_DIR}/tests/include" "${PROJECT_SOURCE_DIR}/include")
 
 set(SOURCES
+  src/ConfigTest.cpp
   src/TopicTest.cpp
   src/EventLoopTest.cpp
   src/RedisTest.cpp
