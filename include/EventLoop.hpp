@@ -9,6 +9,7 @@
 #include <mutex>
 
 namespace eventhub {
+
 struct TimerCtx {
   std::chrono::milliseconds fire_time;
   std::chrono::milliseconds repeat_delay;
@@ -121,6 +122,7 @@ private:
     return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch());
   }
 };
+
 } // namespace eventhub
 
 #endif // INCLUDE_EVENTLOOP_HPP_

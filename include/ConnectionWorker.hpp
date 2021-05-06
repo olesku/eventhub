@@ -18,6 +18,7 @@
 #include "metrics/Types.hpp"
 
 namespace eventhub {
+
 typedef std::list<ConnectionPtr> ConnectionList;
 
 class Worker final : public EventhubBase, public WorkerBase {
@@ -52,6 +53,7 @@ private:
 
   void _workerMain();
 };
+
 } // namespace eventhub
 
 #endif // INCLUDE_CONNECTIONWORKER_HPP_

@@ -24,8 +24,6 @@
 #include "jwt/json/json.hpp"
 #include "metrics/Types.hpp"
 
-
-
 namespace eventhub {
 
 std::atomic<bool> stopEventhub{false};

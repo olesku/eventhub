@@ -12,6 +12,7 @@
 #include "Topic.hpp"
 
 namespace eventhub {
+
 using TopicList = std::unordered_map<std::string, TopicPtr>;
 
 class TopicManager {

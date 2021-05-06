@@ -14,6 +14,7 @@
 #include "jwt/json/json.hpp"
 
 namespace eventhub {
+
 using namespace std;
 
 using RedisMsgCallback = std::function<void(std::string pattern,

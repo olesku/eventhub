@@ -11,6 +11,7 @@
 #include "jwt/jwt.hpp"
 
 namespace eventhub {
+
 class AccessController final : public EventhubBase {
 private:
   bool _token_loaded;
@@ -29,6 +30,7 @@ public:
   bool allowSubscribe(const std::string& topic);
   bool allowCreateToken(const std::string& path);
 };
+
 } // namespace eventhub
 
 #endif // INCLUDE_ACCESSCONTROLLER_HPP_
