@@ -278,7 +278,7 @@ void Connection::subscribe(const std::string& topicPattern, const jsonrpcpp::Id 
     return;
   }
 
-  auto topicSubscription = tm.subscribeConnection(shared_from_this(), topicPattern, subscriptionRequestId);
+  auto topicSubscription = tm.subscribeConnection(getSharedPtr(), topicPattern, subscriptionRequestId);
   _subscribedTopics.insert(std::make_pair(topicPattern, TopicSubscription{topicSubscription.first, topicSubscription.second, subscriptionRequestId}));
 }
 

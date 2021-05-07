@@ -8,7 +8,7 @@ namespace eventhub {
 class EventhubBase {
 public:
   explicit EventhubBase(Config& cfg) : _config(cfg) {};
-  ~EventhubBase() {};
+  virtual ~EventhubBase() {};
 
   Config& config() {
     return _config;

@@ -47,7 +47,7 @@ struct TopicSubscription {
   jsonrpcpp::Id rpcSubscriptionRequestId;
 };
 
-class Connection : public EventhubBase, std::enable_shared_from_this<Connection> {
+class Connection : public EventhubBase, public enable_shared_from_this<Connection> {
 public:
   Connection(int fd, struct sockaddr_in* csin, Worker* worker, Config& cfg);
   virtual ~Connection();
