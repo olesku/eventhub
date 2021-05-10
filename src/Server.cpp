@@ -163,7 +163,7 @@ void Server::start() {
   _ev.addTimer(
       METRIC_DELAY_SAMPLE_RATE_MS, [&](TimerCtx* ctx) {
         try {
-          _redis.publishMessage("$metrics$/system_unixtime", "0", to_string(Util::getTimeSinceEpoch()));
+          _redis.publishMessage("$metrics$/system_unixtime", "0", "$system$", to_string(Util::getTimeSinceEpoch()));
         } catch (...) {}
       },
       true);

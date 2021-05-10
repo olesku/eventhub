@@ -9,6 +9,8 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <unordered_map>
+#include <stdexcept>
 
 #include "Common.hpp"
 #include "Config.hpp"
@@ -46,7 +48,7 @@ Redis::Redis(Config &cfg) : EventhubBase(cfg) {
 }
 
 // Publish a message.
-void Redis::publishMessage(const string topic, const string id, const string payload) {
+void Redis::publishMessage(const string topic, const string id, const string payload, const string origin) {
   std::lock_guard<std::mutex> lock(_publish_mtx);
   nlohmann::json j;
 
@@ -54,13 +56,17 @@ void Redis::publishMessage(const string topic, const string id, const string pay
   j["id"]      = id;
   j["message"] = payload;
 
+  if (!origin.empty()) {
+    j["origin"]  = origin;
+  }
+
   auto jsonData = j.dump();
-  _redisInstance->publish(redis_prefix(topic), jsonData);
+  _redisInstance->publish(REDIS_PREFIX(topic), jsonData);
 }
 
 // Returns a unique ID in the format <timeSinceEpoch>-<sequenceNo>.
 const std::string Redis::_getNextCacheId(long long timestamp) {
-  const auto idKey = redis_prefix(fmt::format("id:{}", timestamp));
+  const auto idKey = REDIS_PREFIX(fmt::format("id:{}", timestamp));
 
   auto id = _redisInstance->incr(idKey);
   _redisInstance->expire(idKey, 1);
@@ -69,17 +75,8 @@ const std::string Redis::_getNextCacheId(long long timestamp) {
   return fmt::format("{}-{}", timestamp, id);
 }
 
-// Takes in a string in the form of <HSET-ID>-<ExpireAt> and returns
-// the id and expire time as a pair.
-const std::pair<std::string, int64_t> Redis::_parseIdAndExpireAt(const std::string& input) {
-  auto delimPos    = input.find(':');
-  auto id          = input.substr(0, delimPos);
-  auto expireAtStr = input.substr(delimPos + 1, std::string::npos);
-  return {id, std::stol(expireAtStr, nullptr, 10)};
-}
-
 // Add a message to the cache.
-const std::string Redis::cacheMessage(const string topic, const string payload, long long timestamp, unsigned int ttl) {
+const std::string Redis::cacheMessage(const string topic, const string payload, const string origin, long long timestamp, unsigned int ttl) {
   if (timestamp == 0) {
     timestamp = Util::getTimeSinceEpoch();
   }
@@ -96,7 +93,7 @@ const std::string Redis::cacheMessage(const string topic, const string payload, 
   }
 
   auto expireAt = Util::getTimeSinceEpoch() + (ttl * 1000);
-  auto zKey     = fmt::format("{}:{}", cacheId, expireAt);
+  auto zKey     = CacheItemMeta{cacheId, expireAt, origin}.toStr();
 
   _redisInstance->hset(REDIS_CACHE_DATA_PATH(topic), cacheId, payload);
   _redisInstance->zadd(REDIS_CACHE_SCORE_PATH(topic), zKey, timestamp);
@@ -145,11 +142,18 @@ size_t Redis::getCacheSince(const string topicPattern, long long since, long lon
 
     // Only look up keys that is not expired.
     std::vector<std::string> cacheKeys;
+    std::unordered_map<std::string, std::string> originIdMap;
 
     for (auto zKey : zcacheKeys) {
-      auto p = _parseIdAndExpireAt(zKey);
-      if (p.second >= now) {
-        cacheKeys.push_back(p.first);
+      try {
+        auto p = CacheItemMeta{zKey};
+
+        if (p.expireAt() >= now) {
+          cacheKeys.push_back(p.id());
+          originIdMap[p.id()] = p.origin();
+        }
+      } catch (...) {
+        continue;
       }
     }
 
@@ -180,6 +184,11 @@ size_t Redis::getCacheSince(const string topicPattern, long long since, long lon
       j["id"]      = cacheKeys[i];
       j["topic"]   = topic;
       j["message"] = cacheItems[i].value();
+
+      if (!originIdMap[cacheKeys[i]].empty()) {
+        j["origin"]  = originIdMap[cacheKeys[i]];
+      }
+
       result.push_back(j);
     }
   }
@@ -283,7 +292,7 @@ size_t Redis::purgeExpiredCacheItems() {
   std::vector<std::pair<std::string, std::string>> expiredItems;
   auto now = Util::getTimeSinceEpoch();
 
-  _redisInstance->hkeys(redis_prefix("pub_count"), std::back_inserter(allTopics));
+  _redisInstance->hkeys(REDIS_PREFIX("pub_count"), std::back_inserter(allTopics));
 
   for (auto topic : allTopics) {
     std::vector<std::string> cacheKeys;
@@ -291,26 +300,30 @@ size_t Redis::purgeExpiredCacheItems() {
 
     if (!cacheKeys.empty()) {
       for (auto key : cacheKeys) {
-        auto p = _parseIdAndExpireAt(key);
+        try {
+          auto p = CacheItemMeta{key};
 
-        if (p.second < now) {
-          expiredItems.push_back({topic, key});
+          if (p.expireAt()< now) {
+            expiredItems.push_back({topic, key});
+          }
+        } catch(...) {
+          continue;
         }
       }
     } else {
       // Remove topic from pub_count if it has no more cached
       // elements left.
-      _redisInstance->hdel(redis_prefix("pub_count"), topic);
+      _redisInstance->hdel(REDIS_PREFIX("pub_count"), topic);
     }
   }
 
   for (auto exp : expiredItems) {
     auto topic = exp.first;
     auto key   = exp.second;
-    auto p     = _parseIdAndExpireAt(key);
+    auto p     = CacheItemMeta{key};
 
     _redisInstance->zrem(REDIS_CACHE_SCORE_PATH(topic), key);
-    _redisInstance->hdel(REDIS_CACHE_DATA_PATH(topic), p.first);
+    _redisInstance->hdel(REDIS_CACHE_DATA_PATH(topic), p.id());
   }
 
   return expiredItems.size();
@@ -347,7 +360,7 @@ void Redis::psubscribe(const std::string pattern, RedisMsgCallback callback) {
     callback(pattern, actualTopic, msg);
   });
 
-  _redisSubscriber->psubscribe(redis_prefix(pattern));
+  _redisSubscriber->psubscribe(REDIS_PREFIX(pattern));
 }
 
 void Redis::consume() {
@@ -357,7 +370,7 @@ void Redis::consume() {
 // _incrTopicPubCount increase the counter of published messages to topicName
 // in our Redis stats HSET.
 void Redis::_incrTopicPubCount(const string& topicName) {
-  _redisInstance->hincrby(redis_prefix("pub_count"), topicName, 1);
+  _redisInstance->hincrby(REDIS_PREFIX("pub_count"), topicName, 1);
 }
 
 // _getTopicsSeen Look up in our pubcount HSET in redis and return
@@ -366,7 +379,7 @@ std::vector<std::string> Redis::_getTopicsSeen(const string& topicPattern) {
   std::vector<std::string> allTopics;
   std::vector<std::string> matchingTopics;
 
-  _redisInstance->hkeys(redis_prefix("pub_count"), std::back_inserter(allTopics));
+  _redisInstance->hkeys(REDIS_PREFIX("pub_count"), std::back_inserter(allTopics));
 
   for (auto& topic : allTopics) {
     if (TopicManager::isFilterMatched(topicPattern, topic)) {
@@ -375,6 +388,39 @@ std::vector<std::string> Redis::_getTopicsSeen(const string& topicPattern) {
   }
 
   return matchingTopics;
+}
+
+CacheItemMeta::CacheItemMeta(const std::string& id, long expireAt, const std::string& origin) :
+  _id(id), _expireAt(expireAt), _origin(origin) {}
+
+CacheItemMeta::CacheItemMeta(const std::string& metaStr) {
+  std::string expireAtStr;
+  unsigned int j = 0;
+
+  for (unsigned int i = 0; i < metaStr.length(); i++) {
+    if (metaStr[i] == ':') {
+      j++;
+      continue;
+    }
+
+    if (j == 0) _id += metaStr[i];
+    else if (j == 1) expireAtStr += metaStr[i];
+    else if (j == 2) _origin += metaStr[i];
+  }
+
+  if (j < 1) {
+    throw std::runtime_error("Invalid CacheItemMetaStr '" + metaStr + "'");
+  }
+
+  _expireAt = std::stol(expireAtStr, nullptr, 10);
+}
+
+const std::string CacheItemMeta::toStr() {
+  if (_origin.empty()) {
+    return fmt::format("{}:{}", _id, _expireAt);
+  }
+
+  return fmt::format("{}:{}:{}", _id, _expireAt, _origin);
 }
 
 } // namespace eventhub

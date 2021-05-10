@@ -8,6 +8,7 @@
 #include <mutex>
 #include <string>
 #include <vector>
+#include <fmt/format.h>
 
 #include "Forward.hpp"
 #include "EventhubBase.hpp"
@@ -21,19 +22,37 @@ using RedisMsgCallback = std::function<void(std::string pattern,
                                             std::string channel,
                                             std::string msg)>;
 
+class CacheItemMeta {
+public:
+  explicit CacheItemMeta(const std::string& id, long expireAt, const std::string& origin);
+
+  explicit CacheItemMeta(const std::string& metaStr);
+
+  ~CacheItemMeta() {};
+
+  const std::string& id() { return _id; }
+  const std::string& origin() { return _origin; }
+  long expireAt() const { return _expireAt; }
+  const std::string toStr();
+
+private:
+  std::string _id;
+  long int _expireAt = 0;
+  std::string _origin;
+};
+
 class Redis final : public EventhubBase {
-#define CONST_24HRS_MS (86400 * 1000)
-#define redis_prefix(key) std::string((_prefix.length() > 0) ? _prefix + ":" + key : key)
-#define REDIS_CACHE_SCORE_PATH(key) std::string(redis_prefix(key) + ":scores")
-#define REDIS_CACHE_DATA_PATH(key) std::string(redis_prefix(key) + ":cache")
+#define REDIS_PREFIX(key) std::string((_prefix.length() > 0) ? _prefix + ":" + key : key)
+#define REDIS_CACHE_SCORE_PATH(key) std::string(REDIS_PREFIX(key) + ":scores")
+#define REDIS_CACHE_DATA_PATH(key) std::string(REDIS_PREFIX(key) + ":cache")
 
 public:
   explicit Redis(Config &cfg);
   ~Redis() {}
 
-  void publishMessage(const string topic, const string id, const string payload);
+  void publishMessage(const string topic, const string id, const string payload, const string origin="");
   void psubscribe(const std::string pattern, RedisMsgCallback callback);
-  const std::string cacheMessage(const string topic, const string payload, long long timestamp = 0, unsigned int ttl = 0);
+  const std::string cacheMessage(const string topic, const string payload, const string origin, long long timestamp = 0, unsigned int ttl = 0);
   size_t getCacheSince(const string topicPattern, long long since, long long limit, bool isPattern, nlohmann::json& result);
   size_t getCacheSinceId(const string topicPattern, const string sinceId, long long limit, bool isPattern, nlohmann::json& result);
   size_t purgeExpiredCacheItems();
@@ -44,7 +63,6 @@ public:
   void _incrTopicPubCount(const string& topicName);
   vector<string> _getTopicsSeen(const string& topicPattern);
   const std::string _getNextCacheId(long long timestamp);
-  const std::pair<std::string, int64_t> _parseIdAndExpireAt(const std::string& input);
 
 private:
   std::unique_ptr<sw::redis::Redis> _redisInstance;
