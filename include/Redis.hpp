@@ -24,36 +24,35 @@ using RedisMsgCallback = std::function<void(std::string pattern,
 
 class CacheItemMeta {
 public:
-  explicit CacheItemMeta(const std::string& id, const std::string& sender, long expireAt);
+  explicit CacheItemMeta(const std::string& id, const std::string& origin, long expireAt);
 
   explicit CacheItemMeta(const std::string& metaStr);
 
   ~CacheItemMeta() {};
 
   const std::string& id() { return _id; }
-  const std::string& sender() { return _sender; }
+  const std::string& origin() { return _origin; }
   long expireAt() const { return _expireAt; }
   const std::string toStr();
 
 private:
   std::string _id;
-  std::string _sender;
+  std::string _origin;
   long int _expireAt = 0;
 };
 
 class Redis final : public EventhubBase {
-#define CONST_24HRS_MS (86400 * 1000)
-#define redis_prefix(key) std::string((_prefix.length() > 0) ? _prefix + ":" + key : key)
-#define REDIS_CACHE_SCORE_PATH(key) std::string(redis_prefix(key) + ":scores")
-#define REDIS_CACHE_DATA_PATH(key) std::string(redis_prefix(key) + ":cache")
+#define REDIS_PREFIX(key) std::string((_prefix.length() > 0) ? _prefix + ":" + key : key)
+#define REDIS_CACHE_SCORE_PATH(key) std::string(REDIS_PREFIX(key) + ":scores")
+#define REDIS_CACHE_DATA_PATH(key) std::string(REDIS_PREFIX(key) + ":cache")
 
 public:
   explicit Redis(Config &cfg);
   ~Redis() {}
 
-  void publishMessage(const string topic, const string id, const string payload, const string sender="");
+  void publishMessage(const string topic, const string id, const string payload, const string origin="");
   void psubscribe(const std::string pattern, RedisMsgCallback callback);
-  const std::string cacheMessage(const string topic, const string payload, const string sender, long long timestamp = 0, unsigned int ttl = 0);
+  const std::string cacheMessage(const string topic, const string payload, const string origin, long long timestamp = 0, unsigned int ttl = 0);
   size_t getCacheSince(const string topicPattern, long long since, long long limit, bool isPattern, nlohmann::json& result);
   size_t getCacheSinceId(const string topicPattern, const string sinceId, long long limit, bool isPattern, nlohmann::json& result);
   size_t purgeExpiredCacheItems();

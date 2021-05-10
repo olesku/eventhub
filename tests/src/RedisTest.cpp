@@ -131,7 +131,7 @@ TEST_CASE("Test redis", "[Redis") {
     auto p = CacheItemMeta{"1000-1:10000:petter@testmann.no"};
 
     THEN("We expect values to be parsed correctly") {
-      REQUIRE(p.sender() == "petter@testmann.no");
+      REQUIRE(p.origin() == "petter@testmann.no");
       REQUIRE(p.id() == "1000-1");
       REQUIRE(p.expireAt() == 10000);
     }
@@ -141,7 +141,7 @@ TEST_CASE("Test redis", "[Redis") {
     auto p = CacheItemMeta{"1000-1:10000"};
 
     THEN("We expect values to be parsed correctly") {
-      REQUIRE(p.sender() == "");
+      REQUIRE(p.origin() == "");
       REQUIRE(p.id() == "1000-1");
       REQUIRE(p.expireAt() == 10000);
     }
@@ -174,7 +174,7 @@ TEST_CASE("Test redis", "[Redis") {
     auto purgeCount = redis.purgeExpiredCacheItems();
 
     THEN("Purge count should be equal to or larger than 1") {
-      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(2000));
       REQUIRE(purgeCount >= 1);
     }
   }
