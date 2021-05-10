@@ -1,6 +1,4 @@
 * Support history range requests.
-* Add jwt.sub into message header.
-* Remove uneccesarry logging.
 * Support deflate compression extension.
 * Implement pong timeouts.
 * UTF-8 validation.

@@ -20,7 +20,7 @@ TEST_CASE("Test redis", "[Redis") {
     { "redis_pool_size",          ConfigValueType::INT,    "5",             ConfigValueSettings::REQUIRED },
     { "max_cache_length",         ConfigValueType::INT,    "1000",          ConfigValueSettings::REQUIRED },
     { "max_cache_request_limit",  ConfigValueType::INT,    "100",           ConfigValueSettings::REQUIRED },
-    { "default_cache_ttl",        ConfigValueType::INT,    "60",            ConfigValueSettings::REQUIRED },
+    { "default_cache_ttl",        ConfigValueType::INT,    "1",            ConfigValueSettings::REQUIRED },
     { "enable_cache",             ConfigValueType::BOOL,   "true",          ConfigValueSettings::REQUIRED }
   };
 
@@ -74,15 +74,16 @@ TEST_CASE("Test redis", "[Redis") {
 
   GIVEN("If we cache some items") {
 
-    redis.cacheMessage("test/channel1", "Test 1", 0, 0);
-    redis.cacheMessage("test/channel1", "Test 2", 0, 0);
-    redis.cacheMessage("test/channel1", "Test 3", 0, 0);
-    redis.cacheMessage("test/channel1", "Test 4", 0, 0);
+    redis.cacheMessage("test/channel1", "Test 1", "petter@testmann.no", 0, 0);
+    redis.cacheMessage("test/channel1", "Test 2", "petter@testmann.no", 0, 0);
+    redis.cacheMessage("test/channel1", "Test 3", "petter@testmann.no", 0, 0);
+    redis.cacheMessage("test/channel1", "Test 4", "petter@testmann.no", 0, 0);
 
-    redis.cacheMessage("test/channel2", "Test 5", 0, 0);
-    redis.cacheMessage("test/channel2", "Test 6", 0, 0);
-    redis.cacheMessage("test/channel2", "Test 7", 0, 0);
-    auto msgId = redis.cacheMessage("test/channel2", "Test 8", 0, 0);
+    redis.cacheMessage("test/channel2", "Test 5", "petter@testmann.no", 0, 0);
+    redis.cacheMessage("test/channel2", "Test 6", "petter@testmann.no", 0, 0);
+    redis.cacheMessage("test/channel2", "Test 7", "petter@testmann.no", 0, 0);
+    redis.cacheMessage("test/channel2", "Test 9", "", 0, 0);
+    auto msgId = redis.cacheMessage("test/channel2", "Test 8", "petter@testmann.no", 0, 0);
 
     THEN("Cache size should be larger than 0 when requesting a matching pattern") {
       nlohmann::json j;
@@ -110,8 +111,8 @@ TEST_CASE("Test redis", "[Redis") {
 
     auto t = std::async(std::launch::async, [&redis]() {
       std::this_thread::sleep_for(std::chrono::milliseconds(500));
-      redis.publishMessage("test/topic1", "31337", "Test");
-      redis.publishMessage("test/topic2", "31337", "{}");
+      redis.publishMessage("test/topic1", "31337", "test@user.com", "Test");
+      redis.publishMessage("test/topic2", "31337", "test@user.com", "{}");
       return true;
     });
 
@@ -126,12 +127,23 @@ TEST_CASE("Test redis", "[Redis") {
     }
   }
 
-  GIVEN("That we send in 1000-1:10000 to _parseIdAndExpireAt") {
-    auto p = redis._parseIdAndExpireAt("1000-1:10000");
+  GIVEN("That we send in 1000-1:10000:petter@testmann.no to CacheItemMeta") {
+    auto p = CacheItemMeta{"1000-1:10000:petter@testmann.no"};
 
-    THEN("We should get a pair with first element as 1000-1 and second as 10000") {
-      REQUIRE(p.first == "1000-1");
-      REQUIRE(p.second == 10000);
+    THEN("We expect values to be parsed correctly") {
+      REQUIRE(p.sender() == "petter@testmann.no");
+      REQUIRE(p.id() == "1000-1");
+      REQUIRE(p.expireAt() == 10000);
+    }
+  }
+
+  GIVEN("That we send in 1000-1:10000 to CacheItemMeta") {
+    auto p = CacheItemMeta{"1000-1:10000"};
+
+    THEN("We expect values to be parsed correctly") {
+      REQUIRE(p.sender() == "");
+      REQUIRE(p.id() == "1000-1");
+      REQUIRE(p.expireAt() == 10000);
     }
   }
 
@@ -139,9 +151,9 @@ TEST_CASE("Test redis", "[Redis") {
     nlohmann::json res;
     std::vector<std::string> cacheIds;
 
-    auto firstId = redis.cacheMessage("test/topic1", "31337");
+    auto firstId = redis.cacheMessage("test/topic1", "31337", "petter@testmann.no");
     for (unsigned int i = 0; i < 10; i++) {
-      cacheIds.push_back(redis.cacheMessage("test/topic1", "31337"));
+      cacheIds.push_back(redis.cacheMessage("test/topic1", "31337", "petter@testmann.no"));
     }
 
     THEN("We should get the expected results back") {
@@ -154,6 +166,16 @@ TEST_CASE("Test redis", "[Redis") {
       }
 
       REQUIRE(i == 10);
+    }
+  }
+
+  GIVEN("That we run the purger") {
+    redis.cacheMessage("purgetopic", "foobar", "", 0, 1);
+    auto purgeCount = redis.purgeExpiredCacheItems();
+
+    THEN("Purge count should be equal to or larger than 1") {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+      REQUIRE(purgeCount >= 1);
     }
   }
 }

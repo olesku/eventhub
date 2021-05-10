@@ -237,15 +237,15 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
 
   try {
     auto& redis = ctx.server()->getRedis();
-    auto id     = redis.cacheMessage(topicName, message, timestamp, ttl);
+    auto id     = redis.cacheMessage(topicName, message, accessController.subject(), timestamp, ttl);
 
     if (id.length() == 0) {
-      msg << "Failed to cache message to Redis, discarding.";
+      msg << "Failed to cache message in Redis, discarding.";
       _sendInvalidParamsError(ctx, req, msg.str());
       return;
     }
 
-    redis.publishMessage(topicName, id, message);
+    redis.publishMessage(topicName, id, message, accessController.subject());
     LOG->debug("{} - PUBLISH {}", ctx.connection()->getIP(), topicName);
 
     nlohmann::json result;

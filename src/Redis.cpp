@@ -9,6 +9,8 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <unordered_map>
+#include <stdexcept>
 
 #include "Common.hpp"
 #include "Config.hpp"
@@ -46,13 +48,17 @@ Redis::Redis(Config &cfg) : EventhubBase(cfg) {
 }
 
 // Publish a message.
-void Redis::publishMessage(const string topic, const string id, const string payload) {
+void Redis::publishMessage(const string topic, const string id, const string payload, const string sender) {
   std::lock_guard<std::mutex> lock(_publish_mtx);
   nlohmann::json j;
 
   j["topic"]   = topic;
   j["id"]      = id;
   j["message"] = payload;
+
+  if (!sender.empty()) {
+    j["sender"]  = sender;
+  }
 
   auto jsonData = j.dump();
   _redisInstance->publish(redis_prefix(topic), jsonData);
@@ -69,17 +75,8 @@ const std::string Redis::_getNextCacheId(long long timestamp) {
   return fmt::format("{}-{}", timestamp, id);
 }
 
-// Takes in a string in the form of <HSET-ID>-<ExpireAt> and returns
-// the id and expire time as a pair.
-const std::pair<std::string, int64_t> Redis::_parseIdAndExpireAt(const std::string& input) {
-  auto delimPos    = input.find(':');
-  auto id          = input.substr(0, delimPos);
-  auto expireAtStr = input.substr(delimPos + 1, std::string::npos);
-  return {id, std::stol(expireAtStr, nullptr, 10)};
-}
-
 // Add a message to the cache.
-const std::string Redis::cacheMessage(const string topic, const string payload, long long timestamp, unsigned int ttl) {
+const std::string Redis::cacheMessage(const string topic, const string payload, const string sender, long long timestamp, unsigned int ttl) {
   if (timestamp == 0) {
     timestamp = Util::getTimeSinceEpoch();
   }
@@ -96,7 +93,7 @@ const std::string Redis::cacheMessage(const string topic, const string payload, 
   }
 
   auto expireAt = Util::getTimeSinceEpoch() + (ttl * 1000);
-  auto zKey     = fmt::format("{}:{}", cacheId, expireAt);
+  auto zKey     = CacheItemMeta{cacheId, sender, expireAt}.toStr();
 
   _redisInstance->hset(REDIS_CACHE_DATA_PATH(topic), cacheId, payload);
   _redisInstance->zadd(REDIS_CACHE_SCORE_PATH(topic), zKey, timestamp);
@@ -145,11 +142,18 @@ size_t Redis::getCacheSince(const string topicPattern, long long since, long lon
 
     // Only look up keys that is not expired.
     std::vector<std::string> cacheKeys;
+    std::unordered_map<std::string, std::string> senderIdMap;
 
     for (auto zKey : zcacheKeys) {
-      auto p = _parseIdAndExpireAt(zKey);
-      if (p.second >= now) {
-        cacheKeys.push_back(p.first);
+      try {
+        auto p = CacheItemMeta{zKey};
+
+        if (p.expireAt() >= now) {
+          cacheKeys.push_back(p.id());
+          senderIdMap[p.id()] = p.sender();
+        }
+      } catch (...) {
+        continue;
       }
     }
 
@@ -180,6 +184,11 @@ size_t Redis::getCacheSince(const string topicPattern, long long since, long lon
       j["id"]      = cacheKeys[i];
       j["topic"]   = topic;
       j["message"] = cacheItems[i].value();
+
+      if (!senderIdMap[cacheKeys[i]].empty()) {
+        j["sender"]  = senderIdMap[cacheKeys[i]];
+      }
+
       result.push_back(j);
     }
   }
@@ -291,10 +300,14 @@ size_t Redis::purgeExpiredCacheItems() {
 
     if (!cacheKeys.empty()) {
       for (auto key : cacheKeys) {
-        auto p = _parseIdAndExpireAt(key);
+        try {
+          auto p = CacheItemMeta{key};
 
-        if (p.second < now) {
-          expiredItems.push_back({topic, key});
+          if (p.expireAt()< now) {
+            expiredItems.push_back({topic, key});
+          }
+        } catch(...) {
+          continue;
         }
       }
     } else {
@@ -307,10 +320,10 @@ size_t Redis::purgeExpiredCacheItems() {
   for (auto exp : expiredItems) {
     auto topic = exp.first;
     auto key   = exp.second;
-    auto p     = _parseIdAndExpireAt(key);
+    auto p     = CacheItemMeta{key};
 
     _redisInstance->zrem(REDIS_CACHE_SCORE_PATH(topic), key);
-    _redisInstance->hdel(REDIS_CACHE_DATA_PATH(topic), p.first);
+    _redisInstance->hdel(REDIS_CACHE_DATA_PATH(topic), p.id());
   }
 
   return expiredItems.size();
@@ -375,6 +388,39 @@ std::vector<std::string> Redis::_getTopicsSeen(const string& topicPattern) {
   }
 
   return matchingTopics;
+}
+
+CacheItemMeta::CacheItemMeta(const std::string& id, const std::string& sender, long expireAt) :
+  _id(id), _sender(sender), _expireAt(expireAt) {}
+
+CacheItemMeta::CacheItemMeta(const std::string& metaStr) {
+  std::string expireAtStr;
+  unsigned int j = 0;
+
+  for (unsigned int i = 0; i < metaStr.length(); i++) {
+    if (metaStr[i] == ':') {
+      j++;
+      continue;
+    }
+
+    if (j == 0) _id += metaStr[i];
+    else if (j == 1) expireAtStr += metaStr[i];
+    else if (j == 2) _sender += metaStr[i];
+  }
+
+  if (j < 1) {
+    throw std::runtime_error("Invalid CacheItemMetaStr '" + metaStr + "'");
+  }
+
+  _expireAt = std::stol(expireAtStr, nullptr, 10);
+}
+
+const std::string CacheItemMeta::toStr() {
+  if (_sender.empty()) {
+    return fmt::format("{}:{}", _id, _expireAt);
+  }
+
+  return fmt::format("{}:{}:{}", _id, _expireAt, _sender);
 }
 
 } // namespace eventhub
