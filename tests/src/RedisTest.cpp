@@ -147,6 +147,22 @@ TEST_CASE("Test redis", "[Redis") {
     }
   }
 
+  GIVEN("That we create a new CacheItemMeta{1000-1, 10000, petter@testmann.no}") {
+    auto item = CacheItemMeta{"1000-1", 10000, "petter@testmann.no"};
+
+    THEN("toStr should return 1000-1:10000:petter@testmann.no") {
+      REQUIRE(item.toStr() == "1000-1:10000:petter@testmann.no");
+    }
+  }
+
+  GIVEN("That we create a new CacheItemMeta{1000-1, 10000, ""}") {
+    auto item = CacheItemMeta{"1000-1", 10000, ""};
+
+    THEN("toStr should return 1000-1:10000") {
+      REQUIRE(item.toStr() == "1000-1:10000");
+    }
+  }
+
   GIVEN("That we want to get cached elements since a given message id") {
     nlohmann::json res;
     std::vector<std::string> cacheIds;

@@ -24,7 +24,7 @@ using RedisMsgCallback = std::function<void(std::string pattern,
 
 class CacheItemMeta {
 public:
-  explicit CacheItemMeta(const std::string& id, const std::string& origin, long expireAt);
+  explicit CacheItemMeta(const std::string& id, long expireAt, const std::string& origin);
 
   explicit CacheItemMeta(const std::string& metaStr);
 
@@ -37,8 +37,8 @@ public:
 
 private:
   std::string _id;
-  std::string _origin;
   long int _expireAt = 0;
+  std::string _origin;
 };
 
 class Redis final : public EventhubBase {

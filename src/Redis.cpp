@@ -93,7 +93,7 @@ const std::string Redis::cacheMessage(const string topic, const string payload, 
   }
 
   auto expireAt = Util::getTimeSinceEpoch() + (ttl * 1000);
-  auto zKey     = CacheItemMeta{cacheId, origin, expireAt}.toStr();
+  auto zKey     = CacheItemMeta{cacheId, expireAt, origin}.toStr();
 
   _redisInstance->hset(REDIS_CACHE_DATA_PATH(topic), cacheId, payload);
   _redisInstance->zadd(REDIS_CACHE_SCORE_PATH(topic), zKey, timestamp);
@@ -390,8 +390,8 @@ std::vector<std::string> Redis::_getTopicsSeen(const string& topicPattern) {
   return matchingTopics;
 }
 
-CacheItemMeta::CacheItemMeta(const std::string& id, const std::string& origin, long expireAt) :
-  _id(id), _origin(origin), _expireAt(expireAt) {}
+CacheItemMeta::CacheItemMeta(const std::string& id, long expireAt, const std::string& origin) :
+  _id(id), _expireAt(expireAt), _origin(origin) {}
 
 CacheItemMeta::CacheItemMeta(const std::string& metaStr) {
   std::string expireAtStr;
