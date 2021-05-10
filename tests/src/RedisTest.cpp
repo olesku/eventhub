@@ -111,8 +111,8 @@ TEST_CASE("Test redis", "[Redis") {
 
     auto t = std::async(std::launch::async, [&redis]() {
       std::this_thread::sleep_for(std::chrono::milliseconds(500));
-      redis.publishMessage("test/topic1", "31337", "test@user.com", "Test");
-      redis.publishMessage("test/topic2", "31337", "test@user.com", "{}");
+      redis.publishMessage("test/topic1", "31337", "Test", "test@user.com");
+      redis.publishMessage("test/topic2", "31337", "Test", "test@user.com");
       return true;
     });
 
