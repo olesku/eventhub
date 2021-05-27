@@ -64,7 +64,8 @@ This token wil allow subscription to all channels under ```topic1``` and ```topi
 Eventhub does not have a interface or API to generate these tokens for you yet. So you have to generate them in your backend or through a JWT token generator like [jwt.io](https://jwt.io/).
 
 # Clients
-* [Javascript (Browser/Node.js)](https://github.com/olesku/eventhub-jsclient)
+* [JavaScript (Browser/Node.js)](https://github.com/olesku/eventhub-jsclient)
+* [Swift (iOS 13+)](https://github.com/shtrihstr/EventHub)
 
 #### Implementing your own client
 Protocol specification for Eventhub is documented [here](./docs/protocol.md).
