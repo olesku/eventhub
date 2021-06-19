@@ -53,7 +53,7 @@ private:
 
   void _initSSLContext();
   void _loadSSLCertificates();
-  void _checkSSLCertChanged();
+  void _checkSSLCertUpdated();
 };
 
 } // namespace eventhub

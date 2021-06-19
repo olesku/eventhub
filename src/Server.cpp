@@ -168,9 +168,10 @@ void Server::start() {
       },
       true);
 
-  if (isSSL()) {
-    _ev.addTimer(10000, [&](TimerCtx* ctx) {
-      _checkSSLCertChanged();
+  // Monitor ssl certificate and key for changes on disk and reload if updated.
+  if (isSSL() && config().get<bool>("ssl_cert_auto_reload")) {
+    _ev.addTimer(1000 * config().get<int>("ssl_cert_check_interval"), [&](TimerCtx* ctx) {
+      _checkSSLCertUpdated();
     }, true);
   }
 
@@ -283,7 +284,7 @@ void Server::_loadSSLCertificates() {
   _ssl_priv_key_md5_hash = Util::getFileMD5Sum(key);
 }
 
-void Server::_checkSSLCertChanged() {
+void Server::_checkSSLCertUpdated() {
   assert(isSSL());
 
   try {

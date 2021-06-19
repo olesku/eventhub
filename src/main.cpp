@@ -109,7 +109,10 @@ int main(int argc, char** argv) {
       { "enable_ssl",               ConfigValueType::BOOL,   "false",     ConfigValueSettings::REQUIRED },
       { "ssl_ca_certificate",       ConfigValueType::STRING, "",          ConfigValueSettings::OPTIONAL },
       { "ssl_certificate",          ConfigValueType::STRING, "",          ConfigValueSettings::OPTIONAL },
-      { "ssl_private_key",          ConfigValueType::STRING, "",          ConfigValueSettings::OPTIONAL }
+      { "ssl_private_key",          ConfigValueType::STRING, "",          ConfigValueSettings::OPTIONAL },
+      { "ssl_cert_auto_reload",     ConfigValueType::BOOL,   "false",     ConfigValueSettings::OPTIONAL },
+      { "ssl_cert_check_interval",  ConfigValueType::INT,    "300",       ConfigValueSettings::OPTIONAL }
+
     };
 
   Config cfg(cfgMap);
