@@ -168,6 +168,12 @@ void Server::start() {
       },
       true);
 
+  if (isSSL()) {
+    _ev.addTimer(10000, [&](TimerCtx* ctx) {
+      _checkSSLCertChanged();
+    }, true);
+  }
+
   bool reconnect = false;
   while (!stopEventhub) {
     try {
@@ -271,6 +277,30 @@ void Server::_loadSSLCertificates() {
     LOG->error("Error validating private key: {}", Util::getSSLErrorString(ERR_get_error()));
     stop();
     exit(EXIT_FAILURE);
+  }
+
+  _ssl_cert_md5_hash = Util::getFileMD5Sum(cert);
+  _ssl_priv_key_md5_hash = Util::getFileMD5Sum(key);
+}
+
+void Server::_checkSSLCertChanged() {
+  assert(isSSL());
+
+  try {
+    const string ssl_cert_md5_hash = Util::getFileMD5Sum(config().get<std::string>("ssl_certificate"));
+    const string ssl_priv_key_md5_hash = Util::getFileMD5Sum(config().get<std::string>("ssl_private_key"));
+
+    LOG->info("Checking certs: " + ssl_cert_md5_hash + " vs " + _ssl_cert_md5_hash);
+
+
+    if (ssl_cert_md5_hash != _ssl_cert_md5_hash || ssl_priv_key_md5_hash != _ssl_priv_key_md5_hash) {
+      LOG->info("SSL certificate or key updated on disk. Reloading.");
+      // TODO: Validate certificate and key prior to calling _loadSSLCertificates().
+       _loadSSLCertificates();
+    }
+  } catch(...) {
+    // getFileMD5Sum throws a runtime_error if file has been deleted.
+    // TODO: We might want to handle this case, for now return no change.
   }
 }
 

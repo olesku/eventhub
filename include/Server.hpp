@@ -42,6 +42,8 @@ private:
   int _server_socket;
   bool _ssl_enabled;
   SSL_CTX* _ssl_ctx;
+  std::string _ssl_cert_md5_hash;
+  std:: string _ssl_priv_key_md5_hash;
   WorkerGroup<Worker> _connection_workers;
   WorkerGroup<Worker>::iterator _cur_worker;
   std::mutex _connection_workers_lock;
@@ -51,6 +53,7 @@ private:
 
   void _initSSLContext();
   void _loadSSLCertificates();
+  void _checkSSLCertChanged();
 };
 
 } // namespace eventhub

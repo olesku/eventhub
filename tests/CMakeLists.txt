@@ -7,6 +7,7 @@ set(SOURCES
   src/EventLoopTest.cpp
   src/RedisTest.cpp
   src/AccessControllerTest.cpp
+  src/UtilTest.cpp
   src/main.cpp
 )
 
