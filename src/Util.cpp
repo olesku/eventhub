@@ -116,7 +116,7 @@ std::string Util::getFileMD5Sum(const std::string& filePath) {
   close(fd);
 
   auto mdLen = BIO_gets(bio, buf, sizeof(buf));
-  for (unsigned int i = 0; i < mdLen; i++) {
+  for (int i = 0; i < mdLen; i++) {
     char hex[3];
     sprintf(hex, "%02x", buf[i] & 0xFF);
     out << hex;

@@ -290,14 +290,44 @@ void Server::_checkSSLCertUpdated() {
   try {
     const string ssl_cert_md5_hash = Util::getFileMD5Sum(config().get<std::string>("ssl_certificate"));
     const string ssl_priv_key_md5_hash = Util::getFileMD5Sum(config().get<std::string>("ssl_private_key"));
+    bool reload = false;
 
-    LOG->info("Checking certs: " + ssl_cert_md5_hash + " vs " + _ssl_cert_md5_hash);
+    if (ssl_cert_md5_hash != _ssl_cert_md5_hash) {
+      LOG->info("Certificate file " + config().get<std::string>("ssl_certificate") + " change detected.");
 
+      auto fp = fopen(config().get<std::string>("ssl_certificate").c_str(), "r");
+      if (fp) {
+        PEM_read_X509(fp, NULL, NULL, NULL);
+        auto err = ERR_get_error();
 
-    if (ssl_cert_md5_hash != _ssl_cert_md5_hash || ssl_priv_key_md5_hash != _ssl_priv_key_md5_hash) {
-      LOG->info("SSL certificate or key updated on disk. Reloading.");
-      // TODO: Validate certificate and key prior to calling _loadSSLCertificates().
-       _loadSSLCertificates();
+        if (err != 0) {
+          LOG->info("Failed to validate certificate: " + Util::getSSLErrorString(err));
+        } else {
+          reload = true;
+        }
+        fclose(fp);
+      }
+    }
+
+    if (ssl_priv_key_md5_hash != _ssl_priv_key_md5_hash) {
+      LOG->info("TLS key file " + config().get<std::string>("ssl_private_key") + " change detected.");
+      auto fp = fopen(config().get<std::string>("ssl_private_key").c_str(), "r");
+      if (fp) {
+        PEM_read_PrivateKey(fp, NULL, NULL, NULL);
+        auto err = ERR_get_error();
+
+        if (err != 0) {
+          LOG->info("Failed to validate private key: " + Util::getSSLErrorString(err));
+        } else {
+          reload = true;
+        }
+        fclose(fp);
+      }
+    }
+
+    if (reload) {
+      LOG->info("Reloading SSL certificate and private key.");
+      _loadSSLCertificates();
     }
   } catch(...) {
     // getFileMD5Sum throws a runtime_error if file has been deleted.

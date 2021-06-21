@@ -9,7 +9,7 @@ RUN apk update && \
 
 RUN mkdir -p /usr/src/redis-plus-plus && cd /usr/src/redis-plus-plus && \
     git clone https://github.com/sewenew/redis-plus-plus.git . && \
-    git checkout tags/1.1.2 && \
+    git checkout tags/1.1.1 && \
     mkdir compile && cd compile && cmake -GNinja -DCMAKE_BUILD_TYPE=Release .. && \
     ninja -j0 && ninja install
 
