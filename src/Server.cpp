@@ -293,7 +293,7 @@ void Server::_checkSSLCertUpdated() {
     bool reload = false;
 
     if (ssl_cert_md5_hash != _ssl_cert_md5_hash) {
-      LOG->info("Certificate file " + config().get<std::string>("ssl_certificate") + " change detected.");
+      LOG->info("Change to certificate file " + config().get<std::string>("ssl_certificate") + " detected.");
 
       auto fp = fopen(config().get<std::string>("ssl_certificate").c_str(), "r");
       if (fp) {
@@ -310,7 +310,7 @@ void Server::_checkSSLCertUpdated() {
     }
 
     if (ssl_priv_key_md5_hash != _ssl_priv_key_md5_hash) {
-      LOG->info("TLS key file " + config().get<std::string>("ssl_private_key") + " change detected.");
+      LOG->info("Change to private key file " + config().get<std::string>("ssl_private_key") + " detected.");
       auto fp = fopen(config().get<std::string>("ssl_private_key").c_str(), "r");
       if (fp) {
         PEM_read_PrivateKey(fp, NULL, NULL, NULL);
