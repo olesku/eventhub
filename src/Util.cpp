@@ -5,11 +5,16 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include <algorithm>
 #include <chrono>
 #include <sstream>
 #include <string>
+#include <stdexcept>
 
 #include "Common.hpp"
 
@@ -81,5 +86,44 @@ std::string Util::getSSLErrorString(unsigned long e) {
   ERR_error_string_n(e, buf, 512);
   ERR_clear_error();
   return buf;
+}
+
+std::string Util::getFileMD5Sum(const std::string& filePath) {
+  char buf[EVP_MAX_MD_SIZE] = { '\0' };
+  std::stringstream out;
+
+  auto bio = BIO_new(BIO_s_null());
+  auto sha1 = BIO_new(BIO_f_md());
+  BIO_set_md(sha1, EVP_md5());
+  bio = BIO_push(sha1, bio);
+
+  auto fd = open(filePath.c_str(), O_RDONLY);
+  if (!fd) {
+    throw new std::runtime_error("getFileMD5Sum: no such file");
+  }
+
+  int rdLen = 0;
+
+  for(;;) {
+    rdLen = read(fd, &buf, sizeof(buf));
+
+    if (rdLen > 0)
+      BIO_write(bio, buf, rdLen);
+    else
+      break;
+  }
+
+  close(fd);
+
+  auto mdLen = BIO_gets(bio, buf, sizeof(buf));
+  for (int i = 0; i < mdLen; i++) {
+    char hex[3];
+    sprintf(hex, "%02x", buf[i] & 0xFF);
+    out << hex;
+  }
+
+  BIO_free_all(bio);
+
+  return out.str();
 }
 } // namespace eventhub

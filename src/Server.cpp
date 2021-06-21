@@ -168,6 +168,13 @@ void Server::start() {
       },
       true);
 
+  // Monitor ssl certificate and key for changes on disk and reload if updated.
+  if (isSSL() && config().get<bool>("ssl_cert_auto_reload")) {
+    _ev.addTimer(1000 * config().get<int>("ssl_cert_check_interval"), [&](TimerCtx* ctx) {
+      _checkSSLCertUpdated();
+    }, true);
+  }
+
   bool reconnect = false;
   while (!stopEventhub) {
     try {
@@ -271,6 +278,60 @@ void Server::_loadSSLCertificates() {
     LOG->error("Error validating private key: {}", Util::getSSLErrorString(ERR_get_error()));
     stop();
     exit(EXIT_FAILURE);
+  }
+
+  _ssl_cert_md5_hash = Util::getFileMD5Sum(cert);
+  _ssl_priv_key_md5_hash = Util::getFileMD5Sum(key);
+}
+
+void Server::_checkSSLCertUpdated() {
+  assert(isSSL());
+
+  try {
+    const string ssl_cert_md5_hash = Util::getFileMD5Sum(config().get<std::string>("ssl_certificate"));
+    const string ssl_priv_key_md5_hash = Util::getFileMD5Sum(config().get<std::string>("ssl_private_key"));
+    bool reload = false;
+
+    if (ssl_cert_md5_hash != _ssl_cert_md5_hash) {
+      LOG->info("Change to certificate file " + config().get<std::string>("ssl_certificate") + " detected.");
+
+      auto fp = fopen(config().get<std::string>("ssl_certificate").c_str(), "r");
+      if (fp) {
+        PEM_read_X509(fp, NULL, NULL, NULL);
+        auto err = ERR_get_error();
+
+        if (err != 0) {
+          LOG->info("Failed to validate certificate: " + Util::getSSLErrorString(err));
+        } else {
+          reload = true;
+        }
+        fclose(fp);
+      }
+    }
+
+    if (ssl_priv_key_md5_hash != _ssl_priv_key_md5_hash) {
+      LOG->info("Change to private key file " + config().get<std::string>("ssl_private_key") + " detected.");
+      auto fp = fopen(config().get<std::string>("ssl_private_key").c_str(), "r");
+      if (fp) {
+        PEM_read_PrivateKey(fp, NULL, NULL, NULL);
+        auto err = ERR_get_error();
+
+        if (err != 0) {
+          LOG->info("Failed to validate private key: " + Util::getSSLErrorString(err));
+        } else {
+          reload = true;
+        }
+        fclose(fp);
+      }
+    }
+
+    if (reload) {
+      LOG->info("Reloading SSL certificate and private key.");
+      _loadSSLCertificates();
+    }
+  } catch(...) {
+    // getFileMD5Sum throws a runtime_error if file has been deleted.
+    // TODO: We might want to handle this case, for now return no change.
   }
 }
 
