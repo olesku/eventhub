@@ -26,6 +26,7 @@ public:
   void reload();
   Config& config() { return _config; }
   const int getServerSocket();
+  int getServerSocketSSL() { return _server_socket_ssl; };
   Worker* getWorker();
   void publish(const std::string topicName, const std::string data);
   inline Redis& getRedis() { return _redis; }
@@ -40,6 +41,7 @@ public:
 private:
   Config& _config;
   int _server_socket;
+  int _server_socket_ssl;
   bool _ssl_enabled;
   SSL_CTX* _ssl_ctx;
   std::string _ssl_cert_md5_hash;

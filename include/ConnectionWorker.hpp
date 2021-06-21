@@ -46,8 +46,8 @@ private:
   metrics::WorkerMetrics _metrics;
   int64_t _ev_delay_sample_start;
 
-  void _acceptConnection();
-  ConnectionPtr _addConnection(int fd, struct sockaddr_in* csin);
+  void _acceptConnection(bool ssl);
+  ConnectionPtr _addConnection(int fd, struct sockaddr_in* csin, bool ssl);
   void _removeConnection(ConnectionPtr conn);
   void _read(ConnectionPtr conn);
 

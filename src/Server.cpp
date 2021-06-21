@@ -33,7 +33,7 @@ unsigned const char alpn_protocol[] = "http/1.1";
 unsigned int alpn_protocol_length   = 8;
 
 Server::Server(Config& cfg)
-    : _config(cfg), _server_socket(-1), _ssl_enabled(false), _ssl_ctx(nullptr), _redis(cfg) {
+    : _config(cfg), _server_socket(-1), _server_socket_ssl(-1), _ssl_enabled(false), _ssl_ctx(nullptr), _redis(cfg) {
 
 }
 
@@ -84,8 +84,40 @@ void Server::start() {
     LOG->warn("WARNING: Server is running with disable_auth=true. Everything is allowed by any client.");
   }
 
-  // Set up SSL context.
   if (config().get<bool>("enable_ssl")) {
+      // Set up SSL context.
+    _server_socket_ssl = socket(AF_INET, SOCK_STREAM, 0);
+    if (_server_socket == -1) {
+      LOG->critical("Could not create server socket: {}.", strerror(errno));
+      exit(1);
+    }
+
+    // Reuse port and address.
+    int on = 1;
+    setsockopt(_server_socket_ssl, SOL_SOCKET, SO_REUSEADDR, (const char*)&on, sizeof(on));
+
+    // Bind socket.
+    struct sockaddr_in ssl_sin;
+    memset(reinterpret_cast<char*>(&ssl_sin), '\0', sizeof(ssl_sin));
+    ssl_sin.sin_family = AF_INET;
+    ssl_sin.sin_port   = htons(config().get<int>("ssl_listen_port"));
+
+    if (::bind(_server_socket_ssl, (struct sockaddr*)&ssl_sin, sizeof(ssl_sin)) == -1) {
+      LOG->critical("Could not bind server socket to port {}: {}.", config().get<int>("ssl_listen_port"), strerror(errno));
+      exit(1);
+    }
+
+    if (listen(_server_socket_ssl, 0) == -1) {
+      LOG->critical("Could not listen on server socket: {}", strerror(errno));
+      exit(1);
+    }
+
+    if (fcntl(_server_socket_ssl, F_SETFL, O_NONBLOCK) == -1) {
+      LOG->critical("Failed set nonblock mode on server socket: {}.", strerror(errno));
+      exit(1);
+    }
+
+    LOG->info("Listening for SSL connections on port {}.", config().get<int>("ssl_listen_port"));
     _initSSLContext();
   }
 
@@ -353,6 +385,10 @@ void Server::publish(const string topicName, const string data) {
 
 void Server::stop() {
   close(_server_socket);
+
+  if (isSSL())
+    close(_server_socket_ssl);
+
   _connection_workers.killAndDeleteAll();
   if (_ssl_enabled && _ssl_ctx != nullptr) {
     SSL_CTX_free(_ssl_ctx);

@@ -107,6 +107,7 @@ int main(int argc, char** argv) {
       { "handshake_timeout",        ConfigValueType::INT,    "5",         ConfigValueSettings::REQUIRED },
       { "enable_sse",               ConfigValueType::BOOL,   "false",     ConfigValueSettings::REQUIRED },
       { "enable_ssl",               ConfigValueType::BOOL,   "false",     ConfigValueSettings::REQUIRED },
+      { "ssl_listen_port",          ConfigValueType::INT,    "8443",      ConfigValueSettings::REQUIRED },
       { "ssl_ca_certificate",       ConfigValueType::STRING, "",          ConfigValueSettings::OPTIONAL },
       { "ssl_certificate",          ConfigValueType::STRING, "",          ConfigValueSettings::OPTIONAL },
       { "ssl_private_key",          ConfigValueType::STRING, "",          ConfigValueSettings::OPTIONAL },
