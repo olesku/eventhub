@@ -77,7 +77,7 @@ public:
 
   void shutdownAfterFlush();
   void shutdown();
-  inline bool isShutdown() { return _is_shutdown; }
+  bool isShutdown() { return _is_shutdown; }
 
 protected:
   int _fd;

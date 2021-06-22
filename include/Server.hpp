@@ -25,14 +25,15 @@ public:
   void stop();
   void reload();
   Config& config() { return _config; }
-  const int getServerSocket();
-  int getServerSocketSSL() { return _server_socket_ssl; };
+  int getServerSocket() { return _server_socket; };
   Worker* getWorker();
   void publish(const std::string topicName, const std::string data);
-  inline Redis& getRedis() { return _redis; }
+  Redis& getRedis() { return _redis; }
   metrics::AggregatedMetrics getAggregatedMetrics();
-  inline bool isSSL() { return _ssl_enabled; }
-  inline SSL_CTX* getSSLContext() {
+
+  int getSSLServerSocket() { return _server_socket_ssl; };
+  bool isSSL() { return _ssl_enabled; }
+  SSL_CTX* getSSLContext() {
     assert(isSSL());
     assert(_ssl_ctx != nullptr);
     return _ssl_ctx;
@@ -53,7 +54,10 @@ private:
   metrics::ServerMetrics _metrics;
   EventLoop _ev;
 
-  void _initSSLContext();
+  void _listenerInit();
+
+  void _sslListenerInit();
+  void _initSSL();
   void _loadSSLCertificates();
   void _checkSSLCertUpdated();
 };

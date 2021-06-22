@@ -37,7 +37,7 @@ const std::string PrometheusRenderer::RenderMetrics(Server* server) {
     // Add prefix to metric key if set in configuration.
     const std::string metricKey = !config.get<std::string>("prometheus_metric_prefix").empty() ? (config.get<std::string>("prometheus_metric_prefix") + "_" + m.first) : m.first;
 
-    ss << metricKey << "{instance=\"" << h_buf << ":" << config.get<int>("LISTEN_PORT") << "\""
+    ss << metricKey << "{instance=\"" << h_buf << ":" << config.get<int>("listen_port") << "\""
        << "} " << m.second << "\n";
   }
 

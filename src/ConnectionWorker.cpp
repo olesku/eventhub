@@ -74,7 +74,7 @@ void Worker::_acceptConnection(bool ssl) {
   clen     = sizeof(csin);
 
   if (ssl)
-    clientFd = accept(_server->getServerSocketSSL(), (struct sockaddr*)&csin, &clen);
+    clientFd = accept(_server->getSSLServerSocket(), (struct sockaddr*)&csin, &clen);
   else
     clientFd = accept(_server->getServerSocket(), (struct sockaddr*)&csin, &clen);
 
@@ -105,9 +105,13 @@ void Worker::_acceptConnection(bool ssl) {
  */
 ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin, bool ssl) {
   std::lock_guard<std::mutex> lock(_connection_list_mutex);
+  ConnectionListIterator connectionIterator;
 
-  auto connectionIterator = _connection_list.insert(_connection_list.end(),
-                                                    ssl ? make_shared<SSLConnection>(fd, csin, this, config(), _server->getSSLContext()) : make_shared<Connection>(fd, csin, this, config()));
+  if (ssl) {
+    connectionIterator = _connection_list.insert(_connection_list.end(), make_shared<SSLConnection>(fd, csin, this, config(), _server->getSSLContext()));
+  } else {
+    connectionIterator = _connection_list.insert(_connection_list.end(), make_shared<Connection>(fd, csin, this, config()));
+  }
 
   auto client = connectionIterator->get()->getSharedPtr();
 
@@ -240,9 +244,9 @@ void Worker::_workerMain() {
   // Add server listening socket to epoll.
   if (_server->isSSL()) {
     serverSocketEventSSL.events  = EPOLLIN | EPOLLEXCLUSIVE;
-    serverSocketEventSSL.data.fd = _server->getServerSocketSSL();
+    serverSocketEventSSL.data.fd = _server->getSSLServerSocket();
 
-    if (epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, _server->getServerSocketSSL(), &serverSocketEventSSL) == -1) {
+    if (epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, _server->getSSLServerSocket(), &serverSocketEventSSL) == -1) {
       LOG->critical("Failed to add SSL serversocket to epoll in AcceptWorker {}: {}", getWorkerId(), strerror(errno));
       exit(1);
     }
@@ -259,9 +263,10 @@ void Worker::_workerMain() {
 
     for (int i = 0; i < n; i++) {
       // Handle new connections.
-      if (eventConnectionList[i].data.fd == _server->getServerSocket() || eventConnectionList[i].data.fd == _server->getServerSocketSSL()) {
+      if (eventConnectionList[i].data.fd == _server->getServerSocket() || eventConnectionList[i].data.fd == _server->getSSLServerSocket()) {
         if (eventConnectionList[i].events & EPOLLIN) {
-          _acceptConnection(eventConnectionList[i].data.fd == _server->getServerSocketSSL());
+          bool isSSL = eventConnectionList[i].data.fd == _server->getSSLServerSocket();
+          _acceptConnection(isSSL);
         }
 
         continue;

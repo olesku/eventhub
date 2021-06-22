@@ -26,12 +26,12 @@ public:
     _next_timer_fire_time = std::chrono::milliseconds::zero();
   }
 
-  inline void process() {
+  void process() {
     processJobs();
     processTimers();
   }
 
-  inline void processJobs() {
+  void processJobs() {
     std::lock_guard<std::mutex> lock(_job_queue_lock);
 
     if (_job_queue.empty()) {
@@ -45,7 +45,7 @@ public:
     _job_queue.clear();
   }
 
-  inline void processTimers() {
+  void processTimers() {
     std::lock_guard<std::mutex> lock(_timer_queue_lock);
     const auto now = _now();
 
@@ -77,7 +77,7 @@ public:
     }
   }
 
-  inline void addTimer(int64_t delay, std::function<void(TimerCtx* ctx)> callback, bool repeat = false) {
+  void addTimer(int64_t delay, std::function<void(TimerCtx* ctx)> callback, bool repeat = false) {
     std::lock_guard<std::mutex> lock(_timer_queue_lock);
     const auto fireTime = _now() + std::chrono::milliseconds(delay);
     TimerCtx ctx{fireTime, std::chrono::milliseconds(delay), callback, repeat};
@@ -85,7 +85,7 @@ public:
     _timer_queue.push_back(ctx);
   }
 
-  inline const std::chrono::milliseconds getNextTimerDelay() {
+  const std::chrono::milliseconds getNextTimerDelay() {
     if (!_job_queue.empty()) {
       return std::chrono::milliseconds(0);
     }
@@ -94,12 +94,12 @@ public:
     return (delay < std::chrono::milliseconds(0) || delay == std::chrono::milliseconds::zero()) ? std::chrono::milliseconds(0) : delay;
   }
 
-  inline void addJob(std::function<void()> callback) {
+  void addJob(std::function<void()> callback) {
     std::lock_guard<std::mutex> lock(_job_queue_lock);
     _job_queue.push_back(callback);
   }
 
-  inline bool hasWork() {
+  bool hasWork() {
     return !_job_queue.empty() || !_timer_queue.empty();
   }
 

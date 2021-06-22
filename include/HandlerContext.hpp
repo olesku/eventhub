@@ -14,9 +14,9 @@ public:
 
   ~HandlerContext() {}
 
-  inline Server* server() { return _server; }
-  inline Worker* worker() { return _worker; }
-  inline std::shared_ptr<Connection> connection() { return _connection; }
+  Server* server() { return _server; }
+  Worker* worker() { return _worker; }
+  std::shared_ptr<Connection> connection() { return _connection; }
 
 private:
   Server* _server;

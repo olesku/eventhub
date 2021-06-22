@@ -58,7 +58,7 @@ public:
   size_t purgeExpiredCacheItems();
   void consume();
   void resetSubscribers();
-  inline sw::redis::Redis* getRedisInstance() { return _redisInstance.get(); }
+  sw::redis::Redis* getRedisInstance() { return _redisInstance.get(); }
 
   void _incrTopicPubCount(const string& topicName);
   vector<string> _getTopicsSeen(const string& topicPattern);
