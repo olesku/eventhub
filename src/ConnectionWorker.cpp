@@ -64,7 +64,7 @@ void Worker::addTimer(int64_t delay, std::function<void(TimerCtx* ctx)> callback
 /**
  * Accept a new connection on the server socket.
  */
-void Worker::_acceptConnection() {
+void Worker::_acceptConnection(bool ssl) {
   struct sockaddr_in csin;
   socklen_t clen;
   int clientFd;
@@ -72,7 +72,11 @@ void Worker::_acceptConnection() {
   // Accept the connection.
   memset(reinterpret_cast<char*>(&csin), '\0', sizeof(csin));
   clen     = sizeof(csin);
-  clientFd = accept(_server->getServerSocket(), (struct sockaddr*)&csin, &clen);
+
+  if (ssl)
+    clientFd = accept(_server->getSSLServerSocket(), (struct sockaddr*)&csin, &clen);
+  else
+    clientFd = accept(_server->getServerSocket(), (struct sockaddr*)&csin, &clen);
 
   if (clientFd == -1) {
     switch (errno) {
@@ -91,7 +95,7 @@ void Worker::_acceptConnection() {
     return;
   }
 
-  _server->getWorker()->_addConnection(clientFd, &csin);
+  _server->getWorker()->_addConnection(clientFd, &csin, ssl);
 }
 
 /**
@@ -99,11 +103,15 @@ void Worker::_acceptConnection() {
  * @param fd Filedescriptor of connection.
  * @param csin sockaddr_in for the connection.
  */
-ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin) {
+ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin, bool ssl) {
   std::lock_guard<std::mutex> lock(_connection_list_mutex);
+  ConnectionListIterator connectionIterator;
 
-  auto connectionIterator = _connection_list.insert(_connection_list.end(),
-                                                    _server->isSSL() ? make_shared<SSLConnection>(fd, csin, this, config(), _server->getSSLContext()) : make_shared<Connection>(fd, csin, this, config()));
+  if (ssl) {
+    connectionIterator = _connection_list.insert(_connection_list.end(), make_shared<SSLConnection>(fd, csin, this, config(), _server->getSSLContext()));
+  } else {
+    connectionIterator = _connection_list.insert(_connection_list.end(), make_shared<Connection>(fd, csin, this, config()));
+  }
 
   auto client = connectionIterator->get()->getSharedPtr();
 
@@ -200,6 +208,7 @@ void Worker::publish(const string& topicName, const string& data) {
 void Worker::_workerMain() {
   struct epoll_event eventConnectionList[MAXEVENTS];
   struct epoll_event serverSocketEvent;
+  struct epoll_event serverSocketEventSSL;
 
   LOG->debug("Worker {} started.", getWorkerId());
 
@@ -232,6 +241,17 @@ void Worker::_workerMain() {
     exit(1);
   }
 
+  // Add server listening socket to epoll.
+  if (_server->isSSL()) {
+    serverSocketEventSSL.events  = EPOLLIN | EPOLLEXCLUSIVE;
+    serverSocketEventSSL.data.fd = _server->getSSLServerSocket();
+
+    if (epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, _server->getSSLServerSocket(), &serverSocketEventSSL) == -1) {
+      LOG->critical("Failed to add SSL serversocket to epoll in AcceptWorker {}: {}", getWorkerId(), strerror(errno));
+      exit(1);
+    }
+  }
+
   while (!stopRequested()) {
     unsigned int timeout = EPOLL_MAX_TIMEOUT;
 
@@ -243,9 +263,10 @@ void Worker::_workerMain() {
 
     for (int i = 0; i < n; i++) {
       // Handle new connections.
-      if (eventConnectionList[i].data.fd == _server->getServerSocket()) {
+      if (eventConnectionList[i].data.fd == _server->getServerSocket() || eventConnectionList[i].data.fd == _server->getSSLServerSocket()) {
         if (eventConnectionList[i].events & EPOLLIN) {
-          _acceptConnection();
+          bool isSSL = eventConnectionList[i].data.fd == _server->getSSLServerSocket();
+          _acceptConnection(isSSL);
         }
 
         continue;

@@ -33,7 +33,7 @@ unsigned const char alpn_protocol[] = "http/1.1";
 unsigned int alpn_protocol_length   = 8;
 
 Server::Server(Config& cfg)
-    : _config(cfg), _server_socket(-1), _ssl_enabled(false), _ssl_ctx(nullptr), _redis(cfg) {
+    : _config(cfg), _server_socket(-1), _server_socket_ssl(-1), _ssl_enabled(false), _ssl_ctx(nullptr), _redis(cfg) {
 
 }
 
@@ -43,50 +43,24 @@ Server::~Server() {
 }
 
 void Server::start() {
+  if (config().get<bool>("disable_unsecure_listener") && !config().get<bool>("enable_ssl")) {
+    LOG->critical("disable_unsecure_listener=true enable_ssl=false. You need to enable at least one listener.");
+    exit(1);
+  }
+
   // Ignore SIGPIPE.
   signal(SIGPIPE, SIG_IGN);
 
-  // Set up listening socket.
-  _server_socket = socket(AF_INET, SOCK_STREAM, 0);
-  if (_server_socket == -1) {
-    LOG->critical("Could not create server socket: {}.", strerror(errno));
-    exit(1);
+  if (!config().get<bool>("disable_unsecure_listener")) {
+    _listenerInit();
   }
-
-  // Reuse port and address.
-  int on = 1;
-  setsockopt(_server_socket, SOL_SOCKET, SO_REUSEADDR, (const char*)&on, sizeof(on));
-
-  // Bind socket.
-  struct sockaddr_in sin;
-  memset(reinterpret_cast<char*>(&sin), '\0', sizeof(sin));
-  sin.sin_family = AF_INET;
-  sin.sin_port   = htons(config().get<int>("listen_port"));
-
-  if (::bind(_server_socket, (struct sockaddr*)&sin, sizeof(sin)) == -1) {
-    LOG->critical("Could not bind server socket to port {}: {}.", config().get<int>("listen_port"), strerror(errno));
-    exit(1);
-  }
-
-  if (listen(_server_socket, 0) == -1) {
-    LOG->critical("Could not listen on server socket: {}", strerror(errno));
-    exit(1);
-  }
-
-  if (fcntl(_server_socket, F_SETFL, O_NONBLOCK) == -1) {
-    LOG->critical("Failed set nonblock mode on server socket: {}.", strerror(errno));
-    exit(1);
-  }
-
-  LOG->info("Listening on port {}.", config().get<int>("listen_port"));
 
   if (config().get<bool>("disable_auth")) {
     LOG->warn("WARNING: Server is running with disable_auth=true. Everything is allowed by any client.");
   }
 
-  // Set up SSL context.
   if (config().get<bool>("enable_ssl")) {
-    _initSSLContext();
+    _initSSL();
   }
 
   // Start the connection workers.
@@ -225,7 +199,78 @@ int alpn_cb(SSL* ssl, const unsigned char** out, unsigned char* outlen,
   return SSL_TLSEXT_ERR_NOACK;
 }
 
-void Server::_initSSLContext() {
+void Server::_listenerInit() {
+  // Set up listening socket.
+  _server_socket = socket(AF_INET, SOCK_STREAM, 0);
+  if (_server_socket == -1) {
+    LOG->critical("Could not create server socket: {}.", strerror(errno));
+    exit(1);
+  }
+
+  // Reuse port and address.
+  int on = 1;
+  setsockopt(_server_socket, SOL_SOCKET, SO_REUSEADDR, (const char*)&on, sizeof(on));
+
+  // Bind socket.
+  struct sockaddr_in sin;
+  memset(reinterpret_cast<char*>(&sin), '\0', sizeof(sin));
+  sin.sin_family = AF_INET;
+  sin.sin_port   = htons(config().get<int>("listen_port"));
+
+  if (::bind(_server_socket, (struct sockaddr*)&sin, sizeof(sin)) == -1) {
+    LOG->critical("Could not bind server socket to port {}: {}.", config().get<int>("listen_port"), strerror(errno));
+    exit(1);
+  }
+
+  if (listen(_server_socket, 0) == -1) {
+    LOG->critical("Could not listen on server socket: {}", strerror(errno));
+    exit(1);
+  }
+
+  if (fcntl(_server_socket, F_SETFL, O_NONBLOCK) == -1) {
+    LOG->critical("Failed set nonblock mode on server socket: {}.", strerror(errno));
+    exit(1);
+  }
+
+  LOG->info("Listening on port {}.", config().get<int>("listen_port"));
+}
+
+void Server::_sslListenerInit() {
+  _server_socket_ssl = socket(AF_INET, SOCK_STREAM, 0);
+  if (_server_socket == -1) {
+    LOG->critical("Could not create server socket: {}.", strerror(errno));
+    exit(1);
+  }
+
+  int on = 1;
+  setsockopt(_server_socket_ssl, SOL_SOCKET, SO_REUSEADDR, (const char*)&on, sizeof(on));
+
+  struct sockaddr_in sin;
+  memset(reinterpret_cast<char*>(&sin), '\0', sizeof(sin));
+  sin.sin_family = AF_INET;
+  sin.sin_port   = htons(config().get<int>("ssl_listen_port"));
+
+  if (::bind(_server_socket_ssl, (struct sockaddr*)&sin, sizeof(sin)) == -1) {
+    LOG->critical("Could not bind server socket to port {}: {}.", config().get<int>("ssl_listen_port"), strerror(errno));
+    exit(1);
+  }
+
+  if (listen(_server_socket_ssl, 0) == -1) {
+    LOG->critical("Could not listen on server socket: {}", strerror(errno));
+    exit(1);
+  }
+
+  if (fcntl(_server_socket_ssl, F_SETFL, O_NONBLOCK) == -1) {
+    LOG->critical("Failed set nonblock mode on server socket: {}.", strerror(errno));
+    exit(1);
+  }
+
+  LOG->info("Listening for SSL connections on port {}.", config().get<int>("ssl_listen_port"));
+}
+
+void Server::_initSSL() {
+  _sslListenerInit();
+
   const SSL_METHOD* method = TLS_server_method();
   _ssl_ctx                 = SSL_CTX_new(method);
 
@@ -353,14 +398,14 @@ void Server::publish(const string topicName, const string data) {
 
 void Server::stop() {
   close(_server_socket);
+
+  if (isSSL())
+    close(_server_socket_ssl);
+
   _connection_workers.killAndDeleteAll();
   if (_ssl_enabled && _ssl_ctx != nullptr) {
     SSL_CTX_free(_ssl_ctx);
   }
-}
-
-const int Server::getServerSocket() {
-  return _server_socket;
 }
 
 metrics::AggregatedMetrics Server::getAggregatedMetrics() {

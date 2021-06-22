@@ -26,13 +26,13 @@ public:
   Worker(Server* srv, unsigned int workerId);
   ~Worker();
 
-  inline TopicManager& getTopicManager() { return _topic_manager; }
+  TopicManager& getTopicManager() { return _topic_manager; }
 
   void subscribeConnection(ConnectionPtr conn, const string& topicFilterName);
   void publish(const string& topicName, const string& data);
   void addTimer(int64_t delay, std::function<void(TimerCtx* ctx)> callback, bool repeat = false);
-  inline unsigned int getWorkerId() { return _workerId; }
-  inline int getEpollFileDescriptor() { return _epoll_fd; }
+  unsigned int getWorkerId() { return _workerId; }
+  int getEpollFileDescriptor() { return _epoll_fd; }
   const metrics::WorkerMetrics& getMetrics() { return _metrics; }
 
 private:
@@ -46,8 +46,8 @@ private:
   metrics::WorkerMetrics _metrics;
   int64_t _ev_delay_sample_start;
 
-  void _acceptConnection();
-  ConnectionPtr _addConnection(int fd, struct sockaddr_in* csin);
+  void _acceptConnection(bool ssl);
+  ConnectionPtr _addConnection(int fd, struct sockaddr_in* csin, bool ssl);
   void _removeConnection(ConnectionPtr conn);
   void _read(ConnectionPtr conn);
 
