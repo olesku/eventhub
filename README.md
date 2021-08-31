@@ -76,7 +76,7 @@ Protocol specification for Eventhub is documented [here](./docs/protocol.md).
 
 ## Configuration
 Configuration file is specified using the ```--config``` command-line flag.
-Example config file can be found [here](./example.conf).
+Example config file can be found [here](./eventhub.conf.example).
 
 All configuration options can also be set using [environment variables](https://en.wikipedia.org/wiki/Environment_variable). If an option is specified in both the config file and environment variable the value from the environment will take precedence.
 
