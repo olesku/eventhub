@@ -138,7 +138,7 @@ void SSLConnection::read() {
       shutdown();
       return;
     } else if (err == SSL_ERROR_SYSCALL) {
-      LOG->error("OpenSSL read error: {} for client {}", Util::getSSLErrorString(ERR_get_error()), getIP());
+      LOG->trace("OpenSSL read error: {} for client {}", Util::getSSLErrorString(ERR_get_error()), getIP());
       shutdown();
       return;
     }

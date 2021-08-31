@@ -22,7 +22,7 @@ Parser::Parser() {
   _bytes_read_prev = 0;
   _is_complete     = false;
   _error_message   = "";
-  _callback        = [](Parser* parser, RequestState state) {};
+  _callback        = {};
 }
 
 /**
