@@ -6,7 +6,7 @@
 
 namespace eventhub {
 
-class Util {
+class Util final {
 public:
   static const std::string base64Encode(const unsigned char* buffer, size_t length);
   static const std::string uriDecode(const std::string& str);

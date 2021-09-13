@@ -9,7 +9,7 @@
 namespace eventhub {
 namespace metrics {
 
-class JsonRenderer {
+class JsonRenderer final {
 public:
   static const std::string RenderMetrics(Server* server);
 };

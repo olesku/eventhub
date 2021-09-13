@@ -53,7 +53,7 @@ public:
   }
 };
 
-class SyntaxErrorException : public std::runtime_error {
+class SyntaxErrorException final : public std::runtime_error {
 public:
   SyntaxErrorException(std::string path, unsigned int lineNo) : runtime_error("Invalid syntax at " + path + ":" + std::to_string(lineNo)) {}
 };
@@ -63,7 +63,7 @@ public:
   RequiredOptionMissingException(const std::string optName) : runtime_error("Missing required option \"" + optName + "\"") {}
 };
 
-class ConfigOption {
+class ConfigOption final {
   friend class Config;
 
 public:
@@ -129,7 +129,7 @@ private:
   bool _hasValue;
 };
 
-class Config {
+class Config final {
 public:
   Config();
 

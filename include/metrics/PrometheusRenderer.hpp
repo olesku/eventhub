@@ -9,7 +9,7 @@
 namespace eventhub {
 namespace metrics {
 
-class PrometheusRenderer {
+class PrometheusRenderer final {
 public:
   static const std::string RenderMetrics(Server* server);
 };

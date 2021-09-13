@@ -16,7 +16,7 @@ using namespace std;
 
 namespace eventhub {
 
-class Server {
+class Server final {
 public:
   Server(Config& cfg);
   ~Server();

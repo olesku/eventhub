@@ -20,7 +20,7 @@ struct TimerCtx {
 using timer_queue_t = std::deque<TimerCtx>;
 using job_queue_t   = std::deque<std::function<void()>>;
 
-class EventLoop {
+class EventLoop final {
 public:
   EventLoop() {
     _next_timer_fire_time = std::chrono::milliseconds::zero();

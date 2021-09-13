@@ -10,7 +10,7 @@
 namespace eventhub {
 namespace websocket {
 
-class Parser {
+class Parser final {
 public:
   Parser();
   ~Parser() {}

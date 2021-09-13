@@ -15,7 +15,7 @@ namespace eventhub {
 using RPCMethod      = std::function<void(HandlerContext& hCtx, jsonrpcpp::request_ptr)>;
 using RPCHandlerList = std::vector<std::pair<std::string, RPCMethod>>;
 
-class RPCHandler {
+class RPCHandler final {
 public:
   static RPCMethod getHandler(const std::string& methodName);
 

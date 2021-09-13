@@ -15,7 +15,7 @@ namespace eventhub {
 
 using TopicList = std::unordered_map<std::string, TopicPtr>;
 
-class TopicManager {
+class TopicManager final {
 public:
   std::pair<TopicPtr, TopicSubscriberList::iterator> subscribeConnection(ConnectionPtr conn, const std::string& topicFilter, const jsonrpcpp::Id subscriptionRequestId);
   void publish(const std::string& topicName, const std::string& data);

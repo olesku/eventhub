@@ -14,7 +14,7 @@
 namespace eventhub {
 namespace sse {
 
-class Handler {
+class Handler final {
 public:
   static void HandleRequest(HandlerContext& ctx, http::Parser* req);
 

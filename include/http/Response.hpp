@@ -9,7 +9,7 @@ namespace http {
 
 typedef std::unordered_map<std::string, std::string> HeaderList_t;
 
-class Response {
+class Response final {
 public:
   explicit Response(int statusCode = 200, const std::string body = "");
   void setStatus(int status, std::string statusMsg);

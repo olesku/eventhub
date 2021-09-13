@@ -10,7 +10,7 @@
 namespace eventhub {
 namespace websocket {
 
-class Response {
+class Response final {
   public:
     static void sendData(ConnectionPtr conn, const std::string& data, FrameType frameType);
 

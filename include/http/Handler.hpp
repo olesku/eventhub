@@ -14,7 +14,7 @@
 namespace eventhub {
 namespace http {
 
-class Handler {
+class Handler final {
 public:
   static void HandleRequest(HandlerContext&& ctx, Parser* req, RequestState reqState);
 

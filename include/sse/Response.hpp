@@ -9,7 +9,7 @@
 namespace eventhub {
 namespace sse {
 
-class Response {
+class Response final {
   public:
     static void ok(ConnectionPtr conn);
     static void sendPing(ConnectionPtr conn);

@@ -14,7 +14,7 @@
 namespace eventhub {
 namespace websocket {
 
-class Handler {
+class Handler final {
 public:
   static void HandleRequest(HandlerContext&& ctx, websocket::ParserStatus parserStatus, websocket::FrameType frameType, const std::string& data);
 

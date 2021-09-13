@@ -22,7 +22,7 @@ using RedisMsgCallback = std::function<void(std::string pattern,
                                             std::string channel,
                                             std::string msg)>;
 
-class CacheItemMeta {
+class CacheItemMeta final {
 public:
   explicit CacheItemMeta(const std::string& id, long expireAt, const std::string& origin);
 

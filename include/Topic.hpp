@@ -15,7 +15,7 @@ namespace eventhub {
 using TopicPtr            = std::shared_ptr<class Topic>;
 using TopicSubscriberList = std::list<std::pair<ConnectionWeakPtr, jsonrpcpp::Id>>;
 
-class Topic {
+class Topic final {
 public:
   explicit Topic(const std::string& topicFilter) { _id = topicFilter; }
   ~Topic();

@@ -14,7 +14,7 @@
 
 namespace eventhub {
 
-class Logger {
+class Logger final {
 public:
   Logger() {
     _logger = spdlog::stdout_logger_mt("eventhub");

@@ -22,7 +22,7 @@ enum class RequestState {
 
 using ParserCallback = std::function<void(class Parser* req, RequestState state)>;
 
-class Parser {
+class Parser final {
 #define HTTP_BUFSIZ 8192
 #define HTTP_REQUEST_MAX_HEADERS 100
 
