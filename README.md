@@ -5,7 +5,7 @@
 [![Build Status](https://github.com/olesku/eventhub/workflows/Build/badge.svg)](https://travis-ci.com/olesku/eventhub)
 [![Docker Repository on Quay](https://quay.io/repository/olesku/eventhub/status "Docker Repository on Quay")](https://quay.io/repository/olesku/eventhub)
 
-Eventhub is a pub/sub over WebSocket server written in modern C++.
+Eventhub is a pub/sub over WebSocket server for Linux written in modern C++.
 It implements the [publish-subscribe pattern](https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern) and concept of topics.
 
 The key focus of the project is to deliver high performance, availability, and easy integration.
@@ -19,7 +19,7 @@ The key focus of the project is to deliver high performance, availability, and e
 # Concepts
 ## Topics
 
-A topic is a category or feed name to which messages are published. Each topic can have as many subscribers and publishers as you desire. Every published message on a topic will get a distinct ID and be distributed to all clients that are subscribed to the topic or a topic pattern that matches.
+A topic is a feed name to which messages are published. Each topic can have as many subscribers and publishers as you desire. Every published message on a topic will get a distinct ID and be distributed to all clients that are subscribed to the topic or a topic pattern that matches.
 
 A topic is segmented into paths and can contain a-Z, 0-9 and /.
 
@@ -30,7 +30,7 @@ A topic is segmented into paths and can contain a-Z, 0-9 and /.
 ## Topic patterns
 
 A client can be subscribed to a number of distinct topics, topic patterns, or both.
-A pattern is like a regex that matches multiple topics in a single subscription.
+A pattern is similar to a regular expression that matches multiple topics in a single subscription.
 
 *Note: Patterns is used for subscriptions only. You always have to publish to a distinct topic.*
 
