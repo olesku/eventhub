@@ -9,7 +9,7 @@ Eventhub uses [JSON-RPC](http://www.jsonrpc.org/) over WebSocket as transport pr
 | [unsubscribeall](#unsubscribeall)   | *None*            | Unsubscribe from all current subscriptions.
 | [list](#list)                       | *None*            | List all current subscriptions.
 | [ping](#ping)                       | *None*            | Ping the server.
-| [disconect](#disconnect)            | *None*            | Disconnect from the server.
+| [disconnect](#disconnect)            | *None*            | Disconnect from the server.
 
 **Important:** Each request must have a unique `id` attribute as specified by JSON-RPC. It can be a number or a string.
 
