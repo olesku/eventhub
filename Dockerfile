@@ -1,4 +1,4 @@
-FROM alpine:3.11
+FROM alpine:3.15
 
 RUN apk update && \
     apk add gcc g++ make cmake ninja git openssl-dev hiredis-dev git && \
