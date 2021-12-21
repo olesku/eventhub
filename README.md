@@ -108,13 +108,11 @@ All configuration options can also be set using [environment variables](https://
 ## Docker
 The easiest way is to use our docker image.
 
-```
-# Pull image
-docker pull quay.io/olesku/eventhub:latest
+To run locally with authentication disabled (for test), connecting to redis on
+`my-redis-server.local`:
 
-# Run locally with authentication disabled (for test).
-# Connect to redis on my-redis-server.local.
-docker run --rm -it -e disable_auth=1 -e redis_host=my-redis-server.local -p 8080:8080 quay.io/olesku/eventhub:latest
+```sh
+docker run --rm -e disable_auth=1 -e redis_host=my-redis-server.local -p 8080:8080 quay.io/olesku/eventhub:latest
 ```
 
 The repo also contains a [docker-compose](https://docs.docker.com/compose/) file which will run both redis and eventhub for you.
