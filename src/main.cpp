@@ -113,7 +113,7 @@ int main(int argc, char** argv) {
       { "ssl_private_key",           ConfigValueType::STRING, "",          ConfigValueSettings::OPTIONAL },
       { "ssl_cert_auto_reload",      ConfigValueType::BOOL,   "false",     ConfigValueSettings::OPTIONAL },
       { "ssl_cert_check_interval",   ConfigValueType::INT,    "300",       ConfigValueSettings::OPTIONAL },
-      { "disable_unsecure_listener", ConfigValueType::INT,    "300",       ConfigValueSettings::OPTIONAL }
+      { "disable_unsecure_listener", ConfigValueType::BOOL,   "false",     ConfigValueSettings::OPTIONAL }
     };
 
   Config cfg(cfgMap);
