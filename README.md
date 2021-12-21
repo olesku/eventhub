@@ -94,7 +94,7 @@ All configuration options can also be set using [environment variables](https://
 |ping_interval                | Websocket ping interval             | 30
 |handshake_timeout            | Client handshake timeout            | 15
 |disable_auth                 | Disable client authentication       | false
-|enable_sse                   | Enable Server-Sent-Events support   | false
+|[enable_sse](docs/sse.md)                   | Enable Server-Sent-Events support   | false
 |enable_cache                 | Enable retained cache for topics.   | true
 |prometheus_metric_prefix     | Prometheus prefix                   | eventhub
 |default_cache_ttl            | Default message TTL                 | 60
