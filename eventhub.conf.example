@@ -33,5 +33,5 @@ ssl_certificate             = /etc/eventhub/ssl/certificate.pem
 ssl_private_key             = /etc/eventhub/ssl/key.pem
 
 ssl_cert_auto_reload        = false
-ssl_cert_check_interval     = 10
+ssl_cert_check_interval     = 300
 disable_unsecure_listener   = false

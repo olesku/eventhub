@@ -80,30 +80,33 @@ Example config file can be found [here](./eventhub.conf.example).
 
 All configuration options can also be set using [environment variables](https://en.wikipedia.org/wiki/Environment_variable). If an option is specified in both the config file and environment variable the value from the environment will take precedence.
 
-|Option name                  |Description                          |Default value           |
-|-----------------------------|-------------------------------------|------------------------|
-|listen_port                  | Port to listen on                   | 8080
-|worker_threads               | Number of workers                   | 0 (number of cpu cores)
-|jwt_secret                   | JWT Token secret                    | eventhub_secret
-|redis_host                   | Redis host                          | 127.0.0.1
-|redis_port                   | Redis port                          | 6379
-|redis_password               | Redis password                      | None
-|redis_prefix                 | Prefix to use for all redis keys    | eventhub
-|redis_pool_size              | Number of Redis connections to use  | 5
-|max_cache_length             | Maximum records to store in eventlog| 1000 (0 means no limit)
-|ping_interval                | Websocket ping interval             | 30
-|handshake_timeout            | Client handshake timeout            | 15
-|disable_auth                 | Disable client authentication       | false
-|[enable_sse](docs/sse.md)                   | Enable Server-Sent-Events support   | false
-|enable_cache                 | Enable retained cache for topics.   | true
-|prometheus_metric_prefix     | Prometheus prefix                   | eventhub
-|default_cache_ttl            | Default message TTL                 | 60
-|max_cache_request_limit      | Default returned cache result limit | 1000
-|log_level                    | Log level to use                    | info
-|enable_ssl                   | Enable SSL                          | false
-|ssl_certificate              | Path to certificate for SSL         | None
-|ssl_private_key              | Path to private key for SSL         | None
-|ssl_ca_certificate           | Path to CA certificate              | None
+|Option name                  |Description                                    |Default value           |
+|-----------------------------|-----------------------------------------------|------------------------|
+|listen_port                  | Port to listen on                             | 8080
+|worker_threads               | Number of workers                             | 0 (number of cpu cores)
+|jwt_secret                   | JWT Token secret                              | eventhub_secret
+|redis_host                   | Redis host                                    | 127.0.0.1
+|redis_port                   | Redis port                                    | 6379
+|redis_password               | Redis password                                | None
+|redis_prefix                 | Prefix to use for all redis keys              | eventhub
+|redis_pool_size              | Number of Redis connections to use            | 5
+|max_cache_length             | Maximum records to store in eventlog          | 1000 (0 means no limit)
+|ping_interval                | Websocket ping interval                       | 30
+|handshake_timeout            | Client handshake timeout                      | 15
+|disable_auth                 | Disable client authentication                 | false
+|[enable_sse](docs/sse.md)    | Enable Server-Sent-Events support             | false
+|enable_cache                 | Enable retained cache for topics.             | true
+|prometheus_metric_prefix     | Prometheus prefix                             | eventhub
+|default_cache_ttl            | Default message TTL                           | 60
+|max_cache_request_limit      | Default returned cache result limit           | 1000
+|log_level                    | Log level to use                              | info
+|enable_ssl                   | Enable SSL                                    | false
+|ssl_certificate              | Path to certificate for SSL                   | None
+|ssl_private_key              | Path to private key for SSL                   | None
+|ssl_ca_certificate           | Path to CA certificate                        | None
+|ssl_cert_auto_reload         | Reload ssl cert when changed on disk          | false
+|ssl_cert_check_interval      | How often to check for cert changes           | 300
+|disable_unsecure_listener    | Disable unsecure listener when ssl is enabled | false
 
 ## Docker
 The easiest way is to use our docker image.
