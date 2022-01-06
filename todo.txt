@@ -1,4 +1,0 @@
-* Support history range requests.
-* Support deflate compression extension.
-* Implement pong timeouts.
-* UTF-8 validation.
