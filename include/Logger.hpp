@@ -22,7 +22,7 @@ public:
 
   ~Logger() {}
 
-  void setLevel(const std::string name) {
+  void setLevel(const std::string& name) {
     std::map<std::string, spdlog::level::level_enum> levels = {
         {"info", spdlog::level::info},
         {"trace", spdlog::level::trace},

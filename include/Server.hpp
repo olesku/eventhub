@@ -25,7 +25,7 @@ public:
   Config& config() { return _config; }
   int getServerSocket() { return _server_socket; };
   Worker* getWorker();
-  void publish(const std::string topicName, const std::string data);
+  void publish(const std::string& topicName, const std::string& data);
   Redis& getRedis() { return _redis; }
   metrics::AggregatedMetrics getAggregatedMetrics();
 

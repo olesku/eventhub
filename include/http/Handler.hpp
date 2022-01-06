@@ -24,7 +24,7 @@ private:
 
   static void _handlePath(HandlerContext& ctx, Parser* req);
   static bool _websocketHandshake(HandlerContext& ctx, Parser* req);
-  static void _badRequest(HandlerContext& ctx, const std::string reason, int statusCode = 400);
+  static void _badRequest(HandlerContext& ctx, const std::string& reason, int statusCode = 400);
   static void _setCorsHeaders(Parser* req, Response& resp);
 };
 

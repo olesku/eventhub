@@ -163,7 +163,7 @@ bool Handler::_websocketHandshake(HandlerContext& ctx, Parser* req) {
   return true;
 }
 
-void Handler::_badRequest(HandlerContext& ctx, const std::string reason, int statusCode) {
+void Handler::_badRequest(HandlerContext& ctx, const std::string& reason, int statusCode) {
   Response resp;
   std::stringstream body;
 

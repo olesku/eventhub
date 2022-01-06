@@ -97,7 +97,7 @@ void Server::start() {
   _metrics.worker_count          = numWorkerThreads;
   _metrics.server_start_unixtime = Util::getTimeSinceEpoch();
 
-  RedisMsgCallback cb = [&](std::string pattern, std::string topic, std::string msg) {
+  RedisMsgCallback cb = [&](const std::string& pattern, const std::string& topic, const std::string& msg) {
     // Calculate publish delay.
     if (topic == "$metrics$/system_unixtime") {
       try {
@@ -389,7 +389,7 @@ Worker* Server::getWorker() {
   return (_cur_worker++)->get();
 }
 
-void Server::publish(const std::string topicName, const std::string data) {
+void Server::publish(const std::string& topicName, const std::string& data) {
   std::lock_guard<std::mutex> lock(_connection_workers_lock);
   for (auto& worker : _connection_workers.getWorkerList()) {
     worker->publish(topicName, data);

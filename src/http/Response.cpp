@@ -10,13 +10,13 @@ namespace http {
 
 #define CRLF "\r\n"
 
-Response::Response(int statusCode, const std::string body) {
+Response::Response(int statusCode, const std::string& body) {
   _statusCode = statusCode;
   _statusMsg  = getStatusMsg(statusCode);
   _body       = body;
 }
 
-void Response::setStatus(int status, std::string statusMsg) {
+void Response::setStatus(int status, const std::string& statusMsg) {
   _statusCode = status;
   _statusMsg  = statusMsg;
 }

@@ -46,7 +46,7 @@ Redis::Redis(Config &cfg) : EventhubBase(cfg) {
 }
 
 // Publish a message.
-void Redis::publishMessage(const std::string topic, const std::string id, const std::string payload, const std::string origin) {
+void Redis::publishMessage(const std::string& topic, const std::string& id, const std::string& payload, const std::string& origin) {
   std::lock_guard<std::mutex> lock(_publish_mtx);
   nlohmann::json j;
 
@@ -74,7 +74,7 @@ const std::string Redis::_getNextCacheId(long long timestamp) {
 }
 
 // Add a message to the cache.
-const std::string Redis::cacheMessage(const std::string topic, const std::string payload, const std::string origin, long long timestamp, unsigned int ttl) {
+const std::string Redis::cacheMessage(const std::string& topic, const std::string& payload, const std::string& origin, long long timestamp, unsigned int ttl) {
   if (timestamp == 0) {
     timestamp = Util::getTimeSinceEpoch();
   }
@@ -104,7 +104,7 @@ const std::string Redis::cacheMessage(const std::string topic, const std::string
 // GetCache returns all matching cached messages for topics matching topicPattern
 // @param since List all messages since Unix timestamp or message ID
 // @param limit Limit resultset to at most @limit elements.
-size_t Redis::getCacheSince(const std::string topicPattern, long long since, long long limit, bool isPattern, nlohmann::json& result) {
+size_t Redis::getCacheSince(const std::string& topicPattern, long long since, long long limit, bool isPattern, nlohmann::json& result) {
   std::vector<std::string> topics;
   result = nlohmann::json::array();
 
@@ -194,7 +194,7 @@ size_t Redis::getCacheSince(const std::string topicPattern, long long since, lon
   return result.size();
 }
 
-std::pair<long long, long long> _splitIdAndSeq(const std::string cacheId) {
+std::pair<long long, long long> _splitIdAndSeq(const std::string& cacheId) {
   auto hyphenPos = cacheId.find_first_of('-');
   if (hyphenPos == std::string::npos || hyphenPos == 0) {
     throw std::invalid_argument("Invalid cache id.");
@@ -209,7 +209,7 @@ std::pair<long long, long long> _splitIdAndSeq(const std::string cacheId) {
 }
 
 // Get cached messages after a given message ID.
-size_t Redis::getCacheSinceId(const std::string topicPattern, const std::string sinceId, long long limit, bool isPattern, nlohmann::json& result) {
+size_t Redis::getCacheSinceId(const std::string& topicPattern, const std::string& sinceId, long long limit, bool isPattern, nlohmann::json& result) {
   result = nlohmann::json::array();
 
   // If cache is not enabled simply return an empty set.
@@ -341,12 +341,12 @@ void Redis::resetSubscribers() {
 }
 
 // Register a subscriber callback.
-void Redis::psubscribe(const std::string pattern, RedisMsgCallback callback) {
+void Redis::psubscribe(const std::string& pattern, RedisMsgCallback callback) {
   if (_redisSubscriber == nullptr) {
     _redisSubscriber = std::make_unique<sw::redis::Subscriber>(_redisInstance->subscriber());
   }
 
-  _redisSubscriber->on_pmessage([=](std::string pattern, std::string topic, std::string msg) {
+  _redisSubscriber->on_pmessage([=](const std::string& pattern, const std::string& topic, const std::string& msg) {
     std::string actualTopic;
 
     if (_prefix.length() > 0) {
