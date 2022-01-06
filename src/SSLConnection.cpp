@@ -116,7 +116,7 @@ void SSLConnection::read() {
 
       // Retain data we have in the _read_buffer and copy it back after call to resize().
       // We have to do this since resize() invalidates existing data.
-      vector<char> retain;
+      std::vector<char> retain;
       retain.resize(bytesRead);
       memcpy(retain.data(), _read_buffer.data(), bytesRead);
 

@@ -3,7 +3,6 @@
 #include <utility>
 #include <vector>
 
-using namespace std;
 using namespace eventhub;
 
 TEST_CASE("isValidTopicFilter", "[topic_manager]") {
@@ -32,7 +31,7 @@ TEST_CASE("isValidTopicFilter", "[topic_manager]") {
   }
 
   SECTION("Topic filter cannot include illegal characters") {
-    const string illegalChars = "&%~/(){}[]";
+    const std::string illegalChars = "&%~/(){}[]";
     REQUIRE(TopicManager::isValidTopicFilter(illegalChars) == false);
   }
 
@@ -93,7 +92,7 @@ TEST_CASE("isValidTopic", "[topic_manager]") {
   }
 
   SECTION("Topic cannot include illegal characters") {
-    const string illegalChars = "&%~/(){}[]";
+    const std::string illegalChars = "&%~/(){}[]";
     REQUIRE(TopicManager::isValidTopic(illegalChars) == false);
   }
 
@@ -105,11 +104,11 @@ TEST_CASE("isValidTopic", "[topic_manager]") {
 }
 
 TEST_CASE("isFilterMatched", "[topic_manager]") {
-  vector<pair<string, string>> should_match;
-  vector<pair<string, string>> should_not_match;
+  std::vector<std::pair<std::string, std::string>> should_match;
+  std::vector<std::pair<std::string, std::string>> should_not_match;
 
-#define SHOULD_MATCH(s1, s2) should_match.push_back(make_pair<string, string>(s1, s2))
-#define SHOULD_NOT_MATCH(s1, s2) should_not_match.push_back(make_pair<string, string>(s1, s2))
+#define SHOULD_MATCH(s1, s2) should_match.push_back(std::make_pair<std::string, std::string>(s1, s2))
+#define SHOULD_NOT_MATCH(s1, s2) should_not_match.push_back(std::make_pair<std::string, std::string>(s1, s2))
 
   SHOULD_MATCH("temperature/kitchen/sensor1", "temperature/kitchen/sensor1");
   SHOULD_MATCH("temperature/+/sensor1", "temperature/kitchen/sensor1");

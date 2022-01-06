@@ -27,8 +27,6 @@
 #include "jsonrpc/jsonrpcpp.hpp"
 #include "websocket/Parser.hpp"
 
-using namespace std;
-
 namespace eventhub {
 
 using ConnectionPtr          = std::shared_ptr<Connection>;
@@ -47,12 +45,12 @@ struct TopicSubscription {
   jsonrpcpp::Id rpcSubscriptionRequestId;
 };
 
-class Connection : public EventhubBase, public enable_shared_from_this<Connection> {
+class Connection : public EventhubBase, public std::enable_shared_from_this<Connection> {
 public:
   Connection(int fd, struct sockaddr_in* csin, Worker* worker, Config& cfg);
   virtual ~Connection();
 
-  void write(const string& data);
+  void write(const std::string& data);
   virtual void read();
   virtual ssize_t flushSendBuffer();
 
@@ -84,7 +82,7 @@ protected:
   struct sockaddr_in _csin;
   Worker* _worker;
   struct epoll_event _epoll_event;
-  string _write_buffer;
+  std::string _write_buffer;
   std::vector<char> _read_buffer;
   std::mutex _write_lock;
   std::mutex _subscription_list_lock;

@@ -16,8 +16,6 @@
 
 namespace eventhub {
 
-using namespace std;
-
 using RedisMsgCallback = std::function<void(std::string pattern,
                                             std::string channel,
                                             std::string msg)>;
@@ -50,18 +48,18 @@ public:
   explicit Redis(Config &cfg);
   ~Redis() {}
 
-  void publishMessage(const string topic, const string id, const string payload, const string origin="");
+  void publishMessage(const std::string topic, const std::string id, const std::string payload, const std::string origin="");
   void psubscribe(const std::string pattern, RedisMsgCallback callback);
-  const std::string cacheMessage(const string topic, const string payload, const string origin, long long timestamp = 0, unsigned int ttl = 0);
-  size_t getCacheSince(const string topicPattern, long long since, long long limit, bool isPattern, nlohmann::json& result);
-  size_t getCacheSinceId(const string topicPattern, const string sinceId, long long limit, bool isPattern, nlohmann::json& result);
+  const std::string cacheMessage(const std::string topic, const std::string payload, const std::string origin, long long timestamp = 0, unsigned int ttl = 0);
+  size_t getCacheSince(const std::string topicPattern, long long since, long long limit, bool isPattern, nlohmann::json& result);
+  size_t getCacheSinceId(const std::string topicPattern, const std::string sinceId, long long limit, bool isPattern, nlohmann::json& result);
   size_t purgeExpiredCacheItems();
   void consume();
   void resetSubscribers();
   sw::redis::Redis* getRedisInstance() { return _redisInstance.get(); }
 
-  void _incrTopicPubCount(const string& topicName);
-  vector<string> _getTopicsSeen(const string& topicPattern);
+  void _incrTopicPubCount(const std::string& topicName);
+  std::vector<std::string> _getTopicsSeen(const std::string& topicPattern);
   const std::string _getNextCacheId(long long timestamp);
 
 private:

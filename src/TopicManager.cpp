@@ -158,7 +158,7 @@ bool TopicManager::isValidTopicOrFilter(const std::string& topic) {
 * @param topicName topic name to validate.
 * @returns true if it matches, false otherwise.
 */
-bool TopicManager::isFilterMatched(const std::string& filterName, const string& topicName) {
+bool TopicManager::isFilterMatched(const std::string& filterName, const std::string& topicName) {
   // Loop through filterName and topicName one character at the time.
   for (auto fnIt = filterName.begin(), tnIt = topicName.begin();
        tnIt != topicName.end(); fnIt++, tnIt++) {

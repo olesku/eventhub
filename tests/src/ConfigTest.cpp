@@ -6,7 +6,6 @@
 #include <stdio.h>
 #include <unistd.h>
 
-using namespace std;
 using namespace eventhub;
 
 using Catch::Matchers::Contains;
@@ -61,10 +60,10 @@ TEST_CASE("Config test") {
 
   SECTION("Test strings") {
     Config cfg;
-    cfg.defineOption<string>("test_string", ConfigValueSettings::REQUIRED);
+    cfg.defineOption<std::string>("test_string", ConfigValueSettings::REQUIRED);
     cfg << "test_string = Hello world!\n";
     cfg.load();
-    REQUIRE(cfg.get<string>("test_string") == "Hello world!");
+    REQUIRE(cfg.get<std::string>("test_string") == "Hello world!");
   }
 
   SECTION("Test that requesting invalid type throws exception") {
@@ -91,19 +90,19 @@ TEST_CASE("Config test") {
 
   SECTION("Test that we support comments") {
     Config cfg;
-    cfg.defineOption<string>("my_option");
+    cfg.defineOption<std::string>("my_option");
     cfg << "# This is my option.\n";
     cfg << "my_option = foobar\n";
     cfg.load();
-    REQUIRE(cfg.get<string>("my_option") == "foobar");
+    REQUIRE(cfg.get<std::string>("my_option") == "foobar");
   }
 
   SECTION("Test that we support whitespaces") {
     Config cfg;
-    cfg.defineOption<string>("whitespace_option");
+    cfg.defineOption<std::string>("whitespace_option");
     cfg << "  whitespace_option             =      foobar\n";
     cfg.load();
-    REQUIRE(cfg.get<string>("whitespace_option") == "foobar");
+    REQUIRE(cfg.get<std::string>("whitespace_option") == "foobar");
   }
 
   SECTION("Throw exception if required value is not set") {
@@ -114,21 +113,21 @@ TEST_CASE("Config test") {
 
   SECTION("Ceheck that we support quoted values") {
     Config cfg;
-    cfg.defineOption<string>("test_string_double_quote", ConfigValueSettings::REQUIRED);
-    cfg.defineOption<string>("test_string_single_quote", ConfigValueSettings::REQUIRED);
+    cfg.defineOption<std::string>("test_string_double_quote", ConfigValueSettings::REQUIRED);
+    cfg.defineOption<std::string>("test_string_single_quote", ConfigValueSettings::REQUIRED);
     cfg << "test_string_double_quote = \"Hello world!\"\n";
     cfg << "test_string_single_quote = 'Hello world!'\n";
     cfg.load();
 
-    REQUIRE(cfg.get<string>("test_string_double_quote") == "Hello world!");
-    REQUIRE(cfg.get<string>("test_string_single_quote") == "Hello world!");
+    REQUIRE(cfg.get<std::string>("test_string_double_quote") == "Hello world!");
+    REQUIRE(cfg.get<std::string>("test_string_single_quote") == "Hello world!");
   }
 
   SECTION("Check setting values through envvars") {
     Config cfg;
     cfg.defineOption<int>("int_opt");
     cfg.defineOption<bool>("bool_opt");
-    cfg.defineOption<string>("string_opt");
+    cfg.defineOption<std::string>("string_opt");
     cfg.setLoadFromEnv(true);
 
     setenv("int_opt", "1337", 0);
@@ -139,19 +138,19 @@ TEST_CASE("Config test") {
 
     REQUIRE(cfg.get<int>("int_opt") == 1337);
     REQUIRE(cfg.get<bool>("bool_opt") == true);
-    REQUIRE(cfg.get<string>("string_opt") == "hello world");
+    REQUIRE(cfg.get<std::string>("string_opt") == "hello world");
   }
 
   SECTION("Uppercase version of envvar should also work") {
     Config cfg;
-    cfg.defineOption<string>("my_opt");
+    cfg.defineOption<std::string>("my_opt");
     cfg.setLoadFromEnv(true);
 
     setenv("MY_OPT", "Howdy", 0);
 
     cfg.load();
 
-    REQUIRE(cfg.get<string>("my_opt") == "Howdy");
+    REQUIRE(cfg.get<std::string>("my_opt") == "Howdy");
   }
 
   SECTION("Test reading from config file that contains all possible types") {
@@ -173,7 +172,7 @@ TEST_CASE("Config test") {
     my_string_squote  =     \'Hello world!!!\'";
 
     unlink("evilconfig_test.conf");
-    ofstream f;
+    std::ofstream f;
     f.open("evilconfig_test.conf");
     f << evilconfig;
     f.close();
@@ -188,9 +187,9 @@ TEST_CASE("Config test") {
     cfg.defineOption<int>("my_int");
     cfg.defineOption<int>("my_int_dquote");
     cfg.defineOption<int>("my_int_squote");
-    cfg.defineOption<string>("my_string");
-    cfg.defineOption<string>("my_string_dquote");
-    cfg.defineOption<string>("my_string_squote");
+    cfg.defineOption<std::string>("my_string");
+    cfg.defineOption<std::string>("my_string_dquote");
+    cfg.defineOption<std::string>("my_string_squote");
 
     cfg.setFile("evilconfig_test.conf");
     cfg.load();
@@ -204,9 +203,9 @@ TEST_CASE("Config test") {
     REQUIRE(cfg.get<int>("my_int") == 100);
     REQUIRE(cfg.get<int>("my_int_dquote") == 101);
     REQUIRE(cfg.get<int>("my_int_squote") == 102);
-    REQUIRE(cfg.get<string>("my_string") == "Hello world!");
-    REQUIRE(cfg.get<string>("my_string_dquote") == "Hello world!!");
-    REQUIRE(cfg.get<string>("my_string_squote") == "Hello world!!!");
+    REQUIRE(cfg.get<std::string>("my_string") == "Hello world!");
+    REQUIRE(cfg.get<std::string>("my_string_dquote") == "Hello world!!");
+    REQUIRE(cfg.get<std::string>("my_string_squote") == "Hello world!!!");
 
     unlink("evilconfig_test.conf");
   }

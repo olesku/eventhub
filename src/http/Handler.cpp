@@ -17,8 +17,6 @@
 #include "metrics/PrometheusRenderer.hpp"
 #include "sse/Handler.hpp"
 
-using namespace std;
-
 namespace eventhub {
 namespace http {
 void Handler::HandleRequest(HandlerContext&& ctx, Parser* req, RequestState reqState) {

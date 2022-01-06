@@ -89,7 +89,7 @@ void Handler::_handleTextFrame(HandlerContext& ctx, const std::string& data) {
   }
 
   if (entity && entity->is_request()) {
-    auto req = dynamic_pointer_cast<jsonrpcpp::Request>(entity);
+    auto req = std::dynamic_pointer_cast<jsonrpcpp::Request>(entity);
     try {
       auto handler = RPCHandler::getHandler(req->method());
       handler(ctx, req);

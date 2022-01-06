@@ -4,7 +4,6 @@
 #include "EventLoop.hpp"
 #include "catch.hpp"
 
-using namespace std;
 using namespace eventhub;
 
 TEST_CASE("jobs", "[eventloop]") {

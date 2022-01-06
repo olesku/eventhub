@@ -10,8 +10,6 @@
 #include "websocket/Response.hpp"
 #include "websocket/Types.hpp"
 
-using namespace std;
-
 namespace eventhub {
 Topic::~Topic() {}
 
@@ -29,7 +27,7 @@ TopicSubscriberList::iterator Topic::addSubscriber(ConnectionPtr conn, const jso
  * Publish a message to this topic.
  * @param data Message to publish.
  */
-void Topic::publish(const string& data) {
+void Topic::publish(const std::string& data) {
   std::lock_guard<std::mutex> lock(_subscriber_lock);
   nlohmann::json jsonData;
 

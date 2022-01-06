@@ -11,8 +11,6 @@
 namespace eventhub {
 namespace http {
 
-using namespace std;
-
 enum class RequestState {
   REQ_FAILED,
   REQ_INCOMPLETE,
@@ -30,17 +28,17 @@ public:
   Parser();
   ~Parser();
   void parse(const char* data, int len);
-  const string& getPath();
-  const string& getMethod();
-  const map<string, string>& getHeaders();
-  const string getHeader(string header);
-  const string getQueryString(string param);
+  const std::string& getPath();
+  const std::string& getMethod();
+  const std::map<std::string, std::string>& getHeaders();
+  const std::string getHeader(std::string header);
+  const std::string getQueryString(std::string param);
   size_t numQueryString();
-  const string& getErrorMessage();
+  const std::string& getErrorMessage();
   void setCallback(ParserCallback callback);
 
 private:
-  string _buf;
+  std::string _buf;
   int _bytes_read;
   int _bytes_read_prev;
   bool _is_complete;
@@ -48,12 +46,12 @@ private:
   struct phr_header _phr_headers[HTTP_REQUEST_MAX_HEADERS];
   size_t _phr_num_headers, _phr_method_len, _phr_path_len;
   int _phr_minor_version;
-  string _path;
-  string _method;
-  string _error_message;
-  map<string, string> _headers;
-  map<string, string> _query_parameters;
-  map<string, string> _qsmap;
+  std::string _path;
+  std::string _method;
+  std::string _error_message;
+  std::map<std::string, std::string> _headers;
+  std::map<std::string, std::string> _query_parameters;
+  std::map<std::string, std::string> _qsmap;
 
   size_t _parse_query_string(const std::string& buf);
   ParserCallback _callback;

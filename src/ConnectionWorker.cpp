@@ -34,8 +34,6 @@
 #include "websocket/Parser.hpp"
 #include "websocket/Response.hpp"
 
-using namespace std;
-
 namespace eventhub {
 
 Worker::Worker(Server* srv, unsigned int workerId) : EventhubBase(srv->config()), _workerId(workerId) {
@@ -108,9 +106,9 @@ ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin, bool ssl)
   ConnectionListIterator connectionIterator;
 
   if (ssl) {
-    connectionIterator = _connection_list.insert(_connection_list.end(), make_shared<SSLConnection>(fd, csin, this, config(), _server->getSSLContext()));
+    connectionIterator = _connection_list.insert(_connection_list.end(), std::make_shared<SSLConnection>(fd, csin, this, config(), _server->getSSLContext()));
   } else {
-    connectionIterator = _connection_list.insert(_connection_list.end(), make_shared<Connection>(fd, csin, this, config()));
+    connectionIterator = _connection_list.insert(_connection_list.end(), std::make_shared<Connection>(fd, csin, this, config()));
   }
 
   auto client = connectionIterator->get()->getSharedPtr();
@@ -196,7 +194,7 @@ void Worker::_removeConnection(ConnectionPtr conn) {
   _metrics.total_disconnect_count++;
 }
 
-void Worker::publish(const string& topicName, const string& data) {
+void Worker::publish(const std::string& topicName, const std::string& data) {
   _ev.addJob([this, topicName, data]() {
     _topic_manager.publish(topicName, data);
   });

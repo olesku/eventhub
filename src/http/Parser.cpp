@@ -71,13 +71,13 @@ void Parser::parse(const char* data, int len) {
     _method.insert(0, _phr_method, _phr_method_len);
 
   if (_phr_path_len > 0) {
-    string rawPath;
+    std::string rawPath;
     rawPath.insert(0, _phr_path, _phr_path_len);
 
     size_t qsPos = rawPath.find_first_of('?', 0);
-    if (qsPos != string::npos) {
-      string qStr;
-      qStr  = rawPath.substr(qsPos + 1, string::npos);
+    if (qsPos != std::string::npos) {
+      std::string qStr;
+      qStr  = rawPath.substr(qsPos + 1, std::string::npos);
       _path = rawPath.substr(0, qsPos);
       _parse_query_string(qStr);
     } else {
@@ -86,7 +86,7 @@ void Parser::parse(const char* data, int len) {
   }
 
   for (int i = 0; i < static_cast<int>(_phr_num_headers); i++) {
-    string name, value;
+    std::string name, value;
     name.insert(0, _phr_headers[i].name, _phr_headers[i].name_len);
     value.insert(0, _phr_headers[i].value, _phr_headers[i].value_len);
     Util::strToLower(name);
@@ -102,14 +102,14 @@ void Parser::parse(const char* data, int len) {
 /**
     Get the HTTP request path.
   **/
-const string& Parser::getPath() {
+const std::string& Parser::getPath() {
   return _path;
 }
 
 /**
     Get the HTTP request method.
   **/
-const string& Parser::getMethod() {
+const std::string& Parser::getMethod() {
   return _method;
 }
 
@@ -117,7 +117,7 @@ const string& Parser::getMethod() {
     Get a spesific header.
     @param header Header to get.
   **/
-const string Parser::getHeader(string header) {
+const std::string Parser::getHeader(std::string header) {
   Util::strToLower(header);
 
   if (_headers.find(header) != _headers.end()) {
@@ -127,7 +127,7 @@ const string Parser::getHeader(string header) {
   return "";
 }
 
-const map<string, string>& Parser::getHeaders() {
+const std::map<std::string, std::string>& Parser::getHeaders() {
   return _headers;
 }
 
@@ -138,13 +138,13 @@ const map<string, string>& Parser::getHeaders() {
 size_t Parser::_parse_query_string(const std::string& buf) {
   size_t prevpos = 0, eqlpos = 0;
 
-  while ((eqlpos = buf.find("=", prevpos)) != string::npos) {
-    string param, val;
+  while ((eqlpos = buf.find("=", prevpos)) != std::string::npos) {
+    std::string param, val;
     size_t len;
 
     len = buf.find("&", eqlpos);
 
-    if (len != string::npos)
+    if (len != std::string::npos)
       len = (len - eqlpos);
     else
       len = (buf.size() - eqlpos);
@@ -168,7 +168,7 @@ size_t Parser::_parse_query_string(const std::string& buf) {
     Get a spesific query string parameter.
     @param param Parameter to get.
   **/
-const string Parser::getQueryString(string param) {
+const std::string Parser::getQueryString(std::string param) {
   Util::strToLower(param);
 
   if (_qsmap.find(param) != _qsmap.end()) {
@@ -185,7 +185,7 @@ size_t Parser::numQueryString() {
   return _qsmap.size();
 }
 
-const string& Parser::getErrorMessage() {
+const std::string& Parser::getErrorMessage() {
   return _error_message;
 }
 

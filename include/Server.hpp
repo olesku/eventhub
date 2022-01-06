@@ -12,8 +12,6 @@
 #include "Worker.hpp"
 #include "metrics/Types.hpp"
 
-using namespace std;
-
 namespace eventhub {
 
 class Server final {

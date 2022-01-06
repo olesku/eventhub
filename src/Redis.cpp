@@ -21,8 +21,6 @@
 
 namespace eventhub {
 
-using namespace std;
-
 Redis::Redis(Config &cfg) : EventhubBase(cfg) {
   sw::redis::ConnectionOptions connOpts;
   sw::redis::ConnectionPoolOptions poolOpts;
@@ -48,7 +46,7 @@ Redis::Redis(Config &cfg) : EventhubBase(cfg) {
 }
 
 // Publish a message.
-void Redis::publishMessage(const string topic, const string id, const string payload, const string origin) {
+void Redis::publishMessage(const std::string topic, const std::string id, const std::string payload, const std::string origin) {
   std::lock_guard<std::mutex> lock(_publish_mtx);
   nlohmann::json j;
 
@@ -76,7 +74,7 @@ const std::string Redis::_getNextCacheId(long long timestamp) {
 }
 
 // Add a message to the cache.
-const std::string Redis::cacheMessage(const string topic, const string payload, const string origin, long long timestamp, unsigned int ttl) {
+const std::string Redis::cacheMessage(const std::string topic, const std::string payload, const std::string origin, long long timestamp, unsigned int ttl) {
   if (timestamp == 0) {
     timestamp = Util::getTimeSinceEpoch();
   }
@@ -106,7 +104,7 @@ const std::string Redis::cacheMessage(const string topic, const string payload, 
 // GetCache returns all matching cached messages for topics matching topicPattern
 // @param since List all messages since Unix timestamp or message ID
 // @param limit Limit resultset to at most @limit elements.
-size_t Redis::getCacheSince(const string topicPattern, long long since, long long limit, bool isPattern, nlohmann::json& result) {
+size_t Redis::getCacheSince(const std::string topicPattern, long long since, long long limit, bool isPattern, nlohmann::json& result) {
   std::vector<std::string> topics;
   result = nlohmann::json::array();
 
@@ -196,10 +194,10 @@ size_t Redis::getCacheSince(const string topicPattern, long long since, long lon
   return result.size();
 }
 
-std::pair<long long, long long> _splitIdAndSeq(const string cacheId) {
+std::pair<long long, long long> _splitIdAndSeq(const std::string cacheId) {
   auto hyphenPos = cacheId.find_first_of('-');
   if (hyphenPos == std::string::npos || hyphenPos == 0) {
-    throw invalid_argument("Invalid cache id.");
+    throw std::invalid_argument("Invalid cache id.");
   }
 
   auto tsStr     = cacheId.substr(0, hyphenPos);
@@ -211,7 +209,7 @@ std::pair<long long, long long> _splitIdAndSeq(const string cacheId) {
 }
 
 // Get cached messages after a given message ID.
-size_t Redis::getCacheSinceId(const string topicPattern, const string sinceId, long long limit, bool isPattern, nlohmann::json& result) {
+size_t Redis::getCacheSinceId(const std::string topicPattern, const std::string sinceId, long long limit, bool isPattern, nlohmann::json& result) {
   result = nlohmann::json::array();
 
   // If cache is not enabled simply return an empty set.
@@ -348,11 +346,11 @@ void Redis::psubscribe(const std::string pattern, RedisMsgCallback callback) {
     _redisSubscriber = std::make_unique<sw::redis::Subscriber>(_redisInstance->subscriber());
   }
 
-  _redisSubscriber->on_pmessage([=](string pattern, string topic, string msg) {
-    string actualTopic;
+  _redisSubscriber->on_pmessage([=](std::string pattern, std::string topic, std::string msg) {
+    std::string actualTopic;
 
     if (_prefix.length() > 0) {
-      actualTopic = topic.substr(_prefix.length() + 1, string::npos);
+      actualTopic = topic.substr(_prefix.length() + 1, std::string::npos);
     } else {
       actualTopic = topic;
     }
@@ -369,13 +367,13 @@ void Redis::consume() {
 
 // _incrTopicPubCount increase the counter of published messages to topicName
 // in our Redis stats HSET.
-void Redis::_incrTopicPubCount(const string& topicName) {
+void Redis::_incrTopicPubCount(const std::string& topicName) {
   _redisInstance->hincrby(REDIS_PREFIX("pub_count"), topicName, 1);
 }
 
 // _getTopicsSeen Look up in our pubcount HSET in redis and return
 // all topics we have received events on that matches topicPattern.
-std::vector<std::string> Redis::_getTopicsSeen(const string& topicPattern) {
+std::vector<std::string> Redis::_getTopicsSeen(const std::string& topicPattern) {
   std::vector<std::string> allTopics;
   std::vector<std::string> matchingTopics;
 

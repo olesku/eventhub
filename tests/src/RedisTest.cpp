@@ -8,7 +8,6 @@
 #include "Redis.hpp"
 #include "Util.hpp"
 
-using namespace std;
 using namespace eventhub;
 
 TEST_CASE("Test redis", "[Redis") {

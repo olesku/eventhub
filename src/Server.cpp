@@ -137,7 +137,7 @@ void Server::start() {
   _ev.addTimer(
       METRIC_DELAY_SAMPLE_RATE_MS, [&](TimerCtx* ctx) {
         try {
-          _redis.publishMessage("$metrics$/system_unixtime", "0", "$system$", to_string(Util::getTimeSinceEpoch()));
+          _redis.publishMessage("$metrics$/system_unixtime", "0", "$system$", std::to_string(Util::getTimeSinceEpoch()));
         } catch (...) {}
       },
       true);
@@ -187,7 +187,7 @@ int alpn_cb(SSL* ssl, const unsigned char** out, unsigned char* outlen,
             const unsigned char* in, unsigned int inlen, void* arg) {
   auto reqProto = fmt::format("{}", in);
 
-  if (reqProto.find(reinterpret_cast<const char*>(alpn_protocol)) != string::npos) {
+  if (reqProto.find(reinterpret_cast<const char*>(alpn_protocol)) != std::string::npos) {
     *out    = alpn_protocol;
     *outlen = alpn_protocol_length;
 
@@ -293,9 +293,9 @@ void Server::_loadSSLCertificates() {
     return;
   }
 
-  const string caCert = config().get<std::string>("ssl_ca_certificate");
-  const string cert   = config().get<std::string>("ssl_certificate");
-  const string key    = config().get<std::string>("ssl_private_key");
+  const std::string caCert = config().get<std::string>("ssl_ca_certificate");
+  const std::string cert   = config().get<std::string>("ssl_certificate");
+  const std::string key    = config().get<std::string>("ssl_private_key");
 
   if (caCert.empty()) {
     SSL_CTX_set_default_verify_paths(_ssl_ctx);
@@ -333,8 +333,8 @@ void Server::_checkSSLCertUpdated() {
   assert(isSSL());
 
   try {
-    const string ssl_cert_md5_hash = Util::getFileMD5Sum(config().get<std::string>("ssl_certificate"));
-    const string ssl_priv_key_md5_hash = Util::getFileMD5Sum(config().get<std::string>("ssl_private_key"));
+    const std::string ssl_cert_md5_hash = Util::getFileMD5Sum(config().get<std::string>("ssl_certificate"));
+    const std::string ssl_priv_key_md5_hash = Util::getFileMD5Sum(config().get<std::string>("ssl_private_key"));
     bool reload = false;
 
     if (ssl_cert_md5_hash != _ssl_cert_md5_hash) {
@@ -389,7 +389,7 @@ Worker* Server::getWorker() {
   return (_cur_worker++)->get();
 }
 
-void Server::publish(const string topicName, const string data) {
+void Server::publish(const std::string topicName, const std::string data) {
   std::lock_guard<std::mutex> lock(_connection_workers_lock);
   for (auto& worker : _connection_workers.getWorkerList()) {
     worker->publish(topicName, data);

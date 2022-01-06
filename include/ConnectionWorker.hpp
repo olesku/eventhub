@@ -28,8 +28,8 @@ public:
 
   TopicManager& getTopicManager() { return _topic_manager; }
 
-  void subscribeConnection(ConnectionPtr conn, const string& topicFilterName);
-  void publish(const string& topicName, const string& data);
+  void subscribeConnection(ConnectionPtr conn, const std::string& topicFilterName);
+  void publish(const std::string& topicName, const std::string& data);
   void addTimer(int64_t delay, std::function<void(TimerCtx* ctx)> callback, bool repeat = false);
   unsigned int getWorkerId() { return _workerId; }
   int getEpollFileDescriptor() { return _epoll_fd; }

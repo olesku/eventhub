@@ -9,7 +9,6 @@
 #include "Server.hpp"
 
 namespace eventhub {
-  using namespace std;
 
 #define REQUIRE_TOKEN_LOADED(x) \
   if (!_token_loaded)           \

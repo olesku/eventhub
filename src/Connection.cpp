@@ -27,7 +27,6 @@
 #include "websocket/Parser.hpp"
 
 namespace eventhub {
-using namespace std;
 
 Connection::Connection(int fd, struct sockaddr_in* csin, Worker* worker, Config& cfg) :
   EventhubBase(cfg), _fd(fd), _worker(worker), _access_controller(cfg) {
@@ -103,7 +102,7 @@ size_t Connection::_pruneWriteBuffer(size_t bytes) {
     return 0;
   }
 
-  _write_buffer = _write_buffer.substr(bytes, string::npos);
+  _write_buffer = _write_buffer.substr(bytes, std::string::npos);
   return _write_buffer.length();
 }
 
@@ -157,7 +156,7 @@ void Connection::_parseRequest(size_t bytesRead) {
 /**
  * Add data to send buffer and enable EPOLLOUT on the socket.
  */
-void Connection::write(const string& data) {
+void Connection::write(const std::string& data) {
   std::lock_guard<std::mutex> lock(_write_lock);
 
   if (isShutdown()) {

@@ -24,7 +24,7 @@ public:
   static bool isValidTopic(const std::string& topicName);
   static bool isValidTopicFilter(const std::string& filterName);
   static bool isValidTopicOrFilter(const std::string& topic);
-  static bool isFilterMatched(const std::string& filterName, const string& topicName);
+  static bool isFilterMatched(const std::string& filterName, const std::string& topicName);
 
 private:
   TopicList _topic_list;

@@ -68,7 +68,7 @@ int main(int argc, char** argv) {
   };
 
   int option_index = 0;
-  string cfgFile;
+  std::string cfgFile;
 
   while(1) {
     auto c = getopt_long(argc, argv, "c:h", long_options, &option_index);
@@ -120,7 +120,7 @@ int main(int argc, char** argv) {
 
   try {
     if (!cfgFile.empty()) {
-      cout << "Loading config from " << cfgFile << endl;
+      std::cout << "Loading config from " << cfgFile << std::endl;
       cfg.setFile(cfgFile);
     }
 
