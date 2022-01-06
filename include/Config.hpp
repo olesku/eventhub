@@ -41,7 +41,7 @@ class InvalidConfigOptionException : public std::exception {
 public:
   std::string msg;
 
-  InvalidConfigOptionException(std::string optName, std::string path = "", unsigned int lineNo = 0) {
+  InvalidConfigOptionException(const std::string& optName, const std::string& path = "", unsigned int lineNo = 0) {
     if (!path.empty() && lineNo > 0)
       msg = "Invalid config option \"" + optName + "\" at " + path + ":" + std::to_string(lineNo);
     else
@@ -60,7 +60,7 @@ public:
 
 class RequiredOptionMissingException : public std::runtime_error {
 public:
-  RequiredOptionMissingException(const std::string optName) : runtime_error("Missing required option \"" + optName + "\"") {}
+  RequiredOptionMissingException(const std::string& optName) : runtime_error("Missing required option \"" + optName + "\"") {}
 };
 
 class ConfigOption final {

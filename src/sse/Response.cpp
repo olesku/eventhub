@@ -24,7 +24,7 @@ void Response::sendPing(ConnectionPtr conn) {
   conn->write(":\n\n");
 }
 
-void Response::sendEvent(ConnectionPtr conn, const std::string& id, const std::string& message, const std::string event) {
+void Response::sendEvent(ConnectionPtr conn, const std::string& id, const std::string& message, const std::string& event) {
   std::string data;
 
   if (event.empty()) {
