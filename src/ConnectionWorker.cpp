@@ -112,6 +112,26 @@ ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin, bool ssl)
   }
 
   auto client = connectionIterator->get()->getSharedPtr();
+  std::weak_ptr<Connection> wptrClient(client);
+
+  // Set up HTTP request callback.
+  client->onHTTPRequest([this, wptrClient](http::Parser* req, http::RequestState reqState) {
+    auto c = wptrClient.lock();
+    if (!c)
+      return;
+    http::Handler::HandleRequest(HandlerContext(_server, this, c), req, reqState);
+  });
+
+  // Set up websocket request callback.
+  client->onWebsocketRequest([this, wptrClient](websocket::ParserStatus status,
+                                                    websocket::FrameType frameType,
+                                                    const std::string& data) {
+    auto c = wptrClient.lock();
+    if (!c)
+      return;
+    websocket::Handler::HandleRequest(HandlerContext(_server, this, c),
+                                      status, frameType, data);
+  });
 
   client->assignConnectionListIterator(connectionIterator);
   int ret = client->addToEpoll((EPOLLIN | EPOLLRDHUP | EPOLLHUP | EPOLLERR));
@@ -123,30 +143,10 @@ ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin, bool ssl)
   }
 
   LOG->trace("Client {} accepted in worker {}", client->getIP(), getWorkerId());
-  std::weak_ptr<Connection> wptrConnection(client);
-
-  // Set up HTTP request callback.
-  client->onHTTPRequest([this, wptrConnection](http::Parser* req, http::RequestState reqState) {
-    auto c = wptrConnection.lock();
-    if (!c)
-      return;
-    http::Handler::HandleRequest(HandlerContext(_server, this, c), req, reqState);
-  });
-
-  // Set up websocket request callback.
-  client->onWebsocketRequest([this, wptrConnection](websocket::ParserStatus status,
-                                                    websocket::FrameType frameType,
-                                                    const std::string& data) {
-    auto c = wptrConnection.lock();
-    if (!c)
-      return;
-    websocket::Handler::HandleRequest(HandlerContext(_server, this, c),
-                                      status, frameType, data);
-  });
 
   // Disconnect client if successful websocket handshake hasn't occurred in 10 seconds.
-  addTimer(config().get<int>("handshake_timeout") * 1000, [wptrConnection, this](TimerCtx* ctx) {
-    auto c = wptrConnection.lock();
+  addTimer(config().get<int>("handshake_timeout") * 1000, [wptrClient, this](TimerCtx* ctx) {
+    auto c = wptrClient.lock();
 
     if (c && c->getState() != ConnectionState::WEBSOCKET && c->getState() != ConnectionState::SSE) {
       LOG->debug("Client {} failed to handshake in {} seconds. Removing.", c->getIP(), config().get<int>("handshake_timeout"));
@@ -156,8 +156,8 @@ ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin, bool ssl)
 
   // Send a websocket PING frame to the client every Config.getPingInterval() second.
   addTimer(
-      config().get<int>("ping_interval") * 1000, [wptrConnection](TimerCtx* ctx) {
-        auto c = wptrConnection.lock();
+      config().get<int>("ping_interval") * 1000, [wptrClient](TimerCtx* ctx) {
+        auto c = wptrClient.lock();
 
         if (!c || c->isShutdown()) {
           ctx->repeat = false;

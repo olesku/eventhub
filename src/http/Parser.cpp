@@ -22,7 +22,9 @@ Parser::Parser() {
   _bytes_read_prev = 0;
   _is_complete     = false;
   _error_message   = "";
-  _callback        = {};
+  _callback        = [](http::Parser* req, http::RequestState reqState) {
+        LOG->error("Websocket parser callback was called before it was initialized.");
+  };
 }
 
 /**
