@@ -1,35 +1,35 @@
-FROM alpine:3.15
+FROM debian:bullseye-slim
+ENV DEBIAN_FRONTEND noninteractive
 
-RUN apk update && \
-    apk add gcc g++ make cmake ninja git openssl-dev hiredis-dev git && \
-    apk add --no-cache -X http://dl-cdn.alpinelinux.org/alpine/edge/community spdlog && \
-    apk add --no-cache -X http://dl-cdn.alpinelinux.org/alpine/edge/community spdlog-dev && \
-    apk add --no-cache -X http://dl-cdn.alpinelinux.org/alpine/edge/community fmt-dev && \
-    apk add --no-cache -X http://dl-cdn.alpinelinux.org/alpine/edge/community fmt
+RUN apt-get update && \
+    apt-get -qq install clang cmake git openssl libssl-dev libhiredis-dev \
+    libspdlog-dev libfmt-dev ninja-build
 
 RUN mkdir -p /usr/src/redis-plus-plus && cd /usr/src/redis-plus-plus && \
     git clone https://github.com/sewenew/redis-plus-plus.git . && \
-    git checkout tags/1.1.1 && \
+    git checkout tags/1.3.3 && \
     mkdir compile && cd compile && cmake -GNinja -DCMAKE_BUILD_TYPE=Release .. && \
-    ninja -j0 && ninja install
+    ninja && ninja install
 
 RUN mkdir -p /usr/src/eventhub
 WORKDIR /usr/src/eventhub
+
 COPY . .
+
 RUN mkdir -p build && cd build && \
-    sed -i 's/clang++/g++/' ../CMakeLists.txt && \
-    sed -i 's/clang/gcc/' ../CMakeLists.txt && \
-    cmake -GNinja -DSKIP_TESTS=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && \
-    ninja -j0 && \
-    strip eventhub && \
-    cp -a eventhub /usr/bin/eventhub
+    cmake -DSKIP_TESTS=1 -GNinja -DCMAKE_BUILD_TYPE=Release .. && \
+    ninja && \
+    cp -a eventhub /usr/bin/eventhub && \
+    cd /tmp && \
+    rm -rf /usr/src/eventhub /usr/src/redis-plus-plus
 
 WORKDIR /tmp
-RUN rm -rf /usr/src/eventhub /usr/src/redis-plus-plus && \
-    apk del gcc g++ make cmake git
 
-RUN addgroup -S eventhub && \
-    adduser -S -G eventhub -H -h /tmp -s /bin/false eventhub
+RUN addgroup --system eventhub && \
+    adduser --system --ingroup eventhub --no-create-home --home /tmp --shell /bin/false eventhub
+
+RUN apt-get -qq remove clang cmake git ninja-build && \
+    apt-get -qq -f autoremove
 
 USER eventhub
 
