@@ -101,6 +101,7 @@ All configuration options can also be set using [environment variables](https://
 |max_cache_request_limit      | Default returned cache result limit           | 1000
 |log_level                    | Log level to use                              | info
 |enable_ssl                   | Enable SSL                                    | false
+|ssl_listen_port              | Port to listen on for SSL requests            | 8443
 |ssl_certificate              | Path to certificate for SSL                   | None
 |ssl_private_key              | Path to private key for SSL                   | None
 |ssl_ca_certificate           | Path to CA certificate                        | None
