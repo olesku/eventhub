@@ -237,8 +237,8 @@ void Server::_listenerInit() {
 
 void Server::_sslListenerInit() {
   _server_socket_ssl = socket(AF_INET, SOCK_STREAM, 0);
-  if (_server_socket == -1) {
-    LOG->critical("Could not create server socket: {}.", strerror(errno));
+  if (_server_socket_ssl == -1) {
+    LOG->critical("Could not create SSL server socket: {}.", strerror(errno));
     exit(1);
   }
 
