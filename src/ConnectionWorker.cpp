@@ -234,7 +234,7 @@ void Worker::_workerMain() {
   serverSocketEvent.events  = EPOLLIN | EPOLLEXCLUSIVE;
   serverSocketEvent.data.fd = _server->getServerSocket();
 
-  if (!_config.get<bool>("disable_unsecure_listener")) {
+  if (!config().get<bool>("disable_unsecure_listener")) {
     if (epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, _server->getServerSocket(), &serverSocketEvent) == -1) {
       LOG->critical("Failed to add serversocket to epoll in AcceptWorker {}: {}", getWorkerId(), strerror(errno));
       exit(1);
