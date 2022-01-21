@@ -1,5 +1,4 @@
-#ifndef INCLUDE_REDIS_HPP_
-#define INCLUDE_REDIS_HPP_
+#pragma once
 
 #include <sw/redis++/redis++.h>
 
@@ -56,14 +55,14 @@ public:
   size_t purgeExpiredCacheItems();
   void consume();
   void resetSubscribers();
-  sw::redis::Redis* getRedisInstance() { return _redisInstance.get(); }
+  std::shared_ptr<sw::redis::Redis> connection() { return _redisInstance; }
 
   void _incrTopicPubCount(const std::string& topicName);
   std::vector<std::string> _getTopicsSeen(const std::string& topicPattern);
   const std::string _getNextCacheId(long long timestamp);
 
 private:
-  std::unique_ptr<sw::redis::Redis> _redisInstance;
+  std::shared_ptr<sw::redis::Redis> _redisInstance;
   std::unique_ptr<sw::redis::Subscriber> _redisSubscriber;
   std::string _prefix;
   std::mutex _publish_mtx;
@@ -71,4 +70,4 @@ private:
 
 } // namespace eventhub
 
-#endif // INCLUDE_REDIS_HPP_
+
