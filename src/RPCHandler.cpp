@@ -310,13 +310,12 @@ void RPCHandler::_handleGet(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
       return;
     }
 
-    nlohmann::json result;
-    result["key"] = key;
-    result["value"] = kvStore->get(key);
-
-    _sendSuccessResponse(ctx, req, result);
-  } catch(...) {
-    LOG->error("KVStore read: Parsing request failed");
+    _sendSuccessResponse(ctx, req, {
+      {"key", key},
+      {"value", kvStore->get(key)}
+    });
+  } catch(const std::exception& e) {
+    _sendInvalidParamsError(ctx, req, e.what());
   }
 }
 
@@ -344,9 +343,14 @@ void RPCHandler::_handleSet(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
       return;
     }
 
-    kvStore->set(key, value, ttl);
-  } catch(...) {
-    LOG->error("KVStore write: Parsing request failed");
+    auto ret = kvStore->set(key, value, ttl);
+
+    _sendSuccessResponse(ctx, req, {
+      {"key", key},
+      {"success", ret}
+    });
+  } catch(const std::exception& e) {
+    _sendInvalidParamsError(ctx, req, e.what());
   }
 }
 
@@ -368,9 +372,14 @@ void RPCHandler::_handleDelete(HandlerContext& ctx, jsonrpcpp::request_ptr req) 
       return;
     }
 
-    kvStore->del(key);
-  } catch(...) {
-    LOG->error("KVStore read: Parsing request failed");
+    auto ret = kvStore->del(key);
+
+    _sendSuccessResponse(ctx, req, {
+      {"key", key},
+      {"ret", ret}
+    });
+  } catch(const std::exception& e) {
+    _sendInvalidParamsError(ctx, req, e.what());
   }
 }
 

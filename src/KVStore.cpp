@@ -1,30 +1,35 @@
-#include <memory>
+#include <chrono>
 
 #include "KVStore.hpp"
 #include "Common.hpp"
 #include "Config.hpp"
 
 namespace eventhub {
-  const std::string& KVStore::get(const std::string& key) const {
-    const std::string value = _redis.connection()->get(REDIS_PREFIX(key)).value();
-    LOG->info("KVStore read: {} = {}", REDIS_PREFIX(key), value);
-    return std::move(value);
+  const std::string KVStore::_prefix_key(const std::string& key) const {
+    return _prefix.empty() ? std::string(_prefix + ":kv:" + key)
+                           : std::string("kv:" + key);
   }
 
-  void KVStore::set(const std::string& key, const std::string& value, unsigned long ttl) const {
+  const std::string KVStore::get(const std::string& key) const {
+    const std::string value = _redis.connection()->get(_prefix_key(key)).value();
+    return value;
+  }
+
+  bool KVStore::set(const std::string& key, const std::string& value, unsigned long ttl) const {
     if (ttl > 0) {
-      _redis.connection()->setex(REDIS_PREFIX(key), ttl, value);
+      return _redis.connection()->set(_prefix_key(key), value, std::chrono::seconds(ttl));
     } else {
-      _redis.connection()->set(REDIS_PREFIX(key), value);
+      return _redis.connection()->set(_prefix_key(key), value);
     }
-
-    LOG->info("KVStore write: {} = {} TTL: {}", key, value, ttl);
   }
 
-  void KVStore::del(const std::string& key) const {
+  long long KVStore::del(const std::string& key) const {
+    long long ret = 0;
+
     try {
-      _redis.connection()->del(REDIS_PREFIX(key));
+      ret = _redis.connection()->del(_prefix_key(key));
     } catch(...) {}
-    LOG->info("KVStore erase: {}", REDIS_PREFIX(key));
+
+    return ret;
   }
 }
