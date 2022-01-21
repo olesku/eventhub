@@ -14,6 +14,7 @@ set (SOURCES
   Config.cpp
   RPCHandler.cpp
   Redis.cpp
+  KVStore.cpp
   Util.cpp
   Topic.cpp
   TopicManager.cpp

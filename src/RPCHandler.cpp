@@ -13,6 +13,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <fmt/format.h>
 
 namespace eventhub {
 
@@ -29,6 +30,9 @@ RPCMethod RPCHandler::getHandler(const std::string& methodName) {
       {"publish", _handlePublish},
       {"list", _handleList},
       {"history", _handleHistory},
+      {"get", _handleGet},
+      {"set", _handleSet},
+      {"del", _handleDelete},
       {"ping", _handlePing},
       {"disconnect", _handleDisconnect}};
 
@@ -254,7 +258,7 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
     result["id"]     = id;
     result["status"] = "ok";
 
-    _sendSuccessResponse(ctx, req, result);
+
   } catch (std::exception& e) {
     LOG->error("Redis error while publishing message: {}.", e.what());
     msg << "Redis error while publishing message: " << e.what();
@@ -286,6 +290,88 @@ void RPCHandler::_handleList(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
  */
 void RPCHandler::_handleHistory(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
   LOG->trace("handleHistory: {}", req->to_json().dump(2));
+}
+
+/**
+ * Handle kv-store read request.
+ * @param ctx Client issuing request.
+ * @param req RPC request.
+ */
+void RPCHandler::_handleGet(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
+  auto& accessController = ctx.connection()->getAccessController();
+  auto kvStore = ctx.server()->getKVStore();
+  auto params   = req->params();
+
+  try {
+    const auto key = params.get("key").get<std::string>();
+
+    if (!accessController.allowSubscribe(key)) {
+      _sendInvalidParamsError(ctx, req, fmt::format("You are not allowed to read key {}", key));
+      return;
+    }
+
+    nlohmann::json result;
+    result["key"] = key;
+    result["value"] = kvStore->get(key);
+
+    _sendSuccessResponse(ctx, req, result);
+  } catch(...) {
+    LOG->error("KVStore read: Parsing request failed");
+  }
+}
+
+/**
+ * Handle kv-store write request.
+ * @param ctx Client issuing request.
+ * @param req RPC request.
+ */
+void RPCHandler::_handleSet(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
+  auto& accessController = ctx.connection()->getAccessController();
+  auto kvStore = ctx.server()->getKVStore();
+  auto params   = req->params();
+  unsigned long ttl = 0;
+
+  try {
+    ttl = params.get("ttl").get<unsigned long>();
+  } catch (...) {}
+
+  try {
+    const auto key = params.get("key").get<std::string>();
+    const auto value = params.get("value").get<std::string>();
+
+    if (!accessController.allowPublish(key)) {
+      _sendInvalidParamsError(ctx, req, fmt::format("You are not allowed to write key {}", key));
+      return;
+    }
+
+    kvStore->set(key, value, ttl);
+  } catch(...) {
+    LOG->error("KVStore write: Parsing request failed");
+  }
+}
+
+/**
+ * Handle kv-store delete request.
+ * @param ctx Client issuing request.
+ * @param req RPC request.
+ */
+void RPCHandler::_handleDelete(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
+  auto& accessController = ctx.connection()->getAccessController();
+  auto kvStore = ctx.server()->getKVStore();
+  auto params   = req->params();
+
+  try {
+    const auto key = params.get("key").get<std::string>();
+
+    if (!accessController.allowSubscribe(key)) {
+      _sendInvalidParamsError(ctx, req, fmt::format("You are not allowed to delete key {}", key));
+      return;
+    }
+
+    kvStore->del(key);
+  } catch(...) {
+    LOG->error("KVStore read: Parsing request failed");
+  }
 }
 
 /**

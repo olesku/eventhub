@@ -41,7 +41,7 @@ Redis::Redis(Config &cfg) : EventhubBase(cfg) {
   poolOpts.size                = config().get<int>("redis_pool_size");
   poolOpts.wait_timeout        = std::chrono::seconds(5);
 
-  _redisInstance   = std::make_unique<sw::redis::Redis>(connOpts, poolOpts);
+  _redisInstance   = std::make_shared<sw::redis::Redis>(connOpts, poolOpts);
   _redisSubscriber = nullptr;
 }
 

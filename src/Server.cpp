@@ -120,6 +120,9 @@ void Server::start() {
   // Connect to redis.
   _redis.psubscribe("*", cb);
 
+  // Instanciate KVStore.
+  _kv_store = std::make_unique<KVStore>(_config, _redis);
+
   // Add cache purge cronjob if cache functionality is enabled.
   if (config().get<bool>("enable_cache")) {
     _ev.addTimer(
