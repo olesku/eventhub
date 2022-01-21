@@ -258,7 +258,7 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
     result["id"]     = id;
     result["status"] = "ok";
 
-
+    _sendSuccessResponse(ctx, req, result);
   } catch (std::exception& e) {
     LOG->error("Redis error while publishing message: {}.", e.what());
     msg << "Redis error while publishing message: " << e.what();
