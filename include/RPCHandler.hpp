@@ -1,5 +1,4 @@
-#ifndef INCLUDE_RPCHANDLER_HPP_
-#define INCLUDE_RPCHANDLER_HPP_
+#pragma once
 
 #include <functional>
 #include <string>
@@ -20,9 +19,6 @@ public:
   static RPCMethod getHandler(const std::string& methodName);
 
 private:
-  RPCHandler();
-  ~RPCHandler();
-
   static void _sendSuccessResponse(HandlerContext& hCtx, jsonrpcpp::request_ptr req, const nlohmann::json& result);
   static void _sendInvalidParamsError(HandlerContext& hCtx, jsonrpcpp::request_ptr req, const std::string& message);
 
@@ -32,10 +28,11 @@ private:
   static void _handlePublish(HandlerContext& hCtx, jsonrpcpp::request_ptr req);
   static void _handleList(HandlerContext& hCtx, jsonrpcpp::request_ptr req);
   static void _handleHistory(HandlerContext& hCtx, jsonrpcpp::request_ptr req);
+  static void _handleGet(HandlerContext& hCtx, jsonrpcpp::request_ptr req);
+  static void _handleSet(HandlerContext& hCtx, jsonrpcpp::request_ptr req);
+  static void _handleDelete(HandlerContext& hCtx, jsonrpcpp::request_ptr req);
   static void _handlePing(HandlerContext& hCtx, jsonrpcpp::request_ptr req);
   static void _handleDisconnect(HandlerContext& hCtx, jsonrpcpp::request_ptr req);
 };
 
 } // namespace eventhub
-
-#endif // INCLUDE_RPCHANDLER_HPP_
