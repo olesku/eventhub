@@ -316,6 +316,7 @@ void RPCHandler::_handleGet(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
     const auto val = kvStore->get(key);
 
     _sendSuccessResponse(ctx, req, {
+      {"action", "get"},
       {"key", key},
       {"value", val}
     });
@@ -354,6 +355,7 @@ void RPCHandler::_handleSet(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
     auto ret = kvStore->set(key, value, ttl);
 
     _sendSuccessResponse(ctx, req, {
+      {"action", "set"},
       {"key", key},
       {"success", ret}
     });
@@ -378,7 +380,7 @@ void RPCHandler::_handleDelete(HandlerContext& ctx, jsonrpcpp::request_ptr req) 
   try {
     const auto key = params.get("key").get<std::string>();
 
-    if (!accessController.allowSubscribe(key)) {
+    if (!accessController.allowPublish(key)) {
       _sendInvalidParamsError(ctx, req, fmt::format("You are not allowed to delete key {}", key));
       return;
     }
@@ -386,8 +388,9 @@ void RPCHandler::_handleDelete(HandlerContext& ctx, jsonrpcpp::request_ptr req) 
     auto ret = kvStore->del(key);
 
     _sendSuccessResponse(ctx, req, {
+      {"action", "del"},
       {"key", key},
-      {"ret", ret}
+      {"success", ret > 0 ? true : false}
     });
   } catch(const std::exception& e) {
     _sendInvalidParamsError(ctx, req, e.what());
