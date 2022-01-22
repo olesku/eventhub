@@ -8,7 +8,7 @@
 Eventhub is a pub/sub over WebSocket server written in modern C++.
 It implements the [publish-subscribe pattern](https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern) and concept of topics.
 
-The key focus of the project is to deliver high performance and easy of integration.
+The key focus of the project is to deliver high performance and ease of integration.
 
 <p align="center">
 <a href="./docs/images/grafana_dashboard.png">
