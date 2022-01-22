@@ -10,6 +10,10 @@ namespace eventhub {
                            : std::string("kv:" + key);
   }
 
+  bool KVStore::is_enabled() {
+    return config().get<bool>("enable_kvstore");
+  }
+
   const std::string KVStore::get(const std::string& key) const {
     const std::string value = _redis.connection()->get(_prefix_key(key)).value();
     return value;

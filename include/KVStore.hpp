@@ -19,6 +19,7 @@ namespace eventhub {
           _prefix =  config().get<std::string>("redis_prefix");
         }
 
+      bool is_enabled();
       const std::string get(const std::string& key) const;
       bool set(const std::string& key, const std::string& value, unsigned long ttl = 0) const;
       long long del(const std::string& key) const;

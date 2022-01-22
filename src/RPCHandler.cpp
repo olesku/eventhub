@@ -298,6 +298,9 @@ void RPCHandler::_handleHistory(HandlerContext& ctx, jsonrpcpp::request_ptr req)
  * @param req RPC request.
  */
 void RPCHandler::_handleGet(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
+  if (!ctx.server()->getKVStore()->is_enabled())
+     return _sendInvalidParamsError(ctx, req, "KVStore is not enabled.");
+
   auto& accessController = ctx.connection()->getAccessController();
   auto kvStore = ctx.server()->getKVStore();
   auto params   = req->params();
@@ -310,9 +313,11 @@ void RPCHandler::_handleGet(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
       return;
     }
 
+    const auto val = kvStore->get(key);
+
     _sendSuccessResponse(ctx, req, {
       {"key", key},
-      {"value", kvStore->get(key)}
+      {"value", val}
     });
   } catch(const std::exception& e) {
     _sendInvalidParamsError(ctx, req, e.what());
@@ -325,6 +330,10 @@ void RPCHandler::_handleGet(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
  * @param req RPC request.
  */
 void RPCHandler::_handleSet(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
+  if (!ctx.server()->getKVStore()->is_enabled())
+     return _sendInvalidParamsError(ctx, req, "KVStore is not enabled.");
+
+
   auto& accessController = ctx.connection()->getAccessController();
   auto kvStore = ctx.server()->getKVStore();
   auto params   = req->params();
@@ -360,6 +369,9 @@ void RPCHandler::_handleSet(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
  * @param req RPC request.
  */
 void RPCHandler::_handleDelete(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
+  if (!ctx.server()->getKVStore()->is_enabled())
+     return _sendInvalidParamsError(ctx, req, "KVStore is not enabled.");
+
   auto& accessController = ctx.connection()->getAccessController();
   auto kvStore = ctx.server()->getKVStore();
   auto params   = req->params();
