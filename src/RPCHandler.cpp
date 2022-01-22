@@ -333,7 +333,6 @@ void RPCHandler::_handleSet(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
   if (!ctx.server()->getKVStore()->is_enabled())
      return _sendInvalidParamsError(ctx, req, "KVStore is not enabled.");
 
-
   auto& accessController = ctx.connection()->getAccessController();
   auto kvStore = ctx.server()->getKVStore();
   auto params   = req->params();
