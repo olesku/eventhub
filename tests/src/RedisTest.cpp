@@ -32,7 +32,7 @@ TEST_CASE("Test redis", "[Redis") {
     bool connected = true;
 
     try {
-      redis.getRedisInstance()->ping();
+      redis.connection()->ping();
     } catch (std::exception& e) {
       connected = false;
     }
@@ -41,11 +41,11 @@ TEST_CASE("Test redis", "[Redis") {
   }
 
   GIVEN("That we increase pub count for test/channel1") {
-    redis.getRedisInstance()->hdel("eventhub_test:pub_count", "test/channel1");
+    redis.connection()->hdel("eventhub_test:pub_count", "test/channel1");
     redis._incrTopicPubCount("test/channel1");
 
     THEN("Hashentry eventhub_test.test/channel1 should be larger than 0") {
-      auto countStr = redis.getRedisInstance()->hget("eventhub_test:pub_count", "test/channel1");
+      auto countStr = redis.connection()->hget("eventhub_test:pub_count", "test/channel1");
       int count     = 0;
 
       try {

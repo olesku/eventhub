@@ -8,7 +8,7 @@
 Eventhub is a pub/sub over WebSocket server written in modern C++.
 It implements the [publish-subscribe pattern](https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern) and concept of topics.
 
-The key focus of the project is to deliver high performance, availability, and easy integration.
+The key focus of the project is to deliver high performance and ease of integration.
 
 <p align="center">
 <a href="./docs/images/grafana_dashboard.png">
@@ -42,7 +42,7 @@ Eventhub use the same layout for patterns as MQTT where ```+``` matches a single
 
 
 ## Eventlog
-Eventhub stores all published messages into a log that can be requested by clients who want to get all events in or since a given time frame. For example if a client gets disconnected it can request this log to get all new events since the last event that was received.
+Eventhub stores all published messages into a log that can be requested by clients who want to get all events in or since a given time frame. For example if a client is disconnected it can request this log when it reconnects to get all new events since the last event that was received.
 
 ## Authentication
 
@@ -62,6 +62,13 @@ Authentication token is sent to the Eventhub server either through the `Authoriz
 This token wil allow subscription to all channels under ```topic1``` and ```topic2``` and publish to any topic under ```topic1```.
 
 Eventhub does not have a interface or API to generate these tokens for you yet. So you have to generate them in your backend or through a JWT token generator like [jwt.io](https://jwt.io/).
+
+## Key/value store
+
+Most applications require some kind of state to be stored.
+Eventhub implements a simple key/value store for this purpose. This is a feature separate from the pub/sub functionality.
+
+The read/write ACL's in the JWT-token defines what keys you have access to.
 
 # Clients
 * [JavaScript (Browser/Node.js)](https://github.com/olesku/eventhub-jsclient)
@@ -108,6 +115,7 @@ All configuration options can also be set using [environment variables](https://
 |ssl_cert_auto_reload         | Reload ssl cert when changed on disk          | false
 |ssl_cert_check_interval      | How often to check for cert changes           | 300
 |disable_unsecure_listener    | Disable unsecure listener when ssl is enabled | false
+|enable_kvstore               | Enable key/value store functionality          | true
 
 ## Docker
 The easiest way is to use our docker image.

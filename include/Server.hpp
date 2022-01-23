@@ -1,5 +1,4 @@
-#ifndef INCLUDE_SERVER_HPP_
-#define INCLUDE_SERVER_HPP_
+#pragma once
 
 #include <memory>
 #include <mutex>
@@ -9,6 +8,7 @@
 #include "ConnectionWorker.hpp"
 #include "EventLoop.hpp"
 #include "Redis.hpp"
+#include "KVStore.hpp"
 #include "Worker.hpp"
 #include "metrics/Types.hpp"
 
@@ -27,6 +27,7 @@ public:
   Worker* getWorker();
   void publish(const std::string& topicName, const std::string& data);
   Redis& getRedis() { return _redis; }
+  KVStore* getKVStore() { return _kv_store.get(); }
   metrics::AggregatedMetrics getAggregatedMetrics();
 
   int getSSLServerSocket() { return _server_socket_ssl; };
@@ -44,11 +45,12 @@ private:
   bool _ssl_enabled;
   SSL_CTX* _ssl_ctx;
   std::string _ssl_cert_md5_hash;
-  std:: string _ssl_priv_key_md5_hash;
+  std::string _ssl_priv_key_md5_hash;
   WorkerGroup<Worker> _connection_workers;
   WorkerGroup<Worker>::iterator _cur_worker;
   std::mutex _connection_workers_lock;
   Redis _redis;
+  std::unique_ptr<KVStore> _kv_store;
   metrics::ServerMetrics _metrics;
   EventLoop _ev;
 
@@ -62,4 +64,4 @@ private:
 
 } // namespace eventhub
 
-#endif // INCLUDE_SERVER_HPP_
+

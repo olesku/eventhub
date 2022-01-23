@@ -8,8 +8,11 @@ Eventhub uses [JSON-RPC](http://www.jsonrpc.org/) over WebSocket as transport pr
 | [unsubscribe](#unsubscribe)         | *topic*           | Unsubscribe from a topic or pattern.
 | [unsubscribeall](#unsubscribeall)   | *None*            | Unsubscribe from all current subscriptions.
 | [list](#list)                       | *None*            | List all current subscriptions.
+| [get](#get)                         | *key*             | Get key from key/value store.
+| [set](#set)                         | *key, value, ttl* | Set key in key/value store.
+| [del](#del)                         | *key*             | Delete key in key/value store.
 | [ping](#ping)                       | *None*            | Ping the server.
-| [disconnect](#disconnect)            | *None*            | Disconnect from the server.
+| [disconnect](#disconnect)           | *None*            | Disconnect from the server.
 
 **Important:** Each request must have a unique `id` attribute as specified by JSON-RPC. It can be a number or a string.
 
@@ -24,8 +27,8 @@ If you are implementing your own client I can recommend using the nice [websocat
   "id": 1,
   "jsonrpc": "2.0",
   "method": "subscribe",
-  "params": { 
-    "topic": "my/topic1", 
+  "params": {
+    "topic": "my/topic1",
     "since": 0
     }
 }
@@ -154,12 +157,94 @@ All messages received on a subscribed topic or pattern will have the same `id` a
 }
 ```
 
+## get
+**Request:**
+```json
+{
+  "id": 6,
+  "jsonrpc": "2.0",
+  "method": "get",
+  "params": {
+    "key": "my/key"
+    }
+}
+```
+
+**Response:**
+```json
+{
+  "id": 6,
+  "jsonrpc": "2.0",
+  "result": {
+    "action": "get",
+    "key": "my/key",
+    "value": "some value"
+  }
+}
+```
+
+## set
+**Request:**
+```json
+{
+  "id": 7,
+  "jsonrpc": "2.0",
+  "method": "set",
+  "params": {
+    "key": "my/key",
+    "value": "some value",
+    "ttl": 3600
+    }
+}
+```
+
+*If `ttl` attribute is omitted or set to `0` it means the key is stored without any expirity time.*
+
+**Response:**
+```json
+{
+  "id": 7,
+  "jsonrpc": "2.0",
+  "result": {
+    "action": "set",
+    "key": "my/key",
+    "success": true
+  }
+}
+```
+
+## del
+**Request:**
+```json
+{
+  "id": 8,
+  "jsonrpc": "2.0",
+  "method": "del",
+  "params": {
+    "key": "my/key"
+    }
+}
+```
+
+**Response:**
+```json
+{
+  "id": 8,
+  "jsonrpc": "2.0",
+  "result": {
+    "action": "del",
+    "key": "my/key",
+    "success": true
+  }
+}
+```
+
 ## ping
 
 **Request:**
 ```json
 {
-  "id": 6,
+  "id": 9,
   "jsonrpc": "2.0",
   "method": "ping",
   "params": []
@@ -169,7 +254,7 @@ All messages received on a subscribed topic or pattern will have the same `id` a
 **Response:**
 ```json
 {
-  "id": 6,
+  "id": 9,
   "jsonrpc": "2.0",
   "result": {
     "pong": 1574846750424
@@ -183,7 +268,7 @@ Contents of the `pong` attribute is the server time since epoch in milliseconds.
 **Request:**
 ```json
 {
-  "id": 7,
+  "id": 10,
   "jsonrpc": "2.0",
   "method": "disconnect",
   "params": []

@@ -13,6 +13,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <fmt/format.h>
 
 namespace eventhub {
 
@@ -29,6 +30,9 @@ RPCMethod RPCHandler::getHandler(const std::string& methodName) {
       {"publish", _handlePublish},
       {"list", _handleList},
       {"history", _handleHistory},
+      {"get", _handleGet},
+      {"set", _handleSet},
+      {"del", _handleDelete},
       {"ping", _handlePing},
       {"disconnect", _handleDisconnect}};
 
@@ -286,6 +290,111 @@ void RPCHandler::_handleList(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
  */
 void RPCHandler::_handleHistory(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
   LOG->trace("handleHistory: {}", req->to_json().dump(2));
+}
+
+/**
+ * Handle kv-store read request.
+ * @param ctx Client issuing request.
+ * @param req RPC request.
+ */
+void RPCHandler::_handleGet(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
+  if (!ctx.server()->getKVStore()->is_enabled())
+     return _sendInvalidParamsError(ctx, req, "KVStore is not enabled.");
+
+  auto& accessController = ctx.connection()->getAccessController();
+  auto kvStore = ctx.server()->getKVStore();
+  auto params   = req->params();
+
+  try {
+    const auto key = params.get("key").get<std::string>();
+
+    if (!accessController.allowSubscribe(key)) {
+      _sendInvalidParamsError(ctx, req, fmt::format("You are not allowed to read key {}", key));
+      return;
+    }
+
+    const auto val = kvStore->get(key);
+
+    _sendSuccessResponse(ctx, req, {
+      {"action", "get"},
+      {"key", key},
+      {"value", val}
+    });
+  } catch(const std::exception& e) {
+    _sendInvalidParamsError(ctx, req, e.what());
+  }
+}
+
+/**
+ * Handle kv-store write request.
+ * @param ctx Client issuing request.
+ * @param req RPC request.
+ */
+void RPCHandler::_handleSet(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
+  if (!ctx.server()->getKVStore()->is_enabled())
+     return _sendInvalidParamsError(ctx, req, "KVStore is not enabled.");
+
+  auto& accessController = ctx.connection()->getAccessController();
+  auto kvStore = ctx.server()->getKVStore();
+  auto params   = req->params();
+  unsigned long ttl = 0;
+
+  try {
+    ttl = params.get("ttl").get<unsigned long>();
+  } catch (...) {}
+
+  try {
+    const auto key = params.get("key").get<std::string>();
+    const auto value = params.get("value").get<std::string>();
+
+    if (!accessController.allowPublish(key)) {
+      _sendInvalidParamsError(ctx, req, fmt::format("You are not allowed to write key {}", key));
+      return;
+    }
+
+    auto ret = kvStore->set(key, value, ttl);
+
+    _sendSuccessResponse(ctx, req, {
+      {"action", "set"},
+      {"key", key},
+      {"success", ret}
+    });
+  } catch(const std::exception& e) {
+    _sendInvalidParamsError(ctx, req, e.what());
+  }
+}
+
+/**
+ * Handle kv-store delete request.
+ * @param ctx Client issuing request.
+ * @param req RPC request.
+ */
+void RPCHandler::_handleDelete(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
+  if (!ctx.server()->getKVStore()->is_enabled())
+     return _sendInvalidParamsError(ctx, req, "KVStore is not enabled.");
+
+  auto& accessController = ctx.connection()->getAccessController();
+  auto kvStore = ctx.server()->getKVStore();
+  auto params   = req->params();
+
+  try {
+    const auto key = params.get("key").get<std::string>();
+
+    if (!accessController.allowPublish(key)) {
+      _sendInvalidParamsError(ctx, req, fmt::format("You are not allowed to delete key {}", key));
+      return;
+    }
+
+    auto ret = kvStore->del(key);
+
+    _sendSuccessResponse(ctx, req, {
+      {"action", "del"},
+      {"key", key},
+      {"success", ret > 0 ? true : false}
+    });
+  } catch(const std::exception& e) {
+    _sendInvalidParamsError(ctx, req, e.what());
+  }
 }
 
 /**
