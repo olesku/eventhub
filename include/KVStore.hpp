@@ -1,6 +1,6 @@
 #pragma once
 
-#include <memory>
+#include <string>
 #include "EventhubBase.hpp"
 #include "Redis.hpp"
 
