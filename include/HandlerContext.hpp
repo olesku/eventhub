@@ -1,5 +1,4 @@
-#ifndef INCLUDE_HANDLERCONTEXT_HPP_
-#define INCLUDE_HANDLERCONTEXT_HPP_
+#pragma once
 
 #include <memory>
 #include "Server.hpp"
@@ -26,4 +25,4 @@ private:
 
 } // namespace eventhub
 
-#endif // INCLUDE_HANDLERCONTEXT_HPP_
+

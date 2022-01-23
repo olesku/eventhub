@@ -1,5 +1,4 @@
-#ifndef INCLUDE_HTTP_HANDLER_HPP_
-#define INCLUDE_HTTP_HANDLER_HPP_
+#pragma once
 
 #include <memory>
 #include <string>
@@ -31,4 +30,4 @@ private:
 } // namespace http
 } // namespace eventhub
 
-#endif // INCLUDE_HTTP_HANDLER_HPP_
+

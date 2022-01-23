@@ -1,5 +1,4 @@
-#ifndef INCLUDE_WEBSOCKET_RESPONSE_HPP_
-#define INCLUDE_WEBSOCKET_RESPONSE_HPP_
+#pragma once
 
 #include <memory>
 #include <string>
@@ -21,4 +20,4 @@ class Response final {
 } // namespace websocket
 } // namespace eventhub
 
-#endif // INCLUDE_WEBSOCKET_RESPONSE_HPP_
+

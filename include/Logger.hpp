@@ -1,5 +1,4 @@
-#ifndef INCLUDE_LOGGER_HPP_
-#define INCLUDE_LOGGER_HPP_
+#pragma once
 
 #include <iostream>
 #include <map>
@@ -56,4 +55,4 @@ private:
 #define LOG Logger::getInstance().getLogger()
 
 } // namespace eventhub
-#endif // INCLUDE_LOGGER_HPP_
+

@@ -1,5 +1,4 @@
-#ifndef INCLUDE_WORKER_HPP_
-#define INCLUDE_WORKER_HPP_
+#pragma once
 
 #include <chrono>
 #include <future>
@@ -92,4 +91,4 @@ private:
   worker_list_t<T> _workers;
 };
 
-#endif // INCLUDE_WORKER_HPP_
+

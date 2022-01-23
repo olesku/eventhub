@@ -1,5 +1,4 @@
-#ifndef INCLUDE_HTTP_PARSER_HPP_
-#define INCLUDE_HTTP_PARSER_HPP_
+#pragma once
 
 #include <functional>
 #include <map>
@@ -60,4 +59,4 @@ private:
 } // namespace http
 } // namespace eventhub
 
-#endif // INCLUDE_HTTP_PARSER_HPP_
+

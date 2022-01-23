@@ -1,5 +1,4 @@
-#ifndef INCLUDE_UTIL_HPP_
-#define INCLUDE_UTIL_HPP_
+#pragma once
 
 #include <chrono>
 #include <string>
@@ -22,4 +21,4 @@ private:
 
 } // namespace eventhub
 
-#endif // INCLUDE_UTIL_HPP_
+

@@ -1,5 +1,4 @@
-#ifndef INCLUDE_METRICS_JSON_RENDERER_HPP_
-#define INCLUDE_METRICS_JSON_RENDERER_HPP_
+#pragma once
 
 #include <string>
 
@@ -17,4 +16,4 @@ public:
 } // namespace metrics
 } // namespace eventhub
 
-#endif // INCLUDE_METRICS_JSON_RENDERER_HPP_
+

@@ -1,5 +1,4 @@
-#ifndef INCLUDE_METRICS_TYPES_HPP_
-#define INCLUDE_METRICS_TYPES_HPP_
+#pragma once
 
 #include <atomic>
 #include <cstdint>
@@ -49,4 +48,4 @@ struct AggregatedMetrics {
 } // namespace metrics
 } // namespace eventhub
 
-#endif // INCLUDE_METRICS_TYPES_HPP_
+

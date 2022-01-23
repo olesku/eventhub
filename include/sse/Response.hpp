@@ -1,5 +1,4 @@
-#ifndef INCLUDE_SSE_RESPONSE_HPP_
-#define INCLUDE_SSE_RESPONSE_HPP_
+#pragma once
 
 #include <memory>
 #include <string>
@@ -20,4 +19,4 @@ class Response final {
 } // namespace sse
 } // namespace eventhub
 
-#endif // INCLUDE_SSE_RESPONSE_HPP_
+

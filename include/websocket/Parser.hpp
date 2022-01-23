@@ -1,5 +1,4 @@
-#ifndef INCLUDE_WEBSOCKET_PARSER_HPP_
-#define INCLUDE_WEBSOCKET_PARSER_HPP_
+#pragma once
 
 #include <functional>
 #include <string>
@@ -48,4 +47,4 @@ private:
 } // namespace websocket
 } // namespace eventhub
 
-#endif // INCLUDE_WEBSOCKET_PARSER_HPP_
+

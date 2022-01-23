@@ -1,5 +1,4 @@
-#ifndef INCLUDE_TOPIC_HPP_
-#define INCLUDE_TOPIC_HPP_
+#pragma once
 
 #include <list>
 #include <memory>
@@ -33,4 +32,4 @@ private:
 
 }; // namespace eventhub
 
-#endif // INCLUDE_TOPIC_HPP_
+

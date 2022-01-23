@@ -1,5 +1,4 @@
-#ifndef INCLUDE_WEBSOCKET_TYPES_HPP_
-#define INCLUDE_WEBSOCKET_TYPES_HPP_
+#pragma once
 
 #include <cstdint>
 #include <functional>
@@ -28,4 +27,4 @@ using ParserCallback = std::function<void(ParserStatus status, FrameType frameTy
 } // namespace websocket
 } // namespace eventhub
 
-#endif // INCLUDE_WEBSOCKET_TYPES_HPP_
+

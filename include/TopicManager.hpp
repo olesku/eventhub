@@ -1,5 +1,4 @@
-#ifndef INCLUDE_TOPICMANAGER_HPP_
-#define INCLUDE_TOPICMANAGER_HPP_
+#pragma once
 
 #include <memory>
 #include <mutex>
@@ -32,4 +31,4 @@ private:
 };
 } // namespace eventhub
 
-#endif // INCLUDE_TOPICMANAGER_HPP_
+

@@ -1,5 +1,4 @@
-#ifndef INCLUDE_WEBSOCKET_HANDLER_HPP_
-#define INCLUDE_WEBSOCKET_HANDLER_HPP_
+#pragma once
 
 #include <functional>
 #include <memory>
@@ -28,4 +27,4 @@ private:
 } // namespace websocket
 } // namespace eventhub
 
-#endif // INCLUDE_WEBSOCKET_HANDLER_HPP_
+

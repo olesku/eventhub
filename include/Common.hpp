@@ -1,5 +1,4 @@
-#ifndef INCLUDE_COMMON_HPP_
-#define INCLUDE_COMMON_HPP_
+#pragma once
 
 #include <algorithm>
 #include <cctype>
@@ -40,4 +39,4 @@ static constexpr unsigned int CACHE_PURGER_INTERVAL_MS = (60 * 1000);
 // Maximum SSL handshake retries.
 static const unsigned int SSL_MAX_HANDSHAKE_RETRY = 5;
 
-#endif // INCLUDE_COMMON_HPP_
+

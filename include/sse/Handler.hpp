@@ -1,5 +1,4 @@
-#ifndef INCLUDE_SSE_HANDLER_HPP_
-#define INCLUDE_SSE_HANDLER_HPP_
+#pragma once
 
 #include <functional>
 #include <memory>
@@ -26,4 +25,4 @@ private:
 } // namespace sse
 } // namespace eventhub
 
-#endif // INCLUDE_SSE_HANDLER_HPP_
+

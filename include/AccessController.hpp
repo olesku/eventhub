@@ -1,5 +1,4 @@
-#ifndef INCLUDE_ACCESSCONTROLLER_HPP_
-#define INCLUDE_ACCESSCONTROLLER_HPP_
+#pragma once
 
 #include <memory>
 #include <string>
@@ -35,4 +34,4 @@ public:
 
 } // namespace eventhub
 
-#endif // INCLUDE_ACCESSCONTROLLER_HPP_
+

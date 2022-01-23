@@ -1,5 +1,4 @@
-#ifndef INCLUDE_EVENTHUBBASE_HPP_
-#define INCLUDE_EVENTHUBBASE_HPP_
+#pragma once
 
 #include "Config.hpp"
 
@@ -20,5 +19,3 @@ protected:
 };
 
 }
-
-#endif

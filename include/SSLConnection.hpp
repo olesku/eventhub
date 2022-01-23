@@ -1,5 +1,4 @@
-#ifndef INCLUDE_SSL_CONNECTION_HPP_
-#define INCLUDE_SSL_CONNECTION_HPP_
+#pragma once
 
 #include "Config.hpp"
 #include "Forward.hpp"
@@ -27,5 +26,3 @@ private:
 };
 
 } // namespace eventhub
-
-#endif

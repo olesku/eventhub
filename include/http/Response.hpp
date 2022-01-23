@@ -1,5 +1,4 @@
-#ifndef INCLUDE_HTTP_RESPONSE_HPP_
-#define INCLUDE_HTTP_RESPONSE_HPP_
+#pragma once
 
 #include <string>
 #include <unordered_map>
@@ -30,4 +29,3 @@ private:
 } // namespace http
 } // namespace eventhub
 
-#endif // INCLUDE_HTTP_RESPONSE_HPP_

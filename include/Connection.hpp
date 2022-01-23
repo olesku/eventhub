@@ -1,5 +1,4 @@
-#ifndef INCLUDE_CONNECTION_HPP_
-#define INCLUDE_CONNECTION_HPP_
+#pragma once
 
 #include <netinet/in.h>
 #include <stdint.h>
@@ -102,5 +101,3 @@ protected:
 };
 
 } // namespace eventhub
-
-#endif // INCLUDE_CONNECTION_HPP_

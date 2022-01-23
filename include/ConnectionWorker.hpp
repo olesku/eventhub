@@ -1,5 +1,4 @@
-#ifndef INCLUDE_CONNECTIONWORKER_HPP_
-#define INCLUDE_CONNECTIONWORKER_HPP_
+#pragma once
 
 #include <chrono>
 #include <cstdint>
@@ -56,4 +55,4 @@ private:
 
 } // namespace eventhub
 
-#endif // INCLUDE_CONNECTIONWORKER_HPP_
+
