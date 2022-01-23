@@ -5,6 +5,7 @@ jwt_secret                  = FooBarBaz
 log_level                   = info
 disable_auth                = true
 prometheus_metric_prefix    = eventhub
+enable_kvstore              = true
 
 # Redis settings.
 redis_host                  = localhost
