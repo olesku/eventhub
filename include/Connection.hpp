@@ -8,7 +8,6 @@
 #include "EpollWrapper.hpp"
 #endif
 #include <sys/socket.h>
-
 #include <ctime>
 #include <list>
 #include <memory>
@@ -19,14 +18,18 @@
 #include <vector>
 
 #include "EventhubBase.hpp"
-#include "Forward.hpp"
 #include "AccessController.hpp"
 #include "Common.hpp"
 #include "http/Parser.hpp"
 #include "jsonrpc/jsonrpcpp.hpp"
 #include "websocket/Parser.hpp"
+#include "websocket/Types.hpp"
 
 namespace eventhub {
+class Config;
+class Connection;
+class Topic;
+class Worker;
 
 using ConnectionPtr          = std::shared_ptr<Connection>;
 using ConnectionWeakPtr      = std::weak_ptr<Connection>;

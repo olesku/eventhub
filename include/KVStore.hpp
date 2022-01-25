@@ -1,10 +1,14 @@
 #pragma once
 
 #include <string>
+
 #include "EventhubBase.hpp"
 #include "Redis.hpp"
+#include "Config.hpp"
 
 namespace eventhub {
+class Redis;
+
   class KVStore final : public EventhubBase {
     private:
       std::string _prefix;

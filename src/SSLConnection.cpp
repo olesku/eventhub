@@ -1,10 +1,20 @@
 #include <openssl/ossl_typ.h>
+#include <errno.h>
+#include <openssl/err.h>
+#include <openssl/ssl3.h>
+#include <spdlog/logger.h>
+#include <string.h>
+#include <string>
+#include <vector>
 
 #include "SSLConnection.hpp"
-#include "Server.hpp"
 #include "Util.hpp"
+#include "Common.hpp"
+#include "Logger.hpp"
 
 namespace eventhub {
+class Config;
+class Worker;
 
 SSLConnection::SSLConnection(int fd, struct sockaddr_in* csin, Worker* worker, Config& cfg, SSL_CTX* ctx) :
   Connection(fd, csin, worker, cfg), _ssl_ctx(ctx) {

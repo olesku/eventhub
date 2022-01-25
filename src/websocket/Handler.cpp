@@ -1,18 +1,17 @@
-#include "websocket/Handler.hpp"
-
+#include <spdlog/logger.h>
 #include <functional>
 #include <string>
-#include <vector>
+#include <exception>
+#include <memory>
 
-#include "Common.hpp"
-#include "Config.hpp"
+#include "websocket/Handler.hpp"
 #include "Connection.hpp"
 #include "HandlerContext.hpp"
 #include "RPCHandler.hpp"
 #include "jsonrpc/jsonrpcpp.hpp"
-#include "jwt/json/json.hpp"
 #include "websocket/Response.hpp"
 #include "websocket/Types.hpp"
+#include "Logger.hpp"
 
 namespace eventhub {
 namespace websocket {

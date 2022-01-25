@@ -1,5 +1,3 @@
-#include "Util.hpp"
-
 #include <openssl/bio.h>
 #include <openssl/buffer.h>
 #include <openssl/err.h>
@@ -7,16 +5,18 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <sys/stat.h>
 #include <fcntl.h>
-
+#include <openssl/ossl_typ.h>
+#include <spdlog/logger.h>
 #include <algorithm>
 #include <chrono>
 #include <sstream>
 #include <string>
 #include <stdexcept>
+#include <cctype>
 
-#include "Common.hpp"
+#include "Util.hpp"
+#include "Logger.hpp"
 
 namespace eventhub {
 const std::string Util::base64Encode(const unsigned char* buffer, size_t length) {

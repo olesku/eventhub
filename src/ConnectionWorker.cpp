@@ -1,9 +1,12 @@
-#include "ConnectionWorker.hpp"
-
 #include <errno.h>
-#include <fcntl.h>
 #include <netinet/in.h>
 #include <string.h>
+#include <spdlog/logger.h>
+
+#include "ConnectionWorker.hpp"
+#include "Logger.hpp"
+#include "http/Parser.hpp"
+#include "websocket/Types.hpp"
 #ifdef __linux__
 #include <sys/epoll.h>
 #else
@@ -12,12 +15,12 @@
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <unistd.h>
-
 #include <chrono>
 #include <memory>
 #include <mutex>
-#include <stdexcept>
 #include <string>
+#include <atomic>
+#include <type_traits>
 
 #include "Common.hpp"
 #include "Config.hpp"
@@ -27,11 +30,9 @@
 #include "SSLConnection.hpp"
 #include "Server.hpp"
 #include "Util.hpp"
-#include "Worker.hpp"
 #include "http/Handler.hpp"
 #include "sse/Response.hpp"
 #include "websocket/Handler.hpp"
-#include "websocket/Parser.hpp"
 #include "websocket/Response.hpp"
 
 namespace eventhub {

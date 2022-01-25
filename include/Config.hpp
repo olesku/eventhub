@@ -1,6 +1,7 @@
 #ifndef __INCLUDE_CONFIG_HPP__
 #define __INCLUDE_CONFIG_HPP__
 
+#include <stdint.h>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
@@ -8,6 +9,8 @@
 #include <unordered_map>
 #include <variant>
 #include <vector>
+#include <exception>
+#include <utility>
 
 namespace eventhub {
 

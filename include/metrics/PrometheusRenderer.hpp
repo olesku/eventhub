@@ -3,9 +3,10 @@
 #include <string>
 
 #include "metrics/Types.hpp"
-#include "Forward.hpp"
 
 namespace eventhub {
+class Server;
+
 namespace metrics {
 
 class PrometheusRenderer final {

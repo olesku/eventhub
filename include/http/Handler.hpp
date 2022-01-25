@@ -11,7 +11,10 @@
 #include "http/Response.hpp"
 
 namespace eventhub {
+class HandlerContext;
+
 namespace http {
+class Response;
 
 class Handler final {
 public:

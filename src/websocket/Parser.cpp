@@ -1,10 +1,12 @@
-#include "websocket/Parser.hpp"
-
+#include <spdlog/logger.h>
+#include <stdint.h>
 #include <string>
 
+#include "websocket/Parser.hpp"
 #include "Common.hpp"
 #include "websocket/Types.hpp"
 #include "websocket/ws_parser.h"
+#include "Logger.hpp"
 
 namespace eventhub {
 namespace websocket {

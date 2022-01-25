@@ -6,8 +6,8 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <functional>
 
-#include "Forward.hpp"
 #include "EventhubBase.hpp"
 #include "Config.hpp"
 #include "Connection.hpp"
@@ -17,6 +17,7 @@
 #include "metrics/Types.hpp"
 
 namespace eventhub {
+class Server;
 
 typedef std::list<ConnectionPtr> ConnectionList;
 

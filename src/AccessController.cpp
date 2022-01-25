@@ -1,12 +1,19 @@
-#include "AccessController.hpp"
-
+#include <spdlog/logger.h>
+#include <stdint.h>
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <exception>
+#include <initializer_list>
+#include <memory>
 
+#include "AccessController.hpp"
 #include "Config.hpp"
 #include "TopicManager.hpp"
-#include "Server.hpp"
+#include "Logger.hpp"
+#include "jwt/impl/jwt.ipp"
+#include "jwt/json/json.hpp"
+#include "jwt/parameters.hpp"
 
 namespace eventhub {
 

@@ -9,6 +9,7 @@
 #include "Common.hpp"
 #include "Connection.hpp"
 #include "Topic.hpp"
+#include "jsonrpc/jsonrpcpp.hpp"
 
 namespace eventhub {
 

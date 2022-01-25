@@ -1,9 +1,12 @@
+#include <sw/redis++/redis.h>
+#include <sw/redis++/utils.h>
 #include <string>
 #include <chrono>
+#include <memory>
 
 #include "KVStore.hpp"
-#include "Common.hpp"
 #include "Config.hpp"
+#include "Redis.hpp"
 
 namespace eventhub {
   const std::string KVStore::_prefix_key(const std::string& key) const {

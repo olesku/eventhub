@@ -1,20 +1,21 @@
-#include <functional>
+#include <stdint.h>
 #include <memory>
 #include <string>
 #include <vector>
+#include <initializer_list>
 
-#include "Common.hpp"
 #include "Config.hpp"
 #include "Connection.hpp"
-#include "ConnectionWorker.hpp"
 #include "HandlerContext.hpp"
 #include "Redis.hpp"
 #include "Server.hpp"
 #include "TopicManager.hpp"
 #include "Util.hpp"
-#include "http/Response.hpp"
 #include "sse/Handler.hpp"
 #include "sse/Response.hpp"
+#include "AccessController.hpp"
+#include "http/Parser.hpp"
+#include "jwt/json/json.hpp"
 
 namespace eventhub {
 namespace sse {

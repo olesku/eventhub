@@ -1,32 +1,27 @@
-#include "Connection.hpp"
-
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <netinet/tcp.h>
-#include <openssl/err.h>
-#include <openssl/ssl.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
-
-#include <ctime>
+#include <spdlog/logger.h>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "Connection.hpp"
 #include "Common.hpp"
-#include "Config.hpp"
 #include "ConnectionWorker.hpp"
-#include "Server.hpp"
 #include "Topic.hpp"
 #include "TopicManager.hpp"
-#include "Util.hpp"
 #include "http/Parser.hpp"
 #include "websocket/Parser.hpp"
+#include "Logger.hpp"
 
 namespace eventhub {
+class Config;
 
 Connection::Connection(int fd, struct sockaddr_in* csin, Worker* worker, Config& cfg) :
   EventhubBase(cfg), _fd(fd), _worker(worker), _access_controller(cfg) {

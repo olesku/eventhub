@@ -11,6 +11,11 @@
 #include "http/Parser.hpp"
 
 namespace eventhub {
+class HandlerContext;
+namespace http {
+class Parser;
+}  // namespace http
+
 namespace sse {
 
 class Handler final {

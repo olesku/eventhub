@@ -2,10 +2,11 @@
 
 #include <string>
 
-#include "Forward.hpp"
 #include "metrics/Types.hpp"
 
 namespace eventhub {
+class Server;
+
 namespace metrics {
 
 class JsonRenderer final {

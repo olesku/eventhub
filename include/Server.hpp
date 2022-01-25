@@ -1,8 +1,10 @@
 #pragma once
 
+#include <openssl/ssl.h>
+#include <assert.h>
+#include <openssl/ossl_typ.h>
 #include <memory>
 #include <mutex>
-#include <openssl/ssl.h>
 #include <string>
 
 #include "ConnectionWorker.hpp"
@@ -13,6 +15,9 @@
 #include "metrics/Types.hpp"
 
 namespace eventhub {
+class Config;
+class KVStore;
+class Worker;
 
 class Server final {
 public:

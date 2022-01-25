@@ -1,14 +1,13 @@
 #include <string.h>
-
+#include <openssl/sha.h>
 #include <sstream>
 #include <string>
+#include <memory>
 
 #include "Common.hpp"
 #include "Config.hpp"
-#include "ConnectionWorker.hpp"
 #include "HandlerContext.hpp"
 #include "Server.hpp"
-#include "TopicManager.hpp"
 #include "Util.hpp"
 #include "http/Handler.hpp"
 #include "http/Parser.hpp"
@@ -16,6 +15,8 @@
 #include "metrics/JsonRenderer.hpp"
 #include "metrics/PrometheusRenderer.hpp"
 #include "sse/Handler.hpp"
+#include "AccessController.hpp"
+#include "Connection.hpp"
 
 namespace eventhub {
 namespace http {

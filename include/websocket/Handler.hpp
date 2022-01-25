@@ -11,6 +11,8 @@
 #include "websocket/Types.hpp"
 
 namespace eventhub {
+class HandlerContext;
+
 namespace websocket {
 
 class Handler final {

@@ -5,11 +5,11 @@
 #include <vector>
 
 #include "Config.hpp"
-#include "Forward.hpp"
 #include "EventhubBase.hpp"
 #include "jwt/jwt.hpp"
 
 namespace eventhub {
+class Config;
 
 class AccessController final : public EventhubBase {
 private:

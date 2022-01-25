@@ -1,9 +1,9 @@
-#include "websocket/Response.hpp"
-
-#include <arpa/inet.h>
 #include <string.h>
+#include <netinet/in.h>
 #include <string>
+#include <memory>
 
+#include "websocket/Response.hpp"
 #include "Common.hpp"
 #include "websocket/Types.hpp"
 

@@ -1,10 +1,11 @@
+#include <unistd.h>
+#include <stdlib.h>
+#include <fstream>
+#include <string>
+#include <vector>
+
 #include "Config.hpp"
 #include "catch.hpp"
-
-#include <fstream>
-#include <iostream>
-#include <stdio.h>
-#include <unistd.h>
 
 using namespace eventhub;
 

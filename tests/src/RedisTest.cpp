@@ -1,12 +1,22 @@
-#include "Common.hpp"
+#include <bits/this_thread_sleep.h>
+#include <cxxabi.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <sw/redis++/redis.h>
+#include <sw/redis++/utils.h>
+#include <future>
+#include <vector>
+#include <algorithm>
+#include <chrono>
+#include <exception>
+#include <memory>
+#include <string>
+#include <system_error>
+
 #include "Config.hpp"
 #include "catch.hpp"
 #include "jwt/json/json.hpp"
-#include <future>
-#include <vector>
-
 #include "Redis.hpp"
-#include "Util.hpp"
 
 using namespace eventhub;
 
