@@ -5,11 +5,9 @@
 #include <string>
 #include <vector>
 
-#include "Connection.hpp"
-#include "ConnectionWorker.hpp"
+#include "Forward.hpp"
 #include "HandlerContext.hpp"
 #include "websocket/Types.hpp"
-#include "Forward.hpp"
 
 namespace eventhub {
 

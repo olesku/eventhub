@@ -1,6 +1,8 @@
 #pragma once
 
 #include <memory>
+
+#include "Forward.hpp"
 #include "Server.hpp"
 #include "EventhubBase.hpp"
 

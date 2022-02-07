@@ -17,14 +17,12 @@
 #include <utility>
 #include <vector>
 
+#include "Forward.hpp"
 #include "EventhubBase.hpp"
-#include "AccessController.hpp"
-#include "Common.hpp"
+#include "websocket/Parser.hpp"
 #include "http/Parser.hpp"
 #include "jsonrpc/jsonrpcpp.hpp"
-#include "websocket/Parser.hpp"
-#include "websocket/Types.hpp"
-#include "Forward.hpp"
+#include "AccessController.hpp"
 
 namespace eventhub {
 using ConnectionPtr          = std::shared_ptr<Connection>;

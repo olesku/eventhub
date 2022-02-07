@@ -7,11 +7,11 @@
 #include <string>
 #include <vector>
 
+#include "Forward.hpp"
 #include "SSLConnection.hpp"
 #include "Util.hpp"
 #include "Common.hpp"
 #include "Logger.hpp"
-#include "Forward.hpp"
 
 namespace eventhub {
 

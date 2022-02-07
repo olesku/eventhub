@@ -8,14 +8,13 @@
 #include <string>
 #include <functional>
 
-#include "EventhubBase.hpp"
-#include "Config.hpp"
-#include "Connection.hpp"
-#include "EventLoop.hpp"
-#include "TopicManager.hpp"
-#include "Worker.hpp"
-#include "metrics/Types.hpp"
 #include "Forward.hpp"
+#include "metrics/Types.hpp"
+#include "EventhubBase.hpp"
+#include "Worker.hpp"
+#include "EventLoop.hpp"
+#include "Connection.hpp"
+#include "TopicManager.hpp"
 
 namespace eventhub {
 

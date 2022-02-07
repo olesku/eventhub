@@ -3,12 +3,6 @@
 #include <memory>
 #include <string>
 
-#include "Connection.hpp"
-#include "ConnectionWorker.hpp"
-#include "HandlerContext.hpp"
-#include "TopicManager.hpp"
-#include "http/Parser.hpp"
-#include "http/Response.hpp"
 #include "Forward.hpp"
 
 namespace eventhub {

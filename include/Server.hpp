@@ -7,13 +7,12 @@
 #include <mutex>
 #include <string>
 
-#include "ConnectionWorker.hpp"
-#include "EventLoop.hpp"
-#include "Redis.hpp"
+#include "Forward.hpp"
 #include "KVStore.hpp"
 #include "Worker.hpp"
 #include "metrics/Types.hpp"
-#include "Forward.hpp"
+#include "EventLoop.hpp"
+#include "Redis.hpp"
 
 namespace eventhub {
 

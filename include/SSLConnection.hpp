@@ -5,9 +5,8 @@
 #include <openssl/ossl_typ.h>
 #include <sys/types.h>
 
-#include "Config.hpp"
-#include "Connection.hpp"
 #include "Forward.hpp"
+#include "Connection.hpp"
 
 namespace eventhub {
 

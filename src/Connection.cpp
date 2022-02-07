@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "Forward.hpp"
 #include "Connection.hpp"
 #include "Common.hpp"
 #include "ConnectionWorker.hpp"
@@ -19,7 +20,6 @@
 #include "http/Parser.hpp"
 #include "websocket/Parser.hpp"
 #include "Logger.hpp"
-#include "Forward.hpp"
 
 namespace eventhub {
 

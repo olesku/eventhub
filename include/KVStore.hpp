@@ -2,10 +2,9 @@
 
 #include <string>
 
-#include "EventhubBase.hpp"
-#include "Redis.hpp"
-#include "Config.hpp"
 #include "Forward.hpp"
+#include "EventhubBase.hpp"
+#include "Config.hpp"
 
 namespace eventhub {
   class KVStore final : public EventhubBase {

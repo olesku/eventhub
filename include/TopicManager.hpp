@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include "Forward.hpp"
 #include "Common.hpp"
 #include "Connection.hpp"
 #include "Topic.hpp"
@@ -33,3 +34,4 @@ private:
 } // namespace eventhub
 
 
+#include "Connection.hpp"
