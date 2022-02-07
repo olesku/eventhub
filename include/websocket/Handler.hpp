@@ -9,9 +9,9 @@
 #include "ConnectionWorker.hpp"
 #include "HandlerContext.hpp"
 #include "websocket/Types.hpp"
+#include "Forward.hpp"
 
 namespace eventhub {
-class HandlerContext;
 
 namespace websocket {
 

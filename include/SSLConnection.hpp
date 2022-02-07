@@ -7,10 +7,9 @@
 
 #include "Config.hpp"
 #include "Connection.hpp"
+#include "Forward.hpp"
 
 namespace eventhub {
-class Config;
-class Worker;
 
 class SSLConnection final : public Connection {
 public:

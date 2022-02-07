@@ -24,13 +24,9 @@
 #include "jsonrpc/jsonrpcpp.hpp"
 #include "websocket/Parser.hpp"
 #include "websocket/Types.hpp"
+#include "Forward.hpp"
 
 namespace eventhub {
-class Config;
-class Connection;
-class Topic;
-class Worker;
-
 using ConnectionPtr          = std::shared_ptr<Connection>;
 using ConnectionWeakPtr      = std::weak_ptr<Connection>;
 using ConnectionListIterator = std::list<ConnectionPtr>::iterator;

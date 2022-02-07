@@ -7,10 +7,9 @@
 #include "Config.hpp"
 #include "EventhubBase.hpp"
 #include "jwt/jwt.hpp"
+#include "Forward.hpp"
 
 namespace eventhub {
-class Config;
-
 class AccessController final : public EventhubBase {
 private:
   bool _token_loaded;

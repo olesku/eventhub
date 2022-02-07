@@ -15,9 +15,9 @@
 #include "TopicManager.hpp"
 #include "Worker.hpp"
 #include "metrics/Types.hpp"
+#include "Forward.hpp"
 
 namespace eventhub {
-class Server;
 
 typedef std::list<ConnectionPtr> ConnectionList;
 

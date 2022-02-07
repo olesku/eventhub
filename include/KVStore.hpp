@@ -5,10 +5,9 @@
 #include "EventhubBase.hpp"
 #include "Redis.hpp"
 #include "Config.hpp"
+#include "Forward.hpp"
 
 namespace eventhub {
-class Redis;
-
   class KVStore final : public EventhubBase {
     private:
       std::string _prefix;

@@ -11,10 +11,9 @@
 #include "Util.hpp"
 #include "Common.hpp"
 #include "Logger.hpp"
+#include "Forward.hpp"
 
 namespace eventhub {
-class Config;
-class Worker;
 
 SSLConnection::SSLConnection(int fd, struct sockaddr_in* csin, Worker* worker, Config& cfg, SSL_CTX* ctx) :
   Connection(fd, csin, worker, cfg), _ssl_ctx(ctx) {

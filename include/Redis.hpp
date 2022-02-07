@@ -14,14 +14,7 @@
 #include "EventhubBase.hpp"
 #include "jwt/json/json.hpp"
 
-namespace sw {
-namespace redis {
-class Redis;
-}  // namespace redis
-}  // namespace sw
-
 namespace eventhub {
-class Config;
 
 using RedisMsgCallback = std::function<void(const std::string& pattern,
                                             const std::string& channel,

@@ -9,12 +9,10 @@
 #include "TopicManager.hpp"
 #include "http/Parser.hpp"
 #include "http/Response.hpp"
+#include "Forward.hpp"
 
 namespace eventhub {
-class HandlerContext;
-
 namespace http {
-class Response;
 
 class Handler final {
 public:

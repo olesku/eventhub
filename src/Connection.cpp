@@ -19,9 +19,9 @@
 #include "http/Parser.hpp"
 #include "websocket/Parser.hpp"
 #include "Logger.hpp"
+#include "Forward.hpp"
 
 namespace eventhub {
-class Config;
 
 Connection::Connection(int fd, struct sockaddr_in* csin, Worker* worker, Config& cfg) :
   EventhubBase(cfg), _fd(fd), _worker(worker), _access_controller(cfg) {

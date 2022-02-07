@@ -13,11 +13,9 @@
 #include "KVStore.hpp"
 #include "Worker.hpp"
 #include "metrics/Types.hpp"
+#include "Forward.hpp"
 
 namespace eventhub {
-class Config;
-class KVStore;
-class Worker;
 
 class Server final {
 public:

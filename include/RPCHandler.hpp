@@ -9,9 +9,9 @@
 #include "HandlerContext.hpp"
 #include "jsonrpc/jsonrpcpp.hpp"
 #include "jwt/json/json.hpp"
+#include "Forward.hpp"
 
 namespace eventhub {
-class HandlerContext;
 
 using RPCMethod      = std::function<void(HandlerContext& hCtx, jsonrpcpp::request_ptr)>;
 using RPCHandlerList = std::vector<std::pair<std::string, RPCMethod>>;

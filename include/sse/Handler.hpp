@@ -9,13 +9,9 @@
 #include "ConnectionWorker.hpp"
 #include "HandlerContext.hpp"
 #include "http/Parser.hpp"
+#include "Forward.hpp"
 
 namespace eventhub {
-class HandlerContext;
-namespace http {
-class Parser;
-}  // namespace http
-
 namespace sse {
 
 class Handler final {
