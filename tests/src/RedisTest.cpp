@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 #include <system_error>
+#include <thread>
 
 #include "Config.hpp"
 #include "catch.hpp"
