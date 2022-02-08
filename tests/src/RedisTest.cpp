@@ -28,7 +28,7 @@ TEST_CASE("Test redis", "[Redis") {
     { "redis_pool_size",          ConfigValueType::INT,    "5",             ConfigValueSettings::REQUIRED },
     { "max_cache_length",         ConfigValueType::INT,    "1000",          ConfigValueSettings::REQUIRED },
     { "max_cache_request_limit",  ConfigValueType::INT,    "100",           ConfigValueSettings::REQUIRED },
-    { "default_cache_ttl",        ConfigValueType::INT,    "60",             ConfigValueSettings::REQUIRED },
+    { "default_cache_ttl",        ConfigValueType::INT,    "60",            ConfigValueSettings::REQUIRED },
     { "enable_cache",             ConfigValueType::BOOL,   "true",          ConfigValueSettings::REQUIRED }
   };
 

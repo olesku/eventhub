@@ -32,6 +32,3 @@ private:
   std::mutex _topic_list_lock;
 };
 } // namespace eventhub
-
-
-#include "Connection.hpp"
