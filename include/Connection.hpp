@@ -19,10 +19,9 @@
 
 #include "Forward.hpp"
 #include "EventhubBase.hpp"
-#include "websocket/Parser.hpp"
-#include "http/Parser.hpp"
+#include "websocket/Types.hpp"
+#include "http/Types.hpp"
 #include "jsonrpc/jsonrpcpp.hpp"
-#include "AccessController.hpp"
 
 namespace eventhub {
 using ConnectionPtr          = std::shared_ptr<Connection>;
@@ -55,7 +54,7 @@ public:
 
   ConnectionState setState(ConnectionState newState);
   ConnectionState getState();
-  AccessController& getAccessController();
+  AccessController* getAccessController();
   void assignConnectionListIterator(std::list<ConnectionPtr>::iterator connectionIterator);
   ConnectionListIterator getConnectionListIterator();
   ConnectionPtr getSharedPtr();
@@ -83,8 +82,8 @@ protected:
   std::mutex _write_lock;
   std::mutex _subscription_list_lock;
   std::unique_ptr<http::Parser> _http_parser;
-  websocket::Parser _websocket_parser;
-  AccessController _access_controller;
+  std::unique_ptr<websocket::Parser> _websocket_parser;
+  std::unique_ptr<AccessController> _access_controller;
   ConnectionState _state;
   bool _is_shutdown;
   bool _is_shutdown_after_flush;

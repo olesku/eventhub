@@ -19,12 +19,13 @@
 #include "TopicManager.hpp"
 #include "http/Parser.hpp"
 #include "websocket/Parser.hpp"
+#include "AccessController.hpp"
 #include "Logger.hpp"
 
 namespace eventhub {
 
 Connection::Connection(int fd, struct sockaddr_in* csin, Worker* worker, Config& cfg) :
-  EventhubBase(cfg), _fd(fd), _worker(worker), _access_controller(cfg) {
+  EventhubBase(cfg), _fd(fd), _worker(worker) {
 
   _is_shutdown             = false;
   _is_shutdown_after_flush = false;
@@ -50,6 +51,8 @@ Connection::Connection(int fd, struct sockaddr_in* csin, Worker* worker, Config&
   LOG->trace("Client {} connected.", getIP());
 
   _http_parser = std::make_unique<http::Parser>();
+  _websocket_parser = std::make_unique<websocket::Parser>();
+  _access_controller = std::make_unique<AccessController>(cfg);
 
   // Set initial state.
   setState(ConnectionState::HTTP);
@@ -137,7 +140,7 @@ void Connection::_parseRequest(size_t bytesRead) {
       break;
 
     case ConnectionState::WEBSOCKET:
-      _websocket_parser.parse(_read_buffer.data(), bytesRead);
+      _websocket_parser->parse(_read_buffer.data(), bytesRead);
       break;
 
     default:
@@ -266,13 +269,13 @@ ConnectionState Connection::setState(ConnectionState newState) {
 
 void Connection::subscribe(const std::string& topicPattern, const jsonrpcpp::Id subscriptionRequestId) {
   std::lock_guard<std::mutex> lock(_subscription_list_lock);
-  auto& tm = _worker->getTopicManager();
+  auto tm = _worker->getTopicManager();
 
   if (_subscribedTopics.count(topicPattern)) {
     return;
   }
 
-  auto topicSubscription = tm.subscribeConnection(getSharedPtr(), topicPattern, subscriptionRequestId);
+  auto topicSubscription = tm->subscribeConnection(getSharedPtr(), topicPattern, subscriptionRequestId);
   _subscribedTopics.insert(std::make_pair(topicPattern, TopicSubscription{topicSubscription.first, topicSubscription.second, subscriptionRequestId}));
 }
 
@@ -281,15 +284,15 @@ ConnectionState Connection::getState() {
 }
 
 void Connection::onWebsocketRequest(websocket::ParserCallback callback) {
-  _websocket_parser.setCallback(callback);
+  _websocket_parser->setCallback(callback);
 }
 
 void Connection::onHTTPRequest(http::ParserCallback callback) {
   _http_parser->setCallback(callback);
 }
 
-AccessController& Connection::getAccessController() {
-  return _access_controller;
+AccessController* Connection::getAccessController() {
+  return _access_controller.get();
 }
 
 void Connection::assignConnectionListIterator(std::list<ConnectionPtr>::iterator connectionIterator) {
@@ -306,7 +309,7 @@ ConnectionPtr Connection::getSharedPtr() {
 
 bool Connection::unsubscribe(const std::string& topicPattern) {
   std::lock_guard<std::mutex> lock(_subscription_list_lock);
-  auto& tm = _worker->getTopicManager();
+  auto tm = _worker->getTopicManager();
 
   if (_subscribedTopics.count(topicPattern) == 0) {
     return false;
@@ -318,7 +321,7 @@ bool Connection::unsubscribe(const std::string& topicPattern) {
   subscription.topic->deleteSubscriberByIterator(subscription.topicListIterator);
 
   if (subscription.topic->getSubscriberCount() == 0) {
-    tm.deleteTopic(topicPattern);
+    tm->deleteTopic(topicPattern);
   }
 
   _subscribedTopics.erase(it);
@@ -328,7 +331,7 @@ bool Connection::unsubscribe(const std::string& topicPattern) {
 
 unsigned int Connection::unsubscribeAll() {
   std::lock_guard<std::mutex> lock(_subscription_list_lock);
-  auto& tm           = _worker->getTopicManager();
+  auto tm            = _worker->getTopicManager();
   unsigned int count = _subscribedTopics.size();
 
   for (auto it = _subscribedTopics.begin(); it != _subscribedTopics.end();) {
@@ -336,7 +339,7 @@ unsigned int Connection::unsubscribeAll() {
     subscription.topic->deleteSubscriberByIterator(subscription.topicListIterator);
 
     if (subscription.topic->getSubscriberCount() == 0) {
-      tm.deleteTopic(it->first);
+      tm->deleteTopic(it->first);
     }
 
     it = _subscribedTopics.erase(it);

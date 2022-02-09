@@ -11,10 +11,9 @@
 #include "Forward.hpp"
 #include "metrics/Types.hpp"
 #include "EventhubBase.hpp"
-#include "Worker.hpp"
 #include "EventLoop.hpp"
+#include "Worker.hpp"
 #include "Connection.hpp"
-#include "TopicManager.hpp"
 
 namespace eventhub {
 
@@ -25,7 +24,7 @@ public:
   Worker(Server* srv, unsigned int workerId);
   ~Worker();
 
-  TopicManager& getTopicManager() { return _topic_manager; }
+  TopicManager* getTopicManager() { return _topic_manager.get(); }
 
   void subscribeConnection(ConnectionPtr conn, const std::string& topicFilterName);
   void publish(const std::string& topicName, const std::string& data);
@@ -38,10 +37,10 @@ private:
   unsigned int _workerId;
   Server* _server;
   int _epoll_fd;
-  EventLoop _ev;
+  std::unique_ptr<EventLoop> _ev;
   ConnectionList _connection_list;
   std::mutex _connection_list_mutex;
-  TopicManager _topic_manager;
+  std::unique_ptr<TopicManager> _topic_manager;
   metrics::WorkerMetrics _metrics;
   int64_t _ev_delay_sample_start;
 

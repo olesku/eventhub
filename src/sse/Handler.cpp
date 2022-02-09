@@ -23,7 +23,7 @@ namespace sse {
 void Handler::HandleRequest(HandlerContext& ctx, http::Parser* req) {
   auto conn               = ctx.connection();
   auto& redis             = ctx.server()->getRedis();
-  auto& accessController  = conn->getAccessController();
+  auto accessController   = conn->getAccessController();
 
   auto path        = Util::uriDecode(req->getPath());
   auto lastEventId = req->getHeader("Last-Event-ID");
@@ -41,7 +41,7 @@ void Handler::HandleRequest(HandlerContext& ctx, http::Parser* req) {
   }
 
   // Check authorization.
-  if (!accessController.allowSubscribe(path)) {
+  if (!accessController->allowSubscribe(path)) {
     Response::error(conn, "Insufficient access.", 401);
     return;
   }
