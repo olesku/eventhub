@@ -102,7 +102,7 @@ All configuration options can also be set using [environment variables](https://
 |handshake_timeout            | Client handshake timeout                      | 15
 |disable_auth                 | Disable client authentication                 | false
 |[enable_sse](docs/sse.md)    | Enable Server-Sent-Events support             | false
-|enable_cache                 | Enable retained cache for topics.             | true
+|enable_cache                 | Enable retained cache for topics.             | false
 |prometheus_metric_prefix     | Prometheus prefix                             | eventhub
 |default_cache_ttl            | Default message TTL                           | 60
 |max_cache_request_limit      | Default returned cache result limit           | 1000
