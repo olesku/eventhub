@@ -4,12 +4,13 @@
 
 #include "Forward.hpp"
 #include "EventhubBase.hpp"
+#include "Config.hpp"
 
 namespace eventhub {
 
 class HandlerContext final : public EventhubBase {
 public:
-  HandlerContext(Config* cfg, Server* server, Worker* worker, std::shared_ptr<Connection> connection) :
+  HandlerContext(Config& cfg, Server* server, Worker* worker, std::shared_ptr<Connection> connection) :
     EventhubBase(cfg), _server(server), _worker(worker), _connection(connection) {};
 
   ~HandlerContext() {}

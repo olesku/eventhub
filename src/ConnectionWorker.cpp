@@ -124,7 +124,7 @@ ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin, bool ssl)
     auto c = wptrClient.lock();
     if (!c)
       return;
-    http::Handler::HandleRequest(HandlerContext(_server, this, c), req, reqState);
+    http::Handler::HandleRequest(HandlerContext(_config, _server, this, c), req, reqState);
   });
 
   // Set up websocket request callback.
@@ -134,7 +134,7 @@ ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin, bool ssl)
     auto c = wptrClient.lock();
     if (!c)
       return;
-    websocket::Handler::HandleRequest(HandlerContext(_server, this, c),
+    websocket::Handler::HandleRequest(HandlerContext(_config, _server, this, c),
                                       status, frameType, data);
   });
 
