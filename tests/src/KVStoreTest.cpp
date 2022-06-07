@@ -1,4 +1,5 @@
-#include "KVStore.hpp"
+#include <memory>
+
 #include "catch.hpp"
 
 namespace eventhub {

@@ -1,8 +1,10 @@
 #pragma once
 
 #include <string>
+
+#include "Forward.hpp"
 #include "EventhubBase.hpp"
-#include "Redis.hpp"
+#include "Config.hpp"
 
 namespace eventhub {
   class KVStore final : public EventhubBase {

@@ -5,10 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "Connection.hpp"
-#include "ConnectionWorker.hpp"
-#include "HandlerContext.hpp"
-#include "http/Parser.hpp"
+#include "Forward.hpp"
 
 namespace eventhub {
 namespace sse {

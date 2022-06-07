@@ -1,4 +1,7 @@
+#include <stdint.h>
 #include <string>
+#include <initializer_list>
+#include <vector>
 
 #include "jwt/json/json.hpp"
 #include "metrics/JsonRenderer.hpp"

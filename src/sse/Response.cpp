@@ -1,11 +1,14 @@
-#include "sse/Response.hpp"
-#include "http/Response.hpp"
-
 #include <fmt/format.h>
+#include <stdint.h>
 #include <memory>
 #include <string>
+#include <initializer_list>
+#include <vector>
 
+#include "sse/Response.hpp"
+#include "http/Response.hpp"
 #include "Connection.hpp"
+#include "jwt/json/json.hpp"
 
 namespace eventhub {
 namespace sse {

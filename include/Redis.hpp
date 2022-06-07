@@ -1,15 +1,16 @@
 #pragma once
 
 #include <sw/redis++/redis++.h>
-
+#include <fmt/format.h>
+#include <stddef.h>
+#include <sw/redis++/subscriber.h>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <vector>
-#include <fmt/format.h>
+#include <functional>
 
-#include "Forward.hpp"
 #include "EventhubBase.hpp"
 #include "jwt/json/json.hpp"
 

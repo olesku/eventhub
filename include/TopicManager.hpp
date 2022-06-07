@@ -6,9 +6,11 @@
 #include <unordered_map>
 #include <utility>
 
+#include "Forward.hpp"
 #include "Common.hpp"
 #include "Connection.hpp"
 #include "Topic.hpp"
+#include "jsonrpc/jsonrpcpp.hpp"
 
 namespace eventhub {
 
@@ -30,5 +32,3 @@ private:
   std::mutex _topic_list_lock;
 };
 } // namespace eventhub
-
-

@@ -1,10 +1,12 @@
 #pragma once
 
-#include "Config.hpp"
-#include "Forward.hpp"
-#include "Connection.hpp"
 #include <openssl/err.h>
 #include <openssl/ssl.h>
+#include <openssl/ossl_typ.h>
+#include <sys/types.h>
+
+#include "Forward.hpp"
+#include "Connection.hpp"
 
 namespace eventhub {
 

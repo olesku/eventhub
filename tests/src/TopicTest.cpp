@@ -1,7 +1,10 @@
-#include "TopicManager.hpp"
-#include "catch.hpp"
 #include <utility>
 #include <vector>
+#include <string>
+
+#include "TopicManager.hpp"
+#include "catch.hpp"
+#include "Config.hpp"
 
 using namespace eventhub;
 

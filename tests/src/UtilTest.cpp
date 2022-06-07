@@ -1,7 +1,9 @@
+#include <unistd.h>
+#include <fstream>
+#include <string>
+
 #include "Util.hpp"
 #include "catch.hpp"
-#include <fstream>
-#include <unistd.h>
 
 namespace eventhub {
 

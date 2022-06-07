@@ -1,14 +1,19 @@
-#include "Topic.hpp"
-
+#include <spdlog/logger.h>
+#include <stdint.h>
 #include <memory>
 #include <string>
 #include <utility>
+#include <exception>
+#include <initializer_list>
+#include <vector>
 
-#include "Common.hpp"
+#include "Topic.hpp"
 #include "Connection.hpp"
 #include "sse/Response.hpp"
 #include "websocket/Response.hpp"
 #include "websocket/Types.hpp"
+#include "Logger.hpp"
+#include "jwt/json/json.hpp"
 
 namespace eventhub {
 Topic::~Topic() {}

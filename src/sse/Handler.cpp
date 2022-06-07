@@ -1,20 +1,21 @@
-#include <functional>
+#include <stdint.h>
 #include <memory>
 #include <string>
 #include <vector>
+#include <initializer_list>
 
-#include "Common.hpp"
 #include "Config.hpp"
 #include "Connection.hpp"
-#include "ConnectionWorker.hpp"
 #include "HandlerContext.hpp"
 #include "Redis.hpp"
 #include "Server.hpp"
 #include "TopicManager.hpp"
 #include "Util.hpp"
-#include "http/Response.hpp"
 #include "sse/Handler.hpp"
 #include "sse/Response.hpp"
+#include "AccessController.hpp"
+#include "http/Parser.hpp"
+#include "jwt/json/json.hpp"
 
 namespace eventhub {
 namespace sse {
@@ -22,7 +23,7 @@ namespace sse {
 void Handler::HandleRequest(HandlerContext& ctx, http::Parser* req) {
   auto conn               = ctx.connection();
   auto& redis             = ctx.server()->getRedis();
-  auto& accessController  = conn->getAccessController();
+  auto accessController   = conn->getAccessController();
 
   auto path        = Util::uriDecode(req->getPath());
   auto lastEventId = req->getHeader("Last-Event-ID");
@@ -40,7 +41,7 @@ void Handler::HandleRequest(HandlerContext& ctx, http::Parser* req) {
   }
 
   // Check authorization.
-  if (!accessController.allowSubscribe(path)) {
+  if (!accessController->allowSubscribe(path)) {
     Response::error(conn, "Insufficient access.", 401);
     return;
   }

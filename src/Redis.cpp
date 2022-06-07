@@ -1,23 +1,31 @@
-#include "Redis.hpp"
-
+#include <fmt/format.h>
+#include <spdlog/logger.h>
+#include <stdint.h>
+#include <sw/redis++/command_options.h>
+#include <sw/redis++/connection.h>
+#include <sw/redis++/connection_pool.h>
+#include <sw/redis++/redis.h>
+#include <sw/redis++/utils.h>
+#include <sw/redis++/redis.hpp>
 #include <chrono>
 #include <deque>
-#include <fmt/format.h>
 #include <memory>
 #include <mutex>
-#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
 #include <unordered_map>
 #include <stdexcept>
+#include <initializer_list>
+#include <iterator>
+#include <tuple>
 
-#include "Common.hpp"
+#include "Redis.hpp"
 #include "Config.hpp"
 #include "TopicManager.hpp"
 #include "Util.hpp"
-#include "Server.hpp"
 #include "jwt/json/json.hpp"
+#include "Logger.hpp"
 
 namespace eventhub {
 

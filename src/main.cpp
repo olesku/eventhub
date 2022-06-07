@@ -1,17 +1,17 @@
 #include <signal.h>
-#include <stdexcept>
 #include <stdio.h>
-#include <string>
-#include <time.h>
 #include <getopt.h>
-
+#include <bits/getopt_core.h>
+#include <spdlog/logger.h>
+#include <stdlib.h>
+#include <string>
 #include <atomic>
 #include <iostream>
-#include <memory>
+#include <exception>
 
-#include "Common.hpp"
 #include "Config.hpp"
 #include "Server.hpp"
+#include "Logger.hpp"
 
 namespace eventhub {
 extern std::atomic<bool> stopEventhub;

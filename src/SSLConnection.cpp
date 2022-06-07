@@ -1,8 +1,17 @@
 #include <openssl/ossl_typ.h>
+#include <errno.h>
+#include <openssl/err.h>
+#include <openssl/ssl3.h>
+#include <spdlog/logger.h>
+#include <string.h>
+#include <string>
+#include <vector>
 
+#include "Forward.hpp"
 #include "SSLConnection.hpp"
-#include "Server.hpp"
 #include "Util.hpp"
+#include "Common.hpp"
+#include "Logger.hpp"
 
 namespace eventhub {
 

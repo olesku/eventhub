@@ -1,15 +1,13 @@
-#include "http/Parser.hpp"
-
 #include <string.h>
-
-#include <iostream>
+#include <spdlog/logger.h>
 #include <map>
-#include <stdexcept>
 #include <string>
+#include <memory>
 
-#include "Common.hpp"
+#include "http/Parser.hpp"
 #include "Util.hpp"
 #include "http/picohttpparser.h"
+#include "Logger.hpp"
 
 namespace eventhub {
 namespace http {

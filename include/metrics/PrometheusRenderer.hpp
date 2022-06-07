@@ -2,10 +2,11 @@
 
 #include <string>
 
-#include "metrics/Types.hpp"
 #include "Forward.hpp"
+#include "metrics/Types.hpp"
 
 namespace eventhub {
+
 namespace metrics {
 
 class PrometheusRenderer final {

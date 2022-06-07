@@ -1,9 +1,12 @@
-#include "ConnectionWorker.hpp"
-
 #include <errno.h>
-#include <fcntl.h>
 #include <netinet/in.h>
 #include <string.h>
+#include <spdlog/logger.h>
+
+#include "ConnectionWorker.hpp"
+#include "Logger.hpp"
+#include "http/Parser.hpp"
+#include "websocket/Types.hpp"
 #ifdef __linux__
 #include <sys/epoll.h>
 #else
@@ -12,12 +15,12 @@
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <unistd.h>
-
 #include <chrono>
 #include <memory>
 #include <mutex>
-#include <stdexcept>
 #include <string>
+#include <atomic>
+#include <type_traits>
 
 #include "Common.hpp"
 #include "Config.hpp"
@@ -26,12 +29,11 @@
 #include "HandlerContext.hpp"
 #include "SSLConnection.hpp"
 #include "Server.hpp"
+#include "TopicManager.hpp"
 #include "Util.hpp"
-#include "Worker.hpp"
 #include "http/Handler.hpp"
 #include "sse/Response.hpp"
 #include "websocket/Handler.hpp"
-#include "websocket/Parser.hpp"
 #include "websocket/Response.hpp"
 
 namespace eventhub {
@@ -39,6 +41,9 @@ namespace eventhub {
 Worker::Worker(Server* srv, unsigned int workerId) : EventhubBase(srv->config()), _workerId(workerId) {
   _server   = srv;
   _epoll_fd = epoll_create1(0);
+
+  _ev = std::make_unique<EventLoop>();
+  _topic_manager = std::make_unique<TopicManager>();
 }
 
 Worker::~Worker() {
@@ -56,7 +61,7 @@ Worker::~Worker() {
 }
 
 void Worker::addTimer(int64_t delay, std::function<void(TimerCtx* ctx)> callback, bool repeat) {
-  _ev.addTimer(delay, callback, repeat);
+  _ev->addTimer(delay, callback, repeat);
 }
 
 /**
@@ -119,7 +124,7 @@ ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin, bool ssl)
     auto c = wptrClient.lock();
     if (!c)
       return;
-    http::Handler::HandleRequest(HandlerContext(_server, this, c), req, reqState);
+    http::Handler::HandleRequest(HandlerContext(_config, _server, this, c), req, reqState);
   });
 
   // Set up websocket request callback.
@@ -129,7 +134,7 @@ ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin, bool ssl)
     auto c = wptrClient.lock();
     if (!c)
       return;
-    websocket::Handler::HandleRequest(HandlerContext(_server, this, c),
+    websocket::Handler::HandleRequest(HandlerContext(_config, _server, this, c),
                                       status, frameType, data);
   });
 
@@ -195,8 +200,8 @@ void Worker::_removeConnection(ConnectionPtr conn) {
 }
 
 void Worker::publish(const std::string& topicName, const std::string& data) {
-  _ev.addJob([this, topicName, data]() {
-    _topic_manager.publish(topicName, data);
+  _ev->addJob([this, topicName, data]() {
+    _topic_manager->publish(topicName, data);
   });
 }
 
@@ -214,7 +219,7 @@ void Worker::_workerMain() {
   _ev_delay_sample_start = Util::getTimeSinceEpoch();
 
   // Sample eventloop delay every <METRIC_DELAY_SAMPLE_RATE_MS> and store it in our metrics.
-  _ev.addTimer(
+  _ev->addTimer(
       METRIC_DELAY_SAMPLE_RATE_MS, [&](TimerCtx* ctx) {
         const auto epoch = Util::getTimeSinceEpoch();
         long diff        = epoch - _ev_delay_sample_start - METRIC_DELAY_SAMPLE_RATE_MS;
@@ -255,8 +260,8 @@ void Worker::_workerMain() {
   while (!stopRequested()) {
     unsigned int timeout = EPOLL_MAX_TIMEOUT;
 
-    if (_ev.hasWork() && _ev.getNextTimerDelay().count() < EPOLL_MAX_TIMEOUT) {
-      timeout = _ev.getNextTimerDelay().count();
+    if (_ev->hasWork() && _ev->getNextTimerDelay().count() < EPOLL_MAX_TIMEOUT) {
+      timeout = _ev->getNextTimerDelay().count();
     }
 
     int n = epoll_wait(_epoll_fd, eventConnectionList, MAXEVENTS, timeout);
@@ -299,7 +304,7 @@ void Worker::_workerMain() {
     }
 
     // Process timers and jobs.
-    _ev.process();
+    _ev->process();
   }
 }
 } // namespace eventhub

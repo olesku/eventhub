@@ -1,15 +1,12 @@
-#include "Config.hpp"
-#include <fstream>
-#include <iostream>
+#include <stdlib.h>
+#include <ctype.h>
 #include <memory>
 #include <sstream>
-#include <stdexcept>
+#include <fstream>
 #include <string>
-#include <tuple>
-#include <type_traits>
 #include <unordered_map>
-#include <variant>
-#include <stdlib.h>
+
+#include "Config.hpp"
 
 namespace eventhub {
 Config::Config() {}

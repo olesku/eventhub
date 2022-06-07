@@ -1,19 +1,25 @@
+#include <fmt/format.h>
+#include <spdlog/logger.h>
+#include <sstream>
+#include <string>
+#include <cstdint>
+#include <exception>
+#include <initializer_list>
+#include <memory>
+
 #include "RPCHandler.hpp"
-#include "Common.hpp"
 #include "Config.hpp"
 #include "Connection.hpp"
-#include "ConnectionWorker.hpp"
 #include "HandlerContext.hpp"
 #include "Redis.hpp"
 #include "Server.hpp"
 #include "TopicManager.hpp"
 #include "Util.hpp"
 #include "websocket/Response.hpp"
-
-#include <sstream>
-#include <stdexcept>
-#include <string>
-#include <fmt/format.h>
+#include "AccessController.hpp"
+#include "KVStore.hpp"
+#include "Logger.hpp"
+#include "websocket/Types.hpp"
 
 namespace eventhub {
 
@@ -67,7 +73,7 @@ void RPCHandler::_sendSuccessResponse(HandlerContext& ctx, jsonrpcpp::request_pt
  * @param req RPC request.
  */
 void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
-  auto& accessController = ctx.connection()->getAccessController();
+  auto accessController = ctx.connection()->getAccessController();
   auto params            = req->params();
   std::string topicName;
   std::string sinceEventId;
@@ -106,7 +112,7 @@ void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr re
     return;
   }
 
-  if (!accessController.allowSubscribe(topicName)) {
+  if (!accessController->allowSubscribe(topicName)) {
     msg << "You are not allowed to subscribe to topic: " << topicName;
     _sendInvalidParamsError(ctx, req, msg.str());
     return;
@@ -160,7 +166,7 @@ void RPCHandler::_handleUnsubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr 
   auto topics        = req->params().to_json();
   unsigned int count = 0;
   for (auto topic : topics) {
-    if (!TopicManager::isValidTopicOrFilter(topic) || !accessController.allowSubscribe(topic)) {
+    if (!TopicManager::isValidTopicOrFilter(topic) || !accessController->allowSubscribe(topic)) {
       continue;
     }
 
@@ -215,7 +221,7 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
     return;
   }
 
-  if (!accessController.allowPublish(topicName)) {
+  if (!accessController->allowPublish(topicName)) {
     msg << "Insufficient access to topic: " << topicName;
     _sendInvalidParamsError(ctx, req, msg.str());
     return;
@@ -241,7 +247,7 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
 
   try {
     auto& redis = ctx.server()->getRedis();
-    auto id     = redis.cacheMessage(topicName, message, accessController.subject(), timestamp, ttl);
+    auto id     = redis.cacheMessage(topicName, message, accessController->subject(), timestamp, ttl);
 
     if (id.length() == 0) {
       msg << "Failed to cache message in Redis, discarding.";
@@ -249,7 +255,7 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
       return;
     }
 
-    redis.publishMessage(topicName, id, message, accessController.subject());
+    redis.publishMessage(topicName, id, message, accessController->subject());
     LOG->debug("{} - PUBLISH {}", ctx.connection()->getIP(), topicName);
 
     nlohmann::json result;
@@ -301,14 +307,14 @@ void RPCHandler::_handleGet(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
   if (!ctx.server()->getKVStore()->is_enabled())
      return _sendInvalidParamsError(ctx, req, "KVStore is not enabled.");
 
-  auto& accessController = ctx.connection()->getAccessController();
+  auto accessController = ctx.connection()->getAccessController();
   auto kvStore = ctx.server()->getKVStore();
   auto params   = req->params();
 
   try {
     const auto key = params.get("key").get<std::string>();
 
-    if (!accessController.allowSubscribe(key)) {
+    if (!accessController->allowSubscribe(key)) {
       _sendInvalidParamsError(ctx, req, fmt::format("You are not allowed to read key {}", key));
       return;
     }
@@ -334,7 +340,7 @@ void RPCHandler::_handleSet(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
   if (!ctx.server()->getKVStore()->is_enabled())
      return _sendInvalidParamsError(ctx, req, "KVStore is not enabled.");
 
-  auto& accessController = ctx.connection()->getAccessController();
+  auto accessController = ctx.connection()->getAccessController();
   auto kvStore = ctx.server()->getKVStore();
   auto params   = req->params();
   unsigned long ttl = 0;
@@ -347,7 +353,7 @@ void RPCHandler::_handleSet(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
     const auto key = params.get("key").get<std::string>();
     const auto value = params.get("value").get<std::string>();
 
-    if (!accessController.allowPublish(key)) {
+    if (!accessController->allowPublish(key)) {
       _sendInvalidParamsError(ctx, req, fmt::format("You are not allowed to write key {}", key));
       return;
     }
@@ -373,14 +379,14 @@ void RPCHandler::_handleDelete(HandlerContext& ctx, jsonrpcpp::request_ptr req) 
   if (!ctx.server()->getKVStore()->is_enabled())
      return _sendInvalidParamsError(ctx, req, "KVStore is not enabled.");
 
-  auto& accessController = ctx.connection()->getAccessController();
+  auto accessController = ctx.connection()->getAccessController();
   auto kvStore = ctx.server()->getKVStore();
   auto params   = req->params();
 
   try {
     const auto key = params.get("key").get<std::string>();
 
-    if (!accessController.allowPublish(key)) {
+    if (!accessController->allowPublish(key)) {
       _sendInvalidParamsError(ctx, req, fmt::format("You are not allowed to delete key {}", key));
       return;
     }

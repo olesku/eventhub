@@ -1,12 +1,21 @@
-#include "Common.hpp"
+#include <stddef.h>
+#include <stdint.h>
+#include <sw/redis++/redis.h>
+#include <sw/redis++/utils.h>
+#include <future>
+#include <vector>
+#include <algorithm>
+#include <chrono>
+#include <exception>
+#include <memory>
+#include <string>
+#include <system_error>
+#include <thread>
+
 #include "Config.hpp"
 #include "catch.hpp"
 #include "jwt/json/json.hpp"
-#include <future>
-#include <vector>
-
 #include "Redis.hpp"
-#include "Util.hpp"
 
 using namespace eventhub;
 
@@ -19,7 +28,7 @@ TEST_CASE("Test redis", "[Redis") {
     { "redis_pool_size",          ConfigValueType::INT,    "5",             ConfigValueSettings::REQUIRED },
     { "max_cache_length",         ConfigValueType::INT,    "1000",          ConfigValueSettings::REQUIRED },
     { "max_cache_request_limit",  ConfigValueType::INT,    "100",           ConfigValueSettings::REQUIRED },
-    { "default_cache_ttl",        ConfigValueType::INT,    "60",             ConfigValueSettings::REQUIRED },
+    { "default_cache_ttl",        ConfigValueType::INT,    "60",            ConfigValueSettings::REQUIRED },
     { "enable_cache",             ConfigValueType::BOOL,   "true",          ConfigValueSettings::REQUIRED }
   };
 

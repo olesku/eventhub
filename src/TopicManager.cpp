@@ -1,14 +1,14 @@
-#include "TopicManager.hpp"
-
 #include <ctype.h>
-
+#include <spdlog/logger.h>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <list>
 
-#include "Common.hpp"
+#include "TopicManager.hpp"
 #include "Topic.hpp"
+#include "Logger.hpp"
 
 namespace eventhub {
 /*

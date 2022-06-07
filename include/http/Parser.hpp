@@ -1,23 +1,16 @@
 #pragma once
 
+#include <stddef.h>
 #include <functional>
 #include <map>
 #include <memory>
 #include <string>
 
 #include "http/picohttpparser.h"
+#include "http/Types.hpp"
 
 namespace eventhub {
 namespace http {
-
-enum class RequestState {
-  REQ_FAILED,
-  REQ_INCOMPLETE,
-  REQ_TO_BIG,
-  REQ_OK
-};
-
-using ParserCallback = std::function<void(class Parser* req, RequestState state)>;
 
 class Parser final {
 #define HTTP_BUFSIZ 8192

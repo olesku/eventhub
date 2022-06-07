@@ -1,5 +1,6 @@
 #include <chrono>
 #include <thread>
+#include <memory>
 
 #include "EventLoop.hpp"
 #include "catch.hpp"

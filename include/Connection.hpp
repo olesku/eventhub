@@ -8,7 +8,6 @@
 #include "EpollWrapper.hpp"
 #endif
 #include <sys/socket.h>
-
 #include <ctime>
 #include <list>
 #include <memory>
@@ -18,16 +17,13 @@
 #include <utility>
 #include <vector>
 
-#include "EventhubBase.hpp"
 #include "Forward.hpp"
-#include "AccessController.hpp"
-#include "Common.hpp"
-#include "http/Parser.hpp"
+#include "EventhubBase.hpp"
+#include "websocket/Types.hpp"
+#include "http/Types.hpp"
 #include "jsonrpc/jsonrpcpp.hpp"
-#include "websocket/Parser.hpp"
 
 namespace eventhub {
-
 using ConnectionPtr          = std::shared_ptr<Connection>;
 using ConnectionWeakPtr      = std::weak_ptr<Connection>;
 using ConnectionListIterator = std::list<ConnectionPtr>::iterator;
@@ -58,7 +54,7 @@ public:
 
   ConnectionState setState(ConnectionState newState);
   ConnectionState getState();
-  AccessController& getAccessController();
+  AccessController* getAccessController();
   void assignConnectionListIterator(std::list<ConnectionPtr>::iterator connectionIterator);
   ConnectionListIterator getConnectionListIterator();
   ConnectionPtr getSharedPtr();
@@ -86,8 +82,8 @@ protected:
   std::mutex _write_lock;
   std::mutex _subscription_list_lock;
   std::unique_ptr<http::Parser> _http_parser;
-  websocket::Parser _websocket_parser;
-  AccessController _access_controller;
+  std::unique_ptr<websocket::Parser> _websocket_parser;
+  std::unique_ptr<AccessController> _access_controller;
   ConnectionState _state;
   bool _is_shutdown;
   bool _is_shutdown_after_flush;
