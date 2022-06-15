@@ -144,11 +144,6 @@ bool RateLimitConfig::loadFromJSON(const nlohmann::json::array_t& config) {
   return true;
 }
 
-// Returns whether we have any limits defined for this token or not.
-bool RateLimitConfig::hasLimits() {
-  return _limitConfigs.size() > 0;
-}
-
 // Returns limits for given topic if there are any.
 // If no limits is defined we throw NoRateLimitForTopic exception.
 const rlimit_config_t RateLimitConfig::getRateLimitForTopic(const std::string& topic) {
@@ -157,7 +152,7 @@ const rlimit_config_t RateLimitConfig::getRateLimitForTopic(const std::string& t
   size_t matchedPatternLen = 0;
 
   // Exit early if no limits is present in token.
-  if (!hasLimits())
+  if (_limitConfigs.empty())
     throw(NoRateLimitForTopic{});
 
   /*

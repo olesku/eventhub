@@ -30,7 +30,6 @@ class RateLimitConfig final {
   public:
     bool loadFromJSON(const nlohmann::json::array_t& config);
     const rlimit_config_t getRateLimitForTopic(const std::string& topic);
-    bool hasLimits();
 };
 
 class AccessController final : public EventhubBase {
