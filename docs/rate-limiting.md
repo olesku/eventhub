@@ -1,6 +1,6 @@
 # Rate limiting
 
-EventHub allows you to rate limit how many messages a user/token is allowed to publish within a given time period (interval). This is configured by adding ```rlimit``` configuration to the token used by the publisher.
+Eventhub allows you to rate limit how many messages a user/token is allowed to publish within a given time period (interval). This is configured by adding ```rlimit``` configuration to the token used by the publisher.
 
 #### Syntax
 ```json
