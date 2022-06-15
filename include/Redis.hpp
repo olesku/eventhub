@@ -63,8 +63,8 @@ public:
   std::vector<std::string> _getTopicsSeen(const std::string& topicPattern);
   const std::string _getNextCacheId(long long timestamp);
 
-  bool isRateLimited(const std::string& topic, const std::string& subject, unsigned long interval, unsigned long max);
-  void incrementLimitCount(const std::string& topic, const std::string& subject, unsigned long interval, unsigned long max);
+  bool isRateLimited(const std::string& topic, const std::string& subject, unsigned long max);
+  void incrementLimitCount(const std::string& topic, const std::string& subject, unsigned long interval);
 
 private:
   std::shared_ptr<sw::redis::Redis> _redisInstance;
