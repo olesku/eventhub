@@ -45,7 +45,7 @@ class Redis final : public EventhubBase {
 #define REDIS_PREFIX(key) std::string((_prefix.length() > 0) ? _prefix + ":" + key : key)
 #define REDIS_CACHE_SCORE_PATH(key) std::string(REDIS_PREFIX(key) + ":scores")
 #define REDIS_CACHE_DATA_PATH(key) std::string(REDIS_PREFIX(key) + ":cache")
-#define REDIS_RATELIMIT_PATH(key, subject, topic) std::string(REDIS_PREFIX(key) + ":rlimit:" + topic + ":" + subject)
+#define REDIS_RATE_LIMIT_PATH(key, subject, topic) std::string(REDIS_PREFIX(key) + ":rlimit:" + topic + ":" + subject)
 
 public:
   explicit Redis(Config &cfg);

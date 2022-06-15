@@ -406,7 +406,7 @@ bool Redis::isRateLimited(rlimit_config_t& limits, const std::string& subject) {
   if (limits.topic.empty() || limits.max == 0 || limits.interval == 0)
     return false;
 
-  const auto key = REDIS_RATELIMIT_PATH(_prefix, subject, limits.topic);
+  const auto key = REDIS_RATE_LIMIT_PATH(_prefix, subject, limits.topic);
   auto count = _redisInstance->get(key);
   if (count) {
     auto c = std::stoull(count.value(), nullptr, 10);
@@ -429,7 +429,10 @@ void Redis::incrementLimitCount(rlimit_config_t& limits, const std::string& subj
   if (limits.topic.empty() || limits.max == 0 || limits.interval == 0)
     return;
 
-  const auto key = REDIS_RATELIMIT_PATH(_prefix, subject, limits.topic);
+  const auto key = REDIS_RATE_LIMIT_PATH(_prefix, subject, limits.topic);
+
+  // FIXME: We might be able to optimize away this call to get by using the value from the previous get call
+  // in the isRateLimited() function.
   auto count = _redisInstance->get(key);
 
   if (count) {
