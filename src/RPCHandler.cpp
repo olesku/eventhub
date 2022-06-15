@@ -247,6 +247,24 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
 
   try {
     auto& redis = ctx.server()->getRedis();
+
+    if (accessController->getRateLimitConfig().hasLimits()) {
+      //auto& filter = accessController->getFilterForTopic(topicName);
+      auto& subject = accessController->subject();
+      auto limits = accessController->getRateLimitConfig().getRateLimitConfigForTopic(topicName);
+
+      if (redis.isRateLimited(limits, subject)) {
+        nlohmann::json result;
+        result["action"] = "publish";
+        result["topic"]  = topicName;
+        result["status"] = "ERR_RATELIMITED";
+
+        return _sendSuccessResponse(ctx, req, result);
+      } else {
+        redis.incrementLimitCount(limits, subject);
+      }
+    }
+
     auto id     = redis.cacheMessage(topicName, message, accessController->subject(), timestamp, ttl);
 
     if (id.length() == 0) {
@@ -266,8 +284,8 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
 
     _sendSuccessResponse(ctx, req, result);
   } catch (std::exception& e) {
-    LOG->error("Redis error while publishing message: {}.", e.what());
-    msg << "Redis error while publishing message: " << e.what();
+    LOG->error("Error while publishing message: {}.", e.what());
+    msg << "Error while publishing message: " << e.what();
     _sendInvalidParamsError(ctx, req, msg.str());
   }
 }

@@ -26,6 +26,7 @@
 #include "Util.hpp"
 #include "jwt/json/json.hpp"
 #include "Logger.hpp"
+#include "AccessController.hpp"
 
 namespace eventhub {
 
@@ -394,6 +395,49 @@ std::vector<std::string> Redis::_getTopicsSeen(const std::string& topicPattern) 
   }
 
   return matchingTopics;
+}
+
+/*
+  Check if a user is ratelimited.
+  @param subject Subject for token to check.
+  @param topicPattern Topic to check.
+*/
+bool Redis::isRateLimited(rlimit_config_t& limits, const std::string& subject) {
+  if (limits.topic.empty() || limits.max == 0 || limits.interval == 0) {
+    return false;
+  }
+
+  const auto key = REDIS_RATELIMIT_PATH(_prefix, subject, limits.topic);
+  auto count = _redisInstance->get(key);
+  if (count) {
+    auto c = std::stoull(count.value(), nullptr, 10);
+    LOG->debug("isRateLimited: Sub: {} count: {} max: {} interval: {} topic: {}",
+      subject, c, limits.max, limits.interval, limits.topic);
+    if (c >= limits.max) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/*
+  Check if a user is ratelimited.
+  @param limits Limits config.
+  @param subject Subject to set limits for.
+*/
+void Redis::incrementLimitCount(rlimit_config_t& limits, const std::string& subject) {
+  if (limits.topic.empty() || limits.max == 0 || limits.interval == 0)
+    return;
+
+  const auto key = REDIS_RATELIMIT_PATH(_prefix, subject, limits.topic);
+  auto count = _redisInstance->get(key);
+
+  if (count) {
+    _redisInstance->incr(key);
+  } else {
+    _redisInstance->setex(key, limits.interval, "1");
+  }
 }
 
 CacheItemMeta::CacheItemMeta(const std::string& id, long expireAt, const std::string& origin) :

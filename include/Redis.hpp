@@ -13,6 +13,8 @@
 
 #include "EventhubBase.hpp"
 #include "jwt/json/json.hpp"
+#include "Forward.hpp"
+#include "AccessController.hpp"
 
 namespace eventhub {
 
@@ -43,6 +45,7 @@ class Redis final : public EventhubBase {
 #define REDIS_PREFIX(key) std::string((_prefix.length() > 0) ? _prefix + ":" + key : key)
 #define REDIS_CACHE_SCORE_PATH(key) std::string(REDIS_PREFIX(key) + ":scores")
 #define REDIS_CACHE_DATA_PATH(key) std::string(REDIS_PREFIX(key) + ":cache")
+#define REDIS_RATELIMIT_PATH(key, subject, topic) std::string(REDIS_PREFIX(key) + ":limits:" + topic + ":" + subject)
 
 public:
   explicit Redis(Config &cfg);
@@ -61,6 +64,9 @@ public:
   void _incrTopicPubCount(const std::string& topicName);
   std::vector<std::string> _getTopicsSeen(const std::string& topicPattern);
   const std::string _getNextCacheId(long long timestamp);
+
+  bool isRateLimited(rlimit_config_t& limits, const std::string& subject);
+  void incrementLimitCount(rlimit_config_t& limits, const std::string& subject);
 
 private:
   std::shared_ptr<sw::redis::Redis> _redisInstance;
