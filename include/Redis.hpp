@@ -13,7 +13,6 @@
 
 #include "EventhubBase.hpp"
 #include "jwt/json/json.hpp"
-#include "Forward.hpp"
 
 namespace eventhub {
 
