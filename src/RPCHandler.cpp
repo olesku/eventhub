@@ -253,7 +253,7 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
       auto limits = accessController->getRateLimitConfig().getRateLimitConfigForTopic(topicName);
 
       if (redis.isRateLimited(limits.topic, subject, limits.max)) {
-        LOG->trace("PUBLISH {}: User {} is currently ratelimited. Interval: {} Max: {}", topicName, subject, limits.interval, limits.max);
+        LOG->trace("PUBLISH {}: User {} is currently ratelimited. Interval: {} Max: {} Matched ratelimit pattern: {}", topicName, subject, limits.interval, limits.max, limits.topic);
         nlohmann::json result;
         result["action"] = "publish";
         result["topic"]  = topicName;
