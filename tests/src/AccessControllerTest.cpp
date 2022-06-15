@@ -119,18 +119,17 @@ TEST_CASE("Test authorization", "[access_controller]") {
 
     THEN("We should have the correct limits set for topics defined in token.") {
       /*
-        Test token:
-          "rlimit": [{
-            "topic": "topic1/#",
-            "interval": 10,
-            "max": 10
-          },
-          {
-            "topic": "topic2",
-            "interval": 100,
-            "max": 10
+        "rlimit": [{
+          "topic": "topic1/#",
+          "interval": 10,
+          "max": 10
+        },
+        {
+          "topic": "topic2",
+          "interval": 100,
+          "max": 10
           }
-    */
+      */
 
       REQUIRE(acs.getRateLimitConfig().getRateLimitForTopic("topic1").interval == 10);
       REQUIRE(acs.getRateLimitConfig().getRateLimitForTopic("topic1").max == 10);
@@ -144,7 +143,6 @@ TEST_CASE("Test authorization", "[access_controller]") {
       CHECK_THROWS_AS(acs.getRateLimitConfig().getRateLimitForTopic("topic2/foo"), NoRateLimitForTopic);
       CHECK_THROWS_AS(acs.getRateLimitConfig().getRateLimitForTopic("topic3"), NoRateLimitForTopic);
       CHECK_THROWS_AS(acs.getRateLimitConfig().getRateLimitForTopic("topic3"), NoRateLimitForTopic);
-
     }
   }
 }
