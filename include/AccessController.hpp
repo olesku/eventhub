@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <exception>
 
 #include "Forward.hpp"
 #include "EventhubBase.hpp"
@@ -16,13 +17,19 @@ typedef struct {
   unsigned long max;
 } rlimit_config_t;
 
+struct NoRateLimitForTopic : public std::exception {
+  const char* what() const throw() {
+    return "Token has no rate limits defined";
+  }
+};
+
 class RateLimitConfig final {
   private:
     std::vector<rlimit_config_t> _limitConfigs;
 
   public:
     bool loadFromJSON(const nlohmann::json::array_t& config);
-    const rlimit_config_t getRateLimitConfigForTopic(const std::string& topic);
+    const rlimit_config_t getRateLimitForTopic(const std::string& topic);
     bool hasLimits();
 };
 

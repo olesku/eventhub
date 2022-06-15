@@ -132,18 +132,19 @@ TEST_CASE("Test authorization", "[access_controller]") {
           }
     */
 
-      REQUIRE(acs.getRateLimitConfig().getRateLimitConfigForTopic("topic1").interval == 10);
-      REQUIRE(acs.getRateLimitConfig().getRateLimitConfigForTopic("topic1").max == 10);
-      REQUIRE(acs.getRateLimitConfig().getRateLimitConfigForTopic("topic1/foo").interval == 10);
-      REQUIRE(acs.getRateLimitConfig().getRateLimitConfigForTopic("topic1/foo").max == 10);
-      REQUIRE(acs.getRateLimitConfig().getRateLimitConfigForTopic("topic1/foo/bar").interval == 10);
-      REQUIRE(acs.getRateLimitConfig().getRateLimitConfigForTopic("topic1/foo/bar").max == 10);
-      REQUIRE(acs.getRateLimitConfig().getRateLimitConfigForTopic("topic2").interval == 100);
-      REQUIRE(acs.getRateLimitConfig().getRateLimitConfigForTopic("topic2").max == 10);
-      REQUIRE(acs.getRateLimitConfig().getRateLimitConfigForTopic("topic2/foo").interval == 0);
-      REQUIRE(acs.getRateLimitConfig().getRateLimitConfigForTopic("topic2/foo").max == 0);
-      REQUIRE(acs.getRateLimitConfig().getRateLimitConfigForTopic("topic3").interval == 0);
-      REQUIRE(acs.getRateLimitConfig().getRateLimitConfigForTopic("topic3").max == 0);
+      REQUIRE(acs.getRateLimitConfig().getRateLimitForTopic("topic1").interval == 10);
+      REQUIRE(acs.getRateLimitConfig().getRateLimitForTopic("topic1").max == 10);
+      REQUIRE(acs.getRateLimitConfig().getRateLimitForTopic("topic1/foo").interval == 10);
+      REQUIRE(acs.getRateLimitConfig().getRateLimitForTopic("topic1/foo").max == 10);
+      REQUIRE(acs.getRateLimitConfig().getRateLimitForTopic("topic1/foo/bar").interval == 10);
+      REQUIRE(acs.getRateLimitConfig().getRateLimitForTopic("topic1/foo/bar").max == 10);
+      REQUIRE(acs.getRateLimitConfig().getRateLimitForTopic("topic2").interval == 100);
+      REQUIRE(acs.getRateLimitConfig().getRateLimitForTopic("topic2").max == 10);
+
+      CHECK_THROWS_AS(acs.getRateLimitConfig().getRateLimitForTopic("topic2/foo"), NoRateLimitForTopic);
+      CHECK_THROWS_AS(acs.getRateLimitConfig().getRateLimitForTopic("topic3"), NoRateLimitForTopic);
+      CHECK_THROWS_AS(acs.getRateLimitConfig().getRateLimitForTopic("topic3"), NoRateLimitForTopic);
+
     }
   }
 }

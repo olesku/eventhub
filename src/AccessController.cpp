@@ -150,41 +150,37 @@ bool RateLimitConfig::hasLimits() {
 }
 
 // Returns limits for given topic if there are any.
-// If no limits is defined the function will return blank rlimit.topic, interval
-// and max set to 0.
-const rlimit_config_t RateLimitConfig::getRateLimitConfigForTopic(const std::string& topic) {
-  rlimit_config_t rlimit = rlimit_config_t{"", 0, 0};
+// If no limits is defined we throw NoRateLimitForTopic exception.
+const rlimit_config_t RateLimitConfig::getRateLimitForTopic(const std::string& topic) {
+  rlimit_config_t rlimit;
   bool found = false;
+  size_t matchedPatternLen = 0;
 
   // Exit early if no limits is present in token.
   if (!hasLimits())
-    return rlimit;
+    throw(NoRateLimitForTopic{});
 
   /*
-    First pass: Check for filters and topics matching.
+    Check if we have any limits defined for topic or matching pattern.
   */
   for (const auto& limit : _limitConfigs) {
-    // Exact match will be taken care of in second pass.
-    if (limit.topic.compare(topic) == 0)
-      continue;
+    // Exact match has highest precedence, use that if we have one.
+    if (limit.topic.compare(topic) == 0) {
+      rlimit = limit;
+      found = true;
+      break;
+    }
 
-    if (TopicManager::isFilterMatched(limit.topic, topic)) {
-      if ((limit.interval < rlimit.interval || limit.max < rlimit.max) || !found) {
+    // We check the length here to chose the closest matching pattern if there are more than one.
+    if (TopicManager::isFilterMatched(limit.topic, topic) && limit.topic.length() > matchedPatternLen) {
         rlimit = limit;
         found = true;
-      }
-   }
-  }
-
-  /*
-    Second pass: Check for exact topic match, this will take presedence over a matching filter
-    from the first pass.
-  */
-  for (const auto& limit : _limitConfigs) {
-    if (limit.topic.compare(topic) == 0) {
-        rlimit = limit;
+        matchedPatternLen = limit.topic.length();
     }
   }
+
+  if (!found)
+      throw(NoRateLimitForTopic{});
 
   return rlimit;
 }

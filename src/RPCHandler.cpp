@@ -249,20 +249,22 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
     auto& redis = ctx.server()->getRedis();
     const auto& subject = accessController->subject();
 
-    if (!subject.empty() && accessController->getRateLimitConfig().hasLimits()) {
-      const auto limits = accessController->getRateLimitConfig().getRateLimitConfigForTopic(topicName);
+    if (!subject.empty()) {
+      try {
+        const auto limits = accessController->getRateLimitConfig().getRateLimitForTopic(topicName);
 
-      if (redis.isRateLimited(limits.topic, subject, limits.max)) {
-        LOG->trace("PUBLISH {}: User {} is currently ratelimited. Interval: {} Max: {} Matched ratelimit pattern: {}", topicName, subject, limits.interval, limits.max, limits.topic);
-        nlohmann::json result;
-        result["action"] = "publish";
-        result["topic"]  = topicName;
-        result["status"] = "ERR_RATELIMITED";
+        if (redis.isRateLimited(limits.topic, subject, limits.max)) {
+          LOG->trace("PUBLISH {}: User {} is currently ratelimited. Interval: {} Max: {} Matched ratelimit pattern: {}", topicName, subject, limits.interval, limits.max, limits.topic);
+          nlohmann::json result;
+          result["action"] = "publish";
+          result["topic"]  = topicName;
+          result["status"] = "ERR_RATELIMITED";
 
-        return _sendSuccessResponse(ctx, req, result);
-      } else {
-        redis.incrementLimitCount(limits.topic, subject, limits.interval);
-      }
+          return _sendSuccessResponse(ctx, req, result);
+        } else {
+          redis.incrementLimitCount(limits.topic, subject, limits.interval);
+        }
+      } catch (NoRateLimitForTopic) {}
     }
 
     auto id     = redis.cacheMessage(topicName, message, accessController->subject(), timestamp, ttl);

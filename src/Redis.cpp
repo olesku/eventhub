@@ -400,7 +400,7 @@ std::vector<std::string> Redis::_getTopicsSeen(const std::string& topicPattern) 
   Check if a user is ratelimited.
 */
 bool Redis::isRateLimited(const std::string& topic, const std::string& subject, unsigned long max) {
-  if (topic.empty() || max == 0)
+  if (max == 0)
     return false;
 
   const auto key = REDIS_RATE_LIMIT_PATH(_prefix, subject, topic);
@@ -419,7 +419,7 @@ bool Redis::isRateLimited(const std::string& topic, const std::string& subject, 
   Increment publish count for user.
 */
 void Redis::incrementLimitCount(const std::string& topic, const std::string& subject, unsigned long interval) {
-  if (topic.empty() || interval == 0)
+  if (interval == 0)
     return;
 
   const auto key = REDIS_RATE_LIMIT_PATH(_prefix, subject, topic);
