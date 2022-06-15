@@ -258,7 +258,7 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
           nlohmann::json result;
           result["action"] = "publish";
           result["topic"]  = topicName;
-          result["status"] = "ERR_RATELIMITED";
+          result["status"] = "ERR_RATE_LIMIT_EXCEEDED";
 
           return _sendSuccessResponse(ctx, req, result);
         } else {
