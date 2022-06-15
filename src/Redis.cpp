@@ -26,7 +26,6 @@
 #include "Util.hpp"
 #include "jwt/json/json.hpp"
 #include "Logger.hpp"
-#include "AccessController.hpp"
 
 namespace eventhub {
 
@@ -399,20 +398,18 @@ std::vector<std::string> Redis::_getTopicsSeen(const std::string& topicPattern) 
 
 /*
   Check if a user is ratelimited.
-  @param subject Subject for token to check.
-  @param topicPattern Topic to check.
 */
-bool Redis::isRateLimited(rlimit_config_t& limits, const std::string& subject) {
-  if (limits.topic.empty() || limits.max == 0 || limits.interval == 0)
+bool Redis::isRateLimited(const std::string& topic, const std::string& subject, unsigned long interval, unsigned long max) {
+  if (topic.empty() || max == 0 || interval == 0)
     return false;
 
-  const auto key = REDIS_RATE_LIMIT_PATH(_prefix, subject, limits.topic);
+  const auto key = REDIS_RATE_LIMIT_PATH(_prefix, subject, topic);
   auto count = _redisInstance->get(key);
   if (count) {
     auto c = std::stoull(count.value(), nullptr, 10);
     LOG->debug("isRateLimited: Sub: {} count: {} max: {} interval: {} topic: {}",
-      subject, c, limits.max, limits.interval, limits.topic);
-    if (c >= limits.max) {
+      subject, c, max, interval, topic);
+    if (c >= max) {
       return true;
     }
   }
@@ -421,15 +418,13 @@ bool Redis::isRateLimited(rlimit_config_t& limits, const std::string& subject) {
 }
 
 /*
-  Check if a user is ratelimited.
-  @param limits Limits config.
-  @param subject Subject to set limits for.
+  Increment publish count for user.
 */
-void Redis::incrementLimitCount(rlimit_config_t& limits, const std::string& subject) {
-  if (limits.topic.empty() || limits.max == 0 || limits.interval == 0)
+void Redis::incrementLimitCount(const std::string& topic, const std::string& subject, unsigned long interval, unsigned long max) {
+  if (topic.empty() || max == 0 || interval == 0)
     return;
 
-  const auto key = REDIS_RATE_LIMIT_PATH(_prefix, subject, limits.topic);
+  const auto key = REDIS_RATE_LIMIT_PATH(_prefix, subject, topic);
 
   // FIXME: We might be able to optimize away this call to get by using the value from the previous get call
   // in the isRateLimited() function.
@@ -438,7 +433,7 @@ void Redis::incrementLimitCount(rlimit_config_t& limits, const std::string& subj
   if (count) {
     _redisInstance->incr(key);
   } else {
-    _redisInstance->setex(key, limits.interval, "1");
+    _redisInstance->setex(key, interval, "1");
   }
 }
 

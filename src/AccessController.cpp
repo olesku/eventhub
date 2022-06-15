@@ -132,8 +132,8 @@ bool RateLimitConfig::loadFromJSON(const nlohmann::json::array_t& config) {
 
     try {
       auto topic = rlimit["topic"].get<std::string>();
-      auto interval = rlimit["interval"].get<long>();
-      auto max = rlimit["max"].get<long>();
+      auto interval = rlimit["interval"].get<unsigned long>();
+      auto max = rlimit["max"].get<unsigned long>();
 
       _limitConfigs.push_back(rlimit_config_t{topic, interval, max});
     } catch (...) {

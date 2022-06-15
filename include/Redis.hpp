@@ -14,7 +14,6 @@
 #include "EventhubBase.hpp"
 #include "jwt/json/json.hpp"
 #include "Forward.hpp"
-#include "AccessController.hpp"
 
 namespace eventhub {
 
@@ -65,8 +64,8 @@ public:
   std::vector<std::string> _getTopicsSeen(const std::string& topicPattern);
   const std::string _getNextCacheId(long long timestamp);
 
-  bool isRateLimited(rlimit_config_t& limits, const std::string& subject);
-  void incrementLimitCount(rlimit_config_t& limits, const std::string& subject);
+  bool isRateLimited(const std::string& topic, const std::string& subject, unsigned long interval, unsigned long max);
+  void incrementLimitCount(const std::string& topic, const std::string& subject, unsigned long interval, unsigned long max);
 
 private:
   std::shared_ptr<sw::redis::Redis> _redisInstance;

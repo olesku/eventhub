@@ -12,8 +12,8 @@ namespace eventhub {
 
 typedef struct {
   std::string topic;
-  long interval;
-  long max;
+  unsigned long interval;
+  unsigned long max;
 } rlimit_config_t;
 
 class RateLimitConfig final {

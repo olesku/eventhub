@@ -249,11 +249,10 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
     auto& redis = ctx.server()->getRedis();
 
     if (accessController->getRateLimitConfig().hasLimits()) {
-      //auto& filter = accessController->getFilterForTopic(topicName);
       auto& subject = accessController->subject();
       auto limits = accessController->getRateLimitConfig().getRateLimitConfigForTopic(topicName);
 
-      if (redis.isRateLimited(limits, subject)) {
+      if (redis.isRateLimited(limits.topic, subject, limits.interval, limits.max)) {
         nlohmann::json result;
         result["action"] = "publish";
         result["topic"]  = topicName;
@@ -261,7 +260,7 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
 
         return _sendSuccessResponse(ctx, req, result);
       } else {
-        redis.incrementLimitCount(limits, subject);
+        redis.incrementLimitCount(limits.topic, subject, limits.interval, limits.max);
       }
     }
 
