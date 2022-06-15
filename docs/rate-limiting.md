@@ -4,7 +4,7 @@ EventHub allows you to rate limit how many messages a user/token is allowed to p
 
 #### Syntax
 ```json
-  "sub": "user@domain.com", // Must be present and unique.
+  "sub": "user@domain.com", // Must be defined and unique for limits to work.
   "write": [ "topic1/#" ],
   "read": [ "topic1/#" ],
   "rlimit": [
@@ -20,7 +20,7 @@ You can have multiple limit configuration under ```rlimit```.
 
 #### Example
 ```json
-  "sub": "user@domain.com", // Must be defined and unique for limits to work.
+  "sub": "user@domain.com",
   "write": [ "topic1/#", "topic2" ],
   "read": [ "topic1/#", "topic2" ],
   "rlimit": [
