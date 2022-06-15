@@ -169,6 +169,10 @@ bool TopicManager::isFilterMatched(const std::string& filterName, const std::str
 
     // We have reached the end of the topic.
     if (tnIt + 1 == topicName.end() && fnIt + 1 != filterName.end()) {
+      if (*fnIt != *tnIt) {
+        return false;
+      }
+
       // Match the root topic in addition to every subtopic
       // when we have a match-all (#) on that path.
       // Example: topic/foo/# should also match topic/foo.

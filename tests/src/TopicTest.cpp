@@ -138,6 +138,7 @@ TEST_CASE("isFilterMatched", "[topic_manager]") {
   SHOULD_NOT_MATCH("test1/foo", "test1/foobar");
   SHOULD_NOT_MATCH("test1/+/test", "test1/test");
   SHOULD_NOT_MATCH("+", "foobar/baz");
+  SHOULD_NOT_MATCH("topic1/#", "topic2");
 
   SECTION("Should match") {
     for (auto p : should_match) {
