@@ -403,9 +403,8 @@ std::vector<std::string> Redis::_getTopicsSeen(const std::string& topicPattern) 
   @param topicPattern Topic to check.
 */
 bool Redis::isRateLimited(rlimit_config_t& limits, const std::string& subject) {
-  if (limits.topic.empty() || limits.max == 0 || limits.interval == 0) {
+  if (limits.topic.empty() || limits.max == 0 || limits.interval == 0)
     return false;
-  }
 
   const auto key = REDIS_RATELIMIT_PATH(_prefix, subject, limits.topic);
   auto count = _redisInstance->get(key);
