@@ -89,29 +89,18 @@ bool AccessController::isAuthenticated() {
   return true;
 }
 
-// getFilterForTopic check wether we have an ACL definition matching for topic.
-const std::string& AccessController::getFilterForTopic(const std::string& topic) {
-  for (auto& filter : _publish_acl) {
-    if (TopicManager::isFilterMatched(filter, topic)) {
-      return filter;
-    }
-  }
-
-  throw NoACLFilterMatched{topic};
-}
-
 // allowPublish checks if the loaded token is allowed to publish to topic.
 bool AccessController::allowPublish(const std::string& topic) {
   BYPASS_AUTH_IF_DISABLED();
   REQUIRE_TOKEN_LOADED();
 
-  try {
-    getFilterForTopic(topic);
-  } catch (NoACLFilterMatched) {
-    return false;
+  for (auto& filter : _publish_acl) {
+    if (TopicManager::isFilterMatched(filter, topic)) {
+      return true;
+    }
   }
 
-  return true;
+  return false;
 }
 
 // allowPublish checks if the loaded token is allowed to subscribe to topic.
@@ -155,6 +144,14 @@ bool RateLimitConfig::loadFromJSON(const nlohmann::json::array_t& config) {
   return true;
 }
 
+// Returns whether we have any limits defined for this token or not.
+bool RateLimitConfig::hasLimits() {
+  return _limitConfigs.size() > 0;
+}
+
+// Returns limits for given topic if there are any.
+// If no limits is defined the function will return blank rlimit.topic, interval
+// and max set to 0.
 const rlimit_config_t RateLimitConfig::getRateLimitConfigForTopic(const std::string& topic) {
   rlimit_config_t rlimit = rlimit_config_t{"", 0, 0};
   bool found = false;

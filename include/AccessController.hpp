@@ -23,23 +23,10 @@ class RateLimitConfig final {
   public:
     bool loadFromJSON(const nlohmann::json::array_t& config);
     const rlimit_config_t getRateLimitConfigForTopic(const std::string& topic);
-    bool hasLimits() { return _limitConfigs.size() > 0; }
+    bool hasLimits();
 };
 
 class AccessController final : public EventhubBase {
-  class NoACLFilterMatched : public std::exception {
-  public:
-    std::string msg;
-
-    NoACLFilterMatched(const std::string& topic) {
-      msg = "No ACL defined for topic " + topic;
-    }
-
-    const char* what() const throw() {
-      return msg.c_str();
-    }
-  };
-
 private:
   bool _token_loaded;
   std::string _jwt_secret;
@@ -58,7 +45,6 @@ public:
   bool allowPublish(const std::string& topic);
   bool allowSubscribe(const std::string& topic);
   bool allowCreateToken(const std::string& path);
-  const std::string& getFilterForTopic(const std::string& topic);
   const std::string& subject();
   RateLimitConfig& getRateLimitConfig() { return _rlimit; };
 };
