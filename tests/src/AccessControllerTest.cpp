@@ -104,4 +104,51 @@ TEST_CASE("Test authorization", "[access_controller]") {
       REQUIRE(acs.allowPublish("my/very/private/channel"));
     }
   }
+
+  GIVEN("We have a rlimit") {
+    Config cfg(cfgMap);
+    cfg << "disable_auth = 0";
+    cfg.load();
+    auto token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyQGRvbWFpbi5jb20iLCJyZWFkIjpbInRvcGljLyMiLCJ0b3BpYzIvIyJdLCJ3cml0ZSI6WyJ0b3BpYzEvIyJdLCJybGltaXQiOlt7InRvcGljIjoidG9waWMxLyMiLCJpbnRlcnZhbCI6MTAsIm1heCI6MTB9LHsidG9waWMiOiJ0b3BpYzIiLCJpbnRlcnZhbCI6MTAwLCJtYXgiOjEwfV19.i938ZYQL4NR1VUUfrtAwPaivd3cldW6Pegdo9ofpjcE";
+    AccessController acs(cfg);
+    bool tokenLoaded = acs.authenticate(token, "eventhub_secret");
+
+    THEN("The token should be successfully loaded") {
+        REQUIRE(tokenLoaded == true);
+    }
+
+    THEN("We should have the correct limits set for topics defined in token.") {
+      /*
+        Test token:
+          "rlimit": [{
+            "topic": "topic1/#",
+            "interval": 10,
+            "max": 10
+          },
+          {
+            "topic": "topic2",
+            "interval": 100,
+            "max": 10
+          }
+    */
+
+      REQUIRE(acs.getRateLimitConfig().getRateLimitConfigForTopic("topic1").interval == 10);
+      REQUIRE(acs.getRateLimitConfig().getRateLimitConfigForTopic("topic1").max == 10);
+
+      REQUIRE(acs.getRateLimitConfig().getRateLimitConfigForTopic("topic1/foo").interval == 10);
+      REQUIRE(acs.getRateLimitConfig().getRateLimitConfigForTopic("topic1/foo").max == 10);
+
+      REQUIRE(acs.getRateLimitConfig().getRateLimitConfigForTopic("topic1/foo/bar").interval == 10);
+      REQUIRE(acs.getRateLimitConfig().getRateLimitConfigForTopic("topic1/foo/bar").max == 10);
+
+      REQUIRE(acs.getRateLimitConfig().getRateLimitConfigForTopic("topic2").interval == 100);
+      REQUIRE(acs.getRateLimitConfig().getRateLimitConfigForTopic("topic2").max == 10);
+
+      REQUIRE(acs.getRateLimitConfig().getRateLimitConfigForTopic("topic2/foo").interval == 0);
+      REQUIRE(acs.getRateLimitConfig().getRateLimitConfigForTopic("topic2/foo").max == 0);
+
+      REQUIRE(acs.getRateLimitConfig().getRateLimitConfigForTopic("topic3").interval == 0);
+      REQUIRE(acs.getRateLimitConfig().getRateLimitConfigForTopic("topic3").max == 0);
+    }
+  }
 }

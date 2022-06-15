@@ -58,6 +58,17 @@ bool AccessController::authenticate(const std::string& jwtToken, const std::stri
     if ((_subscribe_acl.size() + _publish_acl.size()) == 0) {
       throw std::invalid_argument("No publish or subscribe ACL defined in JWT token.");
     }
+
+    if (payload.has_claim("sub")) {
+      _subject = payload.get_claim_value<std::string>("sub");
+    }
+
+    if (payload.has_claim("rlimit")) {
+      auto payload_json = payload.create_json_obj();
+      if (payload_json.is_object() && payload_json["rlimit"].is_array()) {
+        _rlimit.loadFromJSON(payload_json["rlimit"]);
+      }
+    }
   } catch (std::exception& e) {
     LOG->trace("Error in AccessController: ", e.what());
     return false;
@@ -111,6 +122,63 @@ bool AccessController::allowCreateToken(const std::string& path) {
   REQUIRE_TOKEN_LOADED();
   // Not implemented yet.
   return true;
+}
+
+
+bool RateLimitConfig::loadFromJSON(const nlohmann::json::array_t& config) {
+  for (const auto& rlimit: config) {
+    if (!rlimit.is_object())
+      continue;
+
+    try {
+      auto topic = rlimit["topic"].get<std::string>();
+      auto interval = rlimit["interval"].get<long>();
+      auto max = rlimit["max"].get<long>();
+
+      _limitConfigs.push_back(rlimit_config_t{topic, interval, max});
+    } catch (...) {
+      continue;
+    }
+  }
+
+  return true;
+}
+
+const RateLimitConfig::rlimit_config_t RateLimitConfig::getRateLimitConfigForTopic(const std::string& topic) {
+  rlimit_config_t rlimit = rlimit_config_t{"", 0, 0};
+  bool found = false;
+
+  // Exit early if no limits is present in token.
+  if (_limitConfigs.size() == 0)
+    return rlimit;
+
+  /*
+    First pass: Check for filters and topics matching.
+  */
+  for (const auto& limit : _limitConfigs) {
+    // Exact match will be taken care of in second pass.
+    if (limit.topic.compare(topic) == 0)
+      continue;
+
+    if (TopicManager::isFilterMatched(limit.topic, topic)) {
+      if ((limit.interval < rlimit.interval || limit.max < rlimit.max) || !found) {
+        rlimit = limit;
+        found = true;
+      }
+   }
+  }
+
+  /*
+    Second pass: Check for exact topic match, this will take presedence over a matching filter
+    from the first pass.
+  */
+  for (const auto& limit : _limitConfigs) {
+    if (limit.topic.compare(topic) == 0) {
+        rlimit = limit;
+    }
+  }
+
+  return rlimit;
 }
 
 } // namespace eventhub
