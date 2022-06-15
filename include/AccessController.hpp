@@ -11,11 +11,13 @@
 
 namespace eventhub {
 
-typedef struct {
+struct rlimit_config_t {
   std::string topic;
   unsigned long interval;
   unsigned long max;
-} rlimit_config_t;
+};
+
+typedef struct rlimit_config_t rlimit_config_t;
 
 struct NoRateLimitForTopic : public std::exception {
   const char* what() const throw() {
