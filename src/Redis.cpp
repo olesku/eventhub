@@ -396,6 +396,45 @@ std::vector<std::string> Redis::_getTopicsSeen(const std::string& topicPattern) 
   return matchingTopics;
 }
 
+/*
+  Check if a user is ratelimited.
+*/
+bool Redis::isRateLimited(const std::string& topic, const std::string& subject, unsigned long max) {
+  if (max == 0)
+    return false;
+
+  const auto key = REDIS_RATE_LIMIT_PATH(_prefix, subject, topic);
+  auto count = _redisInstance->get(key);
+  if (count) {
+    auto c = std::stoull(count.value(), nullptr, 10);
+    if (c >= max) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/*
+  Increment publish count for user.
+*/
+void Redis::incrementLimitCount(const std::string& topic, const std::string& subject, unsigned long interval) {
+  if (interval == 0)
+    return;
+
+  const auto key = REDIS_RATE_LIMIT_PATH(_prefix, subject, topic);
+
+  // FIXME: We might be able to optimize away this call to get by using the value from the previous get call
+  // in the isRateLimited() function.
+  auto count = _redisInstance->get(key);
+
+  if (count) {
+    _redisInstance->incr(key);
+  } else {
+    _redisInstance->setex(key, interval, "1");
+  }
+}
+
 CacheItemMeta::CacheItemMeta(const std::string& id, long expireAt, const std::string& origin) :
   _id(id), _expireAt(expireAt), _origin(origin) {}
 
