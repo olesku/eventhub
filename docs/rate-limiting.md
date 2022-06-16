@@ -3,15 +3,15 @@
 Eventhub allows you to rate limit how many messages a user/token is allowed to publish within a given time period (interval). This is configured by adding ```rlimit``` configuration to the token used by the publisher.
 
 #### Syntax
-```json
-  "sub": "user@domain.com", // Must be defined and unique for limits to work.
+```json5
+  "sub": "user@domain.com",      // Must be defined and unique for limits to work.
   "write": [ "topic1/#" ],
   "read": [ "topic1/#" ],
   "rlimit": [
     {
-      "topic": "topic1/#", // Topic or pattern to limit.
-      "interval": 10, // Bucket interval.
-      "max": 10 // Max allowed publishes within this interval.
+      "topic": "topic1/#",        // Topic or pattern to limit.
+      "interval": 10,             // Bucket interval.
+      "max": 10                   // Max allowed publishes within this interval.
     }
   ]
 ```
