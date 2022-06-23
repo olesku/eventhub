@@ -72,6 +72,7 @@ The read/write ACL's in the JWT-token defines what keys you have access to.
 
 # Clients
 * [JavaScript (Browser/Node.js)](https://github.com/olesku/eventhub-jsclient)
+* [Python](https://github.com/olesku/eventhub-pyclient)
 * [Swift (iOS 13+)](https://github.com/shtrihstr/EventHub)
 
 #### Implementing your own client
