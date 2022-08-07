@@ -243,7 +243,7 @@ const std::string Connection::getIP() {
 int Connection::addToEpoll(uint32_t epollEvents) {
   _epoll_event.events   = epollEvents;
   _epoll_event.data.fd  = _fd;
-  _epoll_event.data.ptr = reinterpret_cast<void*>(this);
+  _epoll_event.data.ptr = static_cast<void*>(this);
 
   int ret = epoll_ctl(_worker->getEpollFileDescriptor(), EPOLL_CTL_ADD, _fd, &_epoll_event);
 
