@@ -106,7 +106,7 @@ All configuration options can also be set using [environment variables](https://
 |enable_cache                 | Enable retained cache for topics.             | false
 |prometheus_metric_prefix     | Prometheus prefix                             | eventhub
 |default_cache_ttl            | Default message TTL                           | 60
-|max_cache_request_limit      | Default returned cache result limit           | 1000
+|max_cache_request_limit      | Default returned cache result limit           | 100
 |log_level                    | Log level to use                              | info
 |enable_ssl                   | Enable SSL                                    | false
 |ssl_listen_port              | Port to listen on for SSL requests            | 8443
