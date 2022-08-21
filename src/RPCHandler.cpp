@@ -67,6 +67,63 @@ void RPCHandler::_sendSuccessResponse(HandlerContext& ctx, jsonrpcpp::request_pt
 }
 
 /**
+ * Helper function for sending cached events to client if requested.
+ */
+void RPCHandler::_sendCacheToClient(HandlerContext &ctx, jsonrpcpp::request_ptr req, const std::string& topic) {
+  // Return early if cache is not enabled.
+  if (!ctx.config().get<bool>("enable_cache")) {
+    return;
+  }
+
+  std::string sinceEventId;
+  unsigned long long since, limit;
+  auto params = req->params();
+
+  try {
+    sinceEventId = params.get("sinceEventId").get<std::string>();
+  } catch (...) {}
+
+  try {
+    since = params.get("since").get<long long>();
+  } catch (...) {
+    since = 0;
+  }
+
+  if (sinceEventId.empty() && since == 0) {
+    return;
+  }
+
+  try {
+    limit = params.get("limit").get<long long>();
+  } catch (...) {
+    limit = ctx.config().get<int>("max_cache_request_limit");
+  }
+
+  if (limit > (unsigned long long)ctx.config().get<int>("max_cache_request_limit")) {
+    limit = ctx.config().get<int>("max_cache_request_limit");
+  }
+
+  LOG->info("sendCacheToClient topic: {} sinceEventId: {} since: {} limit: {}", topic, sinceEventId, since, limit);
+
+  try {
+    nlohmann::json result;
+    auto& redis = ctx.server()->getRedis();
+
+    if (!sinceEventId.empty()) {
+      redis.getCacheSinceId(topic, sinceEventId, limit, TopicManager::isValidTopicFilter(topic), result);
+    } else {
+      redis.getCacheSince(topic, since, limit, TopicManager::isValidTopicFilter(topic), result);
+    }
+
+    for (auto& cacheItem : result) {
+      _sendSuccessResponse(ctx, req, cacheItem);
+    }
+  } catch (std::exception& e) {
+    LOG->error("Redis error while looking up cache: {}.", e.what());
+  }
+}
+
+/**
  * Handle subscribe RPC command.
  * Subscribe client to given topic pattern.
  * @param ctx Client issuing request.
@@ -74,7 +131,7 @@ void RPCHandler::_sendSuccessResponse(HandlerContext& ctx, jsonrpcpp::request_pt
  */
 void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
   auto accessController = ctx.connection()->getAccessController();
-  auto params            = req->params();
+  auto params           = req->params();
   std::string topicName;
   std::stringstream msg;
 
@@ -270,55 +327,6 @@ void RPCHandler::_handleList(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
   }
 
   _sendSuccessResponse(ctx, req, j);
-}
-
-void RPCHandler::_sendCacheToClient(HandlerContext &ctx, jsonrpcpp::request_ptr req, const std::string& topic) {
-  std::string sinceEventId;
-  unsigned long long since, limit;
-  auto params = req->params();
-
-  try {
-    sinceEventId = params.get("sinceEventId").get<std::string>();
-  } catch (...) {}
-
-  try {
-    since = params.get("since").get<long long>();
-  } catch (...) {
-    since = 0;
-  }
-
-  if (sinceEventId.empty() && since == 0) {
-    return;
-  }
-
-  try {
-    limit = params.get("limit").get<long long>();
-  } catch (...) {
-    limit = ctx.config().get<int>("max_cache_request_limit");
-  }
-
-  if (limit > (unsigned long long)ctx.config().get<int>("max_cache_request_limit")) {
-    limit = ctx.config().get<int>("max_cache_request_limit");
-  }
-
-  LOG->info("sendCacheToClient topic: {} sinceEventId: {} since: {} limit: {}", topic, sinceEventId, since, limit);
-
-  try {
-    nlohmann::json result;
-    auto& redis = ctx.server()->getRedis();
-
-    if (!sinceEventId.empty()) {
-      redis.getCacheSinceId(topic, sinceEventId, limit, TopicManager::isValidTopicFilter(topic), result);
-    } else {
-      redis.getCacheSince(topic, since, limit, TopicManager::isValidTopicFilter(topic), result);
-    }
-
-    for (auto& cacheItem : result) {
-      _sendSuccessResponse(ctx, req, cacheItem);
-    }
-  } catch (std::exception& e) {
-    LOG->error("Redis error while looking up cache: {}.", e.what());
-  }
 }
 
 /**
