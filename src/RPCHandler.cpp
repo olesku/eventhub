@@ -76,30 +76,11 @@ void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr re
   auto accessController = ctx.connection()->getAccessController();
   auto params            = req->params();
   std::string topicName;
-  std::string sinceEventId;
-  unsigned long long since, limit;
   std::stringstream msg;
 
   try {
     topicName    = params.get("topic").get<std::string>();
-    sinceEventId = params.get("sinceEventId").get<std::string>();
   } catch (...) {}
-
-  try {
-    since = params.get("since").get<long long>();
-  } catch (...) {
-    since = 0;
-  }
-
-  try {
-    limit = params.get("limit").get<long long>();
-  } catch (...) {
-    limit = ctx.config().get<int>("max_cache_request_limit");
-  }
-
-  if (limit > (unsigned long long)ctx.config().get<int>("max_cache_request_limit")) {
-    limit = ctx.config().get<int>("max_cache_request_limit");
-  }
 
   if (topicName.empty()) {
     _sendInvalidParamsError(ctx, req, "You must specify 'topic' to subscribe to.");
@@ -128,25 +109,8 @@ void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr re
 
   _sendSuccessResponse(ctx, req, result);
 
-  // Send cached events if since is set.
-  if (!sinceEventId.empty() || since > 0) {
-    try {
-      nlohmann::json result;
-      auto& redis = ctx.server()->getRedis();
-
-      if (!sinceEventId.empty()) {
-        redis.getCacheSinceId(topicName, sinceEventId, limit, TopicManager::isValidTopicFilter(topicName), result);
-      } else {
-        redis.getCacheSince(topicName, since, limit, TopicManager::isValidTopicFilter(topicName), result);
-      }
-
-      for (auto& cacheItem : result) {
-        _sendSuccessResponse(ctx, req, cacheItem);
-      }
-    } catch (std::exception& e) {
-      LOG->error("Redis error while looking up cache: {}.", e.what());
-    }
-  }
+  // Send cached events if requested.
+  _sendCacheToClient(ctx, req, topicName);
 }
 
 /**
@@ -308,6 +272,55 @@ void RPCHandler::_handleList(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
   _sendSuccessResponse(ctx, req, j);
 }
 
+void RPCHandler::_sendCacheToClient(HandlerContext &ctx, jsonrpcpp::request_ptr req, const std::string& topic) {
+  std::string sinceEventId;
+  unsigned long long since, limit;
+  auto params = req->params();
+
+  try {
+    sinceEventId = params.get("sinceEventId").get<std::string>();
+  } catch (...) {}
+
+  try {
+    since = params.get("since").get<long long>();
+  } catch (...) {
+    since = 0;
+  }
+
+  if (sinceEventId.empty() && since == 0) {
+    return;
+  }
+
+  try {
+    limit = params.get("limit").get<long long>();
+  } catch (...) {
+    limit = ctx.config().get<int>("max_cache_request_limit");
+  }
+
+  if (limit > (unsigned long long)ctx.config().get<int>("max_cache_request_limit")) {
+    limit = ctx.config().get<int>("max_cache_request_limit");
+  }
+
+  LOG->info("sendCacheToClient topic: {} sinceEventId: {} since: {} limit: {}", topic, sinceEventId, since, limit);
+
+  try {
+    nlohmann::json result;
+    auto& redis = ctx.server()->getRedis();
+
+    if (!sinceEventId.empty()) {
+      redis.getCacheSinceId(topic, sinceEventId, limit, TopicManager::isValidTopicFilter(topic), result);
+    } else {
+      redis.getCacheSince(topic, since, limit, TopicManager::isValidTopicFilter(topic), result);
+    }
+
+    for (auto& cacheItem : result) {
+      _sendSuccessResponse(ctx, req, cacheItem);
+    }
+  } catch (std::exception& e) {
+    LOG->error("Redis error while looking up cache: {}.", e.what());
+  }
+}
+
 /**
  * Handle history RPC command.
  * Send history cache for topic to client.
@@ -315,7 +328,56 @@ void RPCHandler::_handleList(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
  * @param req RPC request.
  */
 void RPCHandler::_handleHistory(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
-  LOG->trace("handleHistory: {}", req->to_json().dump(2));
+  auto accessController = ctx.connection()->getAccessController();
+  auto params            = req->params();
+  std::string topicName;
+  std::string sinceEventId;
+  unsigned long long since;
+  std::stringstream msg;
+
+  try {
+    topicName    = params.get("topic").get<std::string>();
+    sinceEventId = params.get("sinceEventId").get<std::string>();
+  } catch (...) {}
+
+  try {
+    since = params.get("since").get<long long>();
+  } catch (...) {
+    since = 0;
+  }
+
+  if (sinceEventId.empty() && since == 0) {
+    msg << "You must specify either 'since' or 'sinceEventId'.";
+    _sendInvalidParamsError(ctx, req, msg.str());
+    return;
+  }
+
+  if (topicName.empty()) {
+    _sendInvalidParamsError(ctx, req, "You must specify topic.");
+    return;
+  }
+
+  if (!TopicManager::isValidTopicOrFilter(topicName)) {
+    msg << "Invalid topic in request: " << topicName;
+    _sendInvalidParamsError(ctx, req, msg.str());
+    return;
+  }
+
+  if (!accessController->allowSubscribe(topicName)) {
+    msg << "You are not allowed to read from topic: " << topicName;
+    _sendInvalidParamsError(ctx, req, msg.str());
+    return;
+  }
+
+  LOG->debug("{} - HISTORY {}", ctx.connection()->getIP(), topicName);
+
+  nlohmann::json result;
+  result["action"] = "history";
+  result["topic"]  = topicName;
+  result["status"] = "ok";
+
+  _sendSuccessResponse(ctx, req, result);
+  _sendCacheToClient(ctx, req, topicName);
 }
 
 /**
