@@ -337,10 +337,10 @@ void RPCHandler::_handleList(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
  */
 void RPCHandler::_handleHistory(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
   auto accessController = ctx.connection()->getAccessController();
-  auto params            = req->params();
+  auto params           = req->params();
   std::string topicName;
   std::string sinceEventId;
-  unsigned long long since;
+  unsigned long long since, limit;
   std::stringstream msg;
 
   try {
@@ -352,6 +352,16 @@ void RPCHandler::_handleHistory(HandlerContext& ctx, jsonrpcpp::request_ptr req)
     since = params.get("since").get<long long>();
   } catch (...) {
     since = 0;
+  }
+
+  try {
+    limit = params.get("limit").get<long long>();
+  } catch (...) {
+    limit = ctx.config().get<int>("max_cache_request_limit");
+  }
+
+  if (limit > (unsigned long long)ctx.config().get<int>("max_cache_request_limit")) {
+    limit = ctx.config().get<int>("max_cache_request_limit");
   }
 
   if (sinceEventId.empty() && since == 0) {
@@ -384,8 +394,23 @@ void RPCHandler::_handleHistory(HandlerContext& ctx, jsonrpcpp::request_ptr req)
   result["topic"]  = topicName;
   result["status"] = "ok";
 
+  LOG->info("sendCacheToClient topic: {} sinceEventId: {} since: {} limit: {}", topicName, sinceEventId, since, limit);
+
+  nlohmann::json items;
+  try {
+    auto& redis = ctx.server()->getRedis();
+
+    if (!sinceEventId.empty()) {
+      redis.getCacheSinceId(topicName, sinceEventId, limit, TopicManager::isValidTopicFilter(topicName), items);
+    } else {
+      redis.getCacheSince(topicName, since, limit, TopicManager::isValidTopicFilter(topicName), items);
+    }
+  } catch (std::exception& e) {
+    LOG->error("Redis error while looking up cache: {}.", e.what());
+  }
+
+  result["result"] = items;
   _sendSuccessResponse(ctx, req, result);
-  _sendCacheToClient(ctx, req, topicName);
 }
 
 /**
