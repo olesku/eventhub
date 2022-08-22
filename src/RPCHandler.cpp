@@ -66,6 +66,16 @@ void RPCHandler::_sendSuccessResponse(HandlerContext& ctx, jsonrpcpp::request_pt
                                 websocket::FrameType::TEXT_FRAME);
 }
 
+unsigned long long RPCHandler::_calculateRelativeSince(long long since) {
+  if (since >= 0)
+    return since;
+
+  auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+  unsigned long long new_since = now_ms + since;
+
+  return new_since;
+}
+
 /**
  * Helper function for sending cached events to client if requested.
  */
@@ -85,6 +95,7 @@ void RPCHandler::_sendCacheToClient(HandlerContext &ctx, jsonrpcpp::request_ptr 
 
   try {
     since = params.get("since").get<long long>();
+    since = _calculateRelativeSince(since);
   } catch (...) {
     since = 0;
   }
@@ -103,23 +114,19 @@ void RPCHandler::_sendCacheToClient(HandlerContext &ctx, jsonrpcpp::request_ptr 
     limit = ctx.config().get<int>("max_cache_request_limit");
   }
 
-  LOG->info("sendCacheToClient topic: {} sinceEventId: {} since: {} limit: {}", topic, sinceEventId, since, limit);
-
   try {
     nlohmann::json result;
     auto& redis = ctx.server()->getRedis();
-
-    if (!sinceEventId.empty()) {
+    if (!sinceEventId.empty())
       redis.getCacheSinceId(topic, sinceEventId, limit, TopicManager::isValidTopicFilter(topic), result);
-    } else {
+    else
       redis.getCacheSince(topic, since, limit, TopicManager::isValidTopicFilter(topic), result);
-    }
 
     for (auto& cacheItem : result) {
       _sendSuccessResponse(ctx, req, cacheItem);
     }
   } catch (std::exception& e) {
-    LOG->error("Redis error while looking up cache: {}.", e.what());
+    LOG->error("Error while looking up cache: {}.", e.what());
   }
 }
 
@@ -340,8 +347,14 @@ void RPCHandler::_handleHistory(HandlerContext& ctx, jsonrpcpp::request_ptr req)
   auto params           = req->params();
   std::string topicName;
   std::string sinceEventId;
-  unsigned long long since, limit;
+  unsigned long limit;
+  long long since;
   std::stringstream msg;
+
+  if (!ctx.config().get<bool>("enable_cache")) {
+    msg << "Cache is not enabled in server config";
+    _sendInvalidParamsError(ctx, req, msg.str());
+  }
 
   try {
     topicName    = params.get("topic").get<std::string>();
@@ -350,17 +363,18 @@ void RPCHandler::_handleHistory(HandlerContext& ctx, jsonrpcpp::request_ptr req)
 
   try {
     since = params.get("since").get<long long>();
+    since = _calculateRelativeSince(since);
   } catch (...) {
     since = 0;
   }
 
   try {
-    limit = params.get("limit").get<long long>();
+    limit = params.get("limit").get<long>();
   } catch (...) {
     limit = ctx.config().get<int>("max_cache_request_limit");
   }
 
-  if (limit > (unsigned long long)ctx.config().get<int>("max_cache_request_limit")) {
+  if (limit > (unsigned long)ctx.config().get<int>("max_cache_request_limit")) {
     limit = ctx.config().get<int>("max_cache_request_limit");
   }
 
@@ -387,30 +401,28 @@ void RPCHandler::_handleHistory(HandlerContext& ctx, jsonrpcpp::request_ptr req)
     return;
   }
 
-  LOG->debug("{} - HISTORY {}", ctx.connection()->getIP(), topicName);
-
-  nlohmann::json result;
-  result["action"] = "history";
-  result["topic"]  = topicName;
-  result["status"] = "ok";
-
-  LOG->info("sendCacheToClient topic: {} sinceEventId: {} since: {} limit: {}", topicName, sinceEventId, since, limit);
+  LOG->debug("{} - HISTORY {} since: {} sinceEventId: {} limit: {}", ctx.connection()->getIP(), topicName, since, sinceEventId, limit);
 
   nlohmann::json items;
   try {
     auto& redis = ctx.server()->getRedis();
-
-    if (!sinceEventId.empty()) {
+    if (!sinceEventId.empty())
       redis.getCacheSinceId(topicName, sinceEventId, limit, TopicManager::isValidTopicFilter(topicName), items);
-    } else {
+    else
       redis.getCacheSince(topicName, since, limit, TopicManager::isValidTopicFilter(topicName), items);
-    }
   } catch (std::exception& e) {
-    LOG->error("Redis error while looking up cache: {}.", e.what());
+    msg << "Error while looking up cache: " << e.what();
+    LOG->error(msg.str());
+    _sendInvalidParamsError(ctx, req, msg.str());
+    return;
   }
 
-  result["result"] = items;
-  _sendSuccessResponse(ctx, req, result);
+  _sendSuccessResponse(ctx, req,{
+      {"action", "history"},
+      {"topic", topicName},
+      {"status", "ok"},
+      {"items", items}
+  });
 }
 
 /**

@@ -24,6 +24,7 @@ private:
   static void _sendSuccessResponse(HandlerContext& hCtx, jsonrpcpp::request_ptr req, const nlohmann::json& result);
   static void _sendInvalidParamsError(HandlerContext& hCtx, jsonrpcpp::request_ptr req, const std::string& message);
   static void _sendCacheToClient(HandlerContext &hCtx, jsonrpcpp::request_ptr req, const std::string& topic);
+  static unsigned long long _calculateRelativeSince(long long since);
 
   static void _handleSubscribe(HandlerContext& hCtx, jsonrpcpp::request_ptr req);
   static void _handleUnsubscribe(HandlerContext& hCtx, jsonrpcpp::request_ptr req);
