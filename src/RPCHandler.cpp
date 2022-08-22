@@ -6,6 +6,7 @@
 #include <exception>
 #include <initializer_list>
 #include <memory>
+#include <cmath>
 
 #include "RPCHandler.hpp"
 #include "Config.hpp"
@@ -66,14 +67,20 @@ void RPCHandler::_sendSuccessResponse(HandlerContext& ctx, jsonrpcpp::request_pt
                                 websocket::FrameType::TEXT_FRAME);
 }
 
+/**
+ * If provided a negative number calculate the relative since from
+ * epoch now in milliseconds - abs(since).
+ *
+ * @param since negative number to subtract from epoch now.
+ * @return epoch now in milliseconds - abs(since).
+ */
 unsigned long long RPCHandler::_calculateRelativeSince(long long since) {
   if (since >= 0)
     return since;
 
   auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-  unsigned long long new_since = now_ms + since;
 
-  return new_since;
+  return now_ms - abs(since);
 }
 
 /**
