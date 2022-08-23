@@ -404,7 +404,7 @@ void RPCHandler::_handleEventlog(HandlerContext& ctx, jsonrpcpp::request_ptr req
     return _sendInvalidParamsError(ctx, req, msg.str());
   }
 
-  LOG->debug("{} - EVENTLOG {} since: {} sinceEventId: {} limit: {}", ctx.connection()->getIP(), topicName, since, sinceEventId, limit);
+  LOG->trace("{} - EVENTLOG {} since: {} sinceEventId: {} limit: {}", ctx.connection()->getIP(), topicName, since, sinceEventId, limit);
 
   nlohmann::json items;
   try {
