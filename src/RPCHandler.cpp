@@ -360,7 +360,7 @@ void RPCHandler::_handleHistory(HandlerContext& ctx, jsonrpcpp::request_ptr req)
 
   if (!ctx.config().get<bool>("enable_cache")) {
     msg << "Cache is not enabled in server config";
-    _sendInvalidParamsError(ctx, req, msg.str());
+    return _sendInvalidParamsError(ctx, req, msg.str());
   }
 
   try {
@@ -387,25 +387,21 @@ void RPCHandler::_handleHistory(HandlerContext& ctx, jsonrpcpp::request_ptr req)
 
   if (sinceEventId.empty() && since == 0) {
     msg << "You must specify either 'since' or 'sinceEventId'.";
-    _sendInvalidParamsError(ctx, req, msg.str());
-    return;
+    return _sendInvalidParamsError(ctx, req, msg.str());
   }
 
   if (topicName.empty()) {
-    _sendInvalidParamsError(ctx, req, "You must specify topic.");
-    return;
+    return _sendInvalidParamsError(ctx, req, "You must specify topic.");
   }
 
   if (!TopicManager::isValidTopicOrFilter(topicName)) {
     msg << "Invalid topic in request: " << topicName;
-    _sendInvalidParamsError(ctx, req, msg.str());
-    return;
+    return _sendInvalidParamsError(ctx, req, msg.str());
   }
 
   if (!accessController->allowSubscribe(topicName)) {
     msg << "You are not allowed to read from topic: " << topicName;
-    _sendInvalidParamsError(ctx, req, msg.str());
-    return;
+    return _sendInvalidParamsError(ctx, req, msg.str());
   }
 
   LOG->debug("{} - HISTORY {} since: {} sinceEventId: {} limit: {}", ctx.connection()->getIP(), topicName, since, sinceEventId, limit);
@@ -420,8 +416,7 @@ void RPCHandler::_handleHistory(HandlerContext& ctx, jsonrpcpp::request_ptr req)
   } catch (std::exception& e) {
     msg << "Error while looking up cache: " << e.what();
     LOG->error(msg.str());
-    _sendInvalidParamsError(ctx, req, msg.str());
-    return;
+    return _sendInvalidParamsError(ctx, req, msg.str());
   }
 
   _sendSuccessResponse(ctx, req,{
