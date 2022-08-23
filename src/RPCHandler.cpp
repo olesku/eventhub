@@ -154,20 +154,17 @@ void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr re
   } catch (...) {}
 
   if (topicName.empty()) {
-    _sendInvalidParamsError(ctx, req, "You must specify 'topic' to subscribe to.");
-    return;
+    return _sendInvalidParamsError(ctx, req, "You must specify 'topic' to subscribe to.");
   }
 
   if (!TopicManager::isValidTopicOrFilter(topicName)) {
     msg << "Invalid topic in request: " << topicName;
-    _sendInvalidParamsError(ctx, req, msg.str());
-    return;
+    return _sendInvalidParamsError(ctx, req, msg.str());
   }
 
   if (!accessController->allowSubscribe(topicName)) {
     msg << "You are not allowed to subscribe to topic: " << topicName;
-    _sendInvalidParamsError(ctx, req, msg.str());
-    return;
+    return _sendInvalidParamsError(ctx, req, msg.str());
   }
 
   ctx.connection()->subscribe(topicName, req->id());
@@ -194,8 +191,7 @@ void RPCHandler::_handleUnsubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr 
   auto accessController = ctx.connection()->getAccessController();
 
   if (!req->params().is_array()) {
-    _sendInvalidParamsError(ctx, req, "Parameter is not array of topics to unsubscribe from.");
-    return;
+    return _sendInvalidParamsError(ctx, req, "Parameter is not array of topics to unsubscribe from.");
   }
 
   auto topics        = req->params().to_json();
@@ -252,20 +248,17 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
 
   if (topicName.empty() || message.empty()) {
     msg << "You need to specify topic and message to publish to.";
-    _sendInvalidParamsError(ctx, req, msg.str());
-    return;
+    return _sendInvalidParamsError(ctx, req, msg.str());
   }
 
   if (!accessController->allowPublish(topicName)) {
     msg << "Insufficient access to topic: " << topicName;
-    _sendInvalidParamsError(ctx, req, msg.str());
-    return;
+    return _sendInvalidParamsError(ctx, req, msg.str());
   }
 
   if (!TopicManager::isValidTopic(topicName)) {
     msg << topicName << " is not a valid topic.";
-    _sendInvalidParamsError(ctx, req, msg.str());
-    return;
+    return _sendInvalidParamsError(ctx, req, msg.str());
   }
 
   try {
@@ -306,8 +299,7 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
 
     if (id.length() == 0) {
       msg << "Failed to cache message in Redis, discarding.";
-      _sendInvalidParamsError(ctx, req, msg.str());
-      return;
+      return _sendInvalidParamsError(ctx, req, msg.str());
     }
 
     redis.publishMessage(topicName, id, message, accessController->subject());
@@ -444,8 +436,7 @@ void RPCHandler::_handleGet(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
     const auto key = params.get("key").get<std::string>();
 
     if (!accessController->allowSubscribe(key)) {
-      _sendInvalidParamsError(ctx, req, fmt::format("You are not allowed to read key {}", key));
-      return;
+      return _sendInvalidParamsError(ctx, req, fmt::format("You are not allowed to read key {}", key));
     }
 
     const auto val = kvStore->get(key);
@@ -483,8 +474,7 @@ void RPCHandler::_handleSet(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
     const auto value = params.get("value").get<std::string>();
 
     if (!accessController->allowPublish(key)) {
-      _sendInvalidParamsError(ctx, req, fmt::format("You are not allowed to write key {}", key));
-      return;
+      return _sendInvalidParamsError(ctx, req, fmt::format("You are not allowed to write key {}", key));
     }
 
     auto ret = kvStore->set(key, value, ttl);
@@ -516,8 +506,7 @@ void RPCHandler::_handleDelete(HandlerContext& ctx, jsonrpcpp::request_ptr req) 
     const auto key = params.get("key").get<std::string>();
 
     if (!accessController->allowPublish(key)) {
-      _sendInvalidParamsError(ctx, req, fmt::format("You are not allowed to delete key {}", key));
-      return;
+      return _sendInvalidParamsError(ctx, req, fmt::format("You are not allowed to delete key {}", key));
     }
 
     auto ret = kvStore->del(key);
