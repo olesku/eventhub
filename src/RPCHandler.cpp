@@ -36,7 +36,7 @@ RPCMethod RPCHandler::getHandler(const std::string& methodName) {
       {"unsubscribeall", _handleUnsubscribeAll},
       {"publish", _handlePublish},
       {"list", _handleList},
-      {"history", _handleHistory},
+      {"eventlog", _handleEventlog},
       {"get", _handleGet},
       {"set", _handleSet},
       {"del", _handleDelete},
@@ -344,12 +344,12 @@ void RPCHandler::_handleList(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
 }
 
 /**
- * Handle history RPC command.
- * Send history cache for topic to client.
+ * Handle eventlog RPC command.
+ * Send eventlog for topic to client.
  * @param ctx Client issuing request.
  * @param req RPC request.
  */
-void RPCHandler::_handleHistory(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
+void RPCHandler::_handleEventlog(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
   auto accessController = ctx.connection()->getAccessController();
   auto params           = req->params();
   std::string topicName;
@@ -404,7 +404,7 @@ void RPCHandler::_handleHistory(HandlerContext& ctx, jsonrpcpp::request_ptr req)
     return _sendInvalidParamsError(ctx, req, msg.str());
   }
 
-  LOG->debug("{} - HISTORY {} since: {} sinceEventId: {} limit: {}", ctx.connection()->getIP(), topicName, since, sinceEventId, limit);
+  LOG->debug("{} - EVENTLOG {} since: {} sinceEventId: {} limit: {}", ctx.connection()->getIP(), topicName, since, sinceEventId, limit);
 
   nlohmann::json items;
   try {
@@ -420,7 +420,7 @@ void RPCHandler::_handleHistory(HandlerContext& ctx, jsonrpcpp::request_ptr req)
   }
 
   _sendSuccessResponse(ctx, req,{
-      {"action", "history"},
+      {"action", "eventlog"},
       {"topic", topicName},
       {"status", "ok"},
       {"items", items}

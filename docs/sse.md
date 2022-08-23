@@ -28,7 +28,7 @@ data: Foobar          // Message content
 :                     // Ping event.
 ```
 
-## Requesting cache / event history
+## Requesting cache / eventlog
 | Header        | Query parameter | Description                                                         |
 |---------------|-----------------|---------------------------------------------------------------------|
 | Last-Event-ID | since           | Get all events since specified lastevent id when connecting         |

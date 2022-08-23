@@ -31,7 +31,7 @@ private:
   static void _handleUnsubscribeAll(HandlerContext& hCtx, jsonrpcpp::request_ptr req);
   static void _handlePublish(HandlerContext& hCtx, jsonrpcpp::request_ptr req);
   static void _handleList(HandlerContext& hCtx, jsonrpcpp::request_ptr req);
-  static void _handleHistory(HandlerContext& hCtx, jsonrpcpp::request_ptr req);
+  static void _handleEventlog(HandlerContext& hCtx, jsonrpcpp::request_ptr req);
   static void _handleGet(HandlerContext& hCtx, jsonrpcpp::request_ptr req);
   static void _handleSet(HandlerContext& hCtx, jsonrpcpp::request_ptr req);
   static void _handleDelete(HandlerContext& hCtx, jsonrpcpp::request_ptr req);
