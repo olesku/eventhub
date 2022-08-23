@@ -172,7 +172,7 @@ void Server::start() {
         reconnect = false;
         _redis.resetSubscribers();
         _redis.psubscribe("*", cb);
-        LOG->info("Connection to Redis regained.");
+        LOG->info("Connection to Redis restored.");
       }
 
       _redis.consume();

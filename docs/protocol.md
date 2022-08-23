@@ -1,18 +1,19 @@
 # Protocol specification
 Eventhub uses [JSON-RPC](http://www.jsonrpc.org/) over WebSocket as transport protocol.
 
-| RPC method                          | Parameters     | Description |
-|-------------------------------------|----------------|-------------|
-| [subscribe](#subscribe)             | *topic, since*    | Subscribe to a topic or pattern.
-| [publish](#publish)                 | *topic, message*  | Publish to a topic.
-| [unsubscribe](#unsubscribe)         | *topic*           | Unsubscribe from a topic or pattern.
-| [unsubscribeall](#unsubscribeall)   | *None*            | Unsubscribe from all current subscriptions.
-| [list](#list)                       | *None*            | List all current subscriptions.
-| [get](#get)                         | *key*             | Get key from key/value store.
-| [set](#set)                         | *key, value, ttl* | Set key in key/value store.
-| [del](#del)                         | *key*             | Delete key in key/value store.
-| [ping](#ping)                       | *None*            | Ping the server.
-| [disconnect](#disconnect)           | *None*            | Disconnect from the server.
+| RPC method                          | Parameters                          | Description                                 |
+|-------------------------------------|------------------------------       |---------------------------------------------|
+| [subscribe](#subscribe)             | *topic, since*                      | Subscribe to a topic or pattern.
+| [publish](#publish)                 | *topic, message*                    | Publish to a topic.
+| [unsubscribe](#unsubscribe)         | *topic*                             | Unsubscribe from a topic or pattern.
+| [unsubscribeall](#unsubscribeall)   | *None*                              | Unsubscribe from all current subscriptions.
+| [list](#list)                       | *None*                              | List all current subscriptions.
+| [eventlog](#eventlog)               | *topic, since, sinceEventId, limit* | Request event history for a topic.
+| [get](#get)                         | *key*                               | Get key from key/value store.
+| [set](#set)                         | *key, value, ttl*                   | Set key in key/value store.
+| [del](#del)                         | *key*                               | Delete key in key/value store.
+| [ping](#ping)                       | *None*                              | Ping the server.
+| [disconnect](#disconnect)           | *None*                              | Disconnect from the server.
 
 **Important:** Each request must have a unique `id` attribute as specified by JSON-RPC. It can be a number or a string.
 
@@ -34,7 +35,7 @@ If you are implementing your own client I can recommend using the nice [websocat
 }
 ```
 
-*The `since` attribute can be set to a timestamp or a message id to get all events from the history log since that period. If unset or set to 0 no history will be requested.*
+*The `since` attribute can be set to a timestamp or a message id to get all events from the eventlog since that period. If unset or set to 0 eventlog will not be requested.*
 
 **Confirmation response:**
 ```json
@@ -154,6 +155,61 @@ All messages received on a subscribed topic or pattern will have the same `id` a
   "result": [
     "my/topic1"
   ]
+}
+```
+
+## eventlog
+**Request:**
+```json5
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "eventlog",
+  "params": {
+    // All events from the past 60 seconds.
+    // 'since' can also be a literal unix timestamp in milliseconds or
+    // you can use 'sinceEventId' to get all events since a given
+    // event id.
+    "since": -60000,
+
+    // Limit result to 100 latest events in given time period.
+    "limit": 100
+    }
+}
+```
+
+**Response:**
+```json
+{
+  "id": 2,
+  "jsonrpc": "2.0",
+  "result": {
+    "action": "eventlog",
+    "items": [
+      {
+        "id": "1661265352086-0",
+        "message": "Event 1",
+        "topic": "my/topic1"
+      },
+      {
+        "id": "1661265374910-0",
+        "message": "Event 1",
+        "topic": "my/topic1"
+      },
+      {
+        "id": "1661265379198-0",
+        "message": "Event 2",
+        "topic": "my/topic1"
+      },
+      {
+        "id": "1661265383286-0",
+        "message": "Event 3",
+        "topic": "my/topic1"
+      }
+    ],
+    "status": "ok",
+    "topic": "my/topic1"
+  }
 }
 ```
 
