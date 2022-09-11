@@ -112,7 +112,7 @@ TEST_CASE("Config test") {
     REQUIRE_THROWS_AS(cfg.load(), RequiredOptionMissingException);
   }
 
-  SECTION("Ceheck that we support quoted values") {
+  SECTION("Check that we support quoted values") {
     Config cfg;
     cfg.defineOption<std::string>("test_string_double_quote", ConfigValueSettings::REQUIRED);
     cfg.defineOption<std::string>("test_string_single_quote", ConfigValueSettings::REQUIRED);
