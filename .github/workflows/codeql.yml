@@ -56,7 +56,7 @@ jobs:
 
     - name: Install redis-plus-plus
       run: |
-        RUN mkdir -p /tmp/redis-plus-plus && cd /tmp/redis-plus-plus && \
+        mkdir -p /tmp/redis-plus-plus && cd /tmp/redis-plus-plus && \
         git clone https://github.com/sewenew/redis-plus-plus.git . && \
         git checkout tags/1.3.3 && \
         mkdir compile && cd compile && cmake -GNinja -DCMAKE_BUILD_TYPE=Release .. && \
