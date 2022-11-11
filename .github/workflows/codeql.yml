@@ -13,10 +13,10 @@ name: "CodeQL"
 
 on:
   push:
-    branches: [ "codeql" ]
+    branches: [ "master" ]
   pull_request:
     # The branches below must be a subset of the branches above
-    branches: [ "codeql" ]
+    branches: [ "master" ]
 jobs:
   analyze:
     name: Analyze
