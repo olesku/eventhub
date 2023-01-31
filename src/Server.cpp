@@ -199,7 +199,7 @@ void Server::reload() {
 
 int alpn_cb(SSL* ssl, const unsigned char** out, unsigned char* outlen,
             const unsigned char* in, unsigned int inlen, void* arg) {
-  auto reqProto = fmt::format("{}", in);
+  auto reqProto = fmt::format("{}", reinterpret_cast<const char*>(in));
 
   if (reqProto.find(reinterpret_cast<const char*>(alpn_protocol)) != std::string::npos) {
     *out    = alpn_protocol;
