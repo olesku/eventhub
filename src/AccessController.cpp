@@ -51,10 +51,6 @@ bool AccessController::authenticate(const std::string& jwtToken, const std::stri
       }
     }
 
-    if (payload.has_claim("sub")) {
-      _subject = payload.get_claim_value<std::string>("sub");
-    }
-
     if ((_subscribe_acl.size() + _publish_acl.size()) == 0) {
       throw std::invalid_argument("No publish or subscribe ACL defined in JWT token.");
     }
