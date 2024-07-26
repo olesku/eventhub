@@ -19,16 +19,15 @@
 #include <initializer_list>
 #include <iterator>
 #include <tuple>
-
 #include "Redis.hpp"
 #include "Config.hpp"
 #include "TopicManager.hpp"
 #include "Util.hpp"
 #include "jwt/json/json.hpp"
 #include "Logger.hpp"
+#include "Common.hpp"
 
 namespace eventhub {
-
 Redis::Redis(Config &cfg) : EventhubBase(cfg) {
   sw::redis::ConnectionOptions connOpts;
   sw::redis::ConnectionPoolOptions poolOpts;

@@ -86,13 +86,13 @@ void Config::_loadFromEnv() {
   for (const auto& it_opt : _options) {
     auto optName = it_opt.first;
     auto val = getenv(optName.c_str());
-    if (val != NULL) {
+    if (val != nullptr) {
       it_opt.second->_set(val);
       it_opt.second->_hasValue = true;
     } else {
       strToUpper(optName);
       val = getenv(optName.c_str());
-      if (val != NULL) {
+      if (val != nullptr) {
         it_opt.second->_set(val);
         it_opt.second->_hasValue = true;
       }

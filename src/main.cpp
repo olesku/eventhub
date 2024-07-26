@@ -56,10 +56,10 @@ int main(int argc, char** argv) {
   sa.sa_flags   = 0;
 
   sigemptyset(&(sa.sa_mask));
-  sigaction(SIGINT, &sa, NULL);
-  sigaction(SIGQUIT, &sa, NULL);
-  sigaction(SIGTERM, &sa, NULL);
-  sigaction(SIGHUP, &sa, NULL);
+  sigaction(SIGINT, &sa, nullptr);
+  sigaction(SIGQUIT, &sa, nullptr);
+  sigaction(SIGTERM, &sa, nullptr);
+  sigaction(SIGHUP, &sa, nullptr);
 
   struct option long_options[] = {
     { "config",  required_argument, 0,  'c' },

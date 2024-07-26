@@ -11,6 +11,7 @@
 #include "Config.hpp"
 #include "TopicManager.hpp"
 #include "Logger.hpp"
+#include "Common.hpp"
 #include "jwt/impl/jwt.ipp"
 #include "jwt/json/json.hpp"
 #include "jwt/parameters.hpp"

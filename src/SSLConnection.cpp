@@ -30,7 +30,7 @@ SSLConnection::~SSLConnection() {
 
 void SSLConnection::_init() {
   _ssl = SSL_new(_ssl_ctx);
-  if (_ssl == NULL) {
+  if (_ssl == nullptr) {
     _ssl = nullptr;
     LOG->error("Failed to initialize SSL object for client {}", getIP());
     shutdown();
