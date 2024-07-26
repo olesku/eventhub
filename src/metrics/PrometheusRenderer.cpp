@@ -34,17 +34,15 @@ const std::string PrometheusRenderer::RenderMetrics(Server* server) {
   gethostname(h_buf, sizeof(h_buf));
 
   for (const auto& metric : metricList) {
-    const std::string& metricName = std::get<0>(metric);
+    // Add prefix provided in configuration to metric name
+    const std::string& metricName = config.get<std::string>("prometheus_metric_prefix") + "_" + std::get<0>(metric);
     const std::string& metricType = std::get<1>(metric);
     const long long& metricValue   = std::get<2>(metric);
 
     // Output the type of each metric
     ss << "# TYPE " << metricName << " " << metricType << "\n";
 
-    // Add prefix to metric key if set in configuration.
-    const std::string metricKey = !config.get<std::string>("prometheus_metric_prefix").empty() ? (config.get<std::string>("prometheus_metric_prefix") + "_" + metricName) : metricName;
-
-    ss << metricKey << "{instance=\"" << h_buf << ":" << config.get<int>("listen_port") << "\""
+    ss << metricName << "{instance=\"" << h_buf << ":" << config.get<int>("listen_port") << "\""
        << "} " << metricValue << "\n";
   }
 
