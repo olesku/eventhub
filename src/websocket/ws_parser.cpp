@@ -42,7 +42,7 @@ int ws_parser_execute(
     const ws_parser_callbacks_t* callbacks,
     void* data,
     char* buff /* mutates! */,
-    size_t len) {
+    unsigned int len) {
   while (len) {
     uint8_t cur_byte = *buff;
 
@@ -227,14 +227,14 @@ int ws_parser_execute(
         break;
       }
       case S_PAYLOAD: {
-        size_t chunk_length = len;
+        unsigned int chunk_length = len;
 
         if (chunk_length > parser->bytes_remaining) {
           chunk_length = parser->bytes_remaining;
         }
 
         if (parser->mask_flag) {
-          for (size_t i = 0; i < chunk_length; i++) {
+          for (unsigned int i = 0; i < chunk_length; i++) {
             buff[i] ^= parser->mask[parser->mask_pos++];
           }
         }
@@ -294,6 +294,6 @@ ws_parser_error(int rc) {
   PARSER_ERROR_CODES(XX)
 #undef XX
 
-  return NULL;
+  return nullptr;
 }
 } // namespace eventhub

@@ -15,13 +15,13 @@ public:
   Parser();
   ~Parser() {}
 
-  void parse(char* buf, size_t len);
+  void parse(char* buf, unsigned int len);
 
   void clearDataPayload();
   void clearControlPayload();
 
-  void appendDataPayload(const char* data, size_t len);
-  void appendControlPayload(const char* data, size_t len);
+  void appendDataPayload(const char* data, unsigned int len);
+  void appendControlPayload(const char* data, unsigned int len);
 
   void setControlFrameType(FrameType frameType);
   void setDataFrameType(FrameType frameType);

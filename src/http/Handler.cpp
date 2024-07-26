@@ -137,14 +137,10 @@ bool Handler::_websocketHandshake(HandlerContext& ctx, Parser* req) {
     return false;
   }
 
-  size_t keyLen = secWsKey.length() + 36;
-  unsigned char key[keyLen];
+  const std::string key = secWsKey + WS_MAGIC_STRING;
   unsigned char keySha1[SHA_DIGEST_LENGTH] = {0};
 
-  memcpy(key, secWsKey.c_str(), secWsKey.length());
-  memcpy(key + secWsKey.length(), WS_MAGIC_STRING, 36);
-
-  SHA1(key, keyLen, keySha1);
+  SHA1(reinterpret_cast<const unsigned char*>(key.c_str()), key.length(), keySha1);
   const std::string secWsAccept = Util::base64Encode(keySha1, SHA_DIGEST_LENGTH);
 
   Response resp;

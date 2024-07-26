@@ -14,6 +14,7 @@
 #include "websocket/Types.hpp"
 #include "Logger.hpp"
 #include "jwt/json/json.hpp"
+#include "Common.hpp"
 
 namespace eventhub {
 Topic::~Topic() {}

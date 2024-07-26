@@ -1,6 +1,5 @@
 #pragma once
 
-#include <stddef.h>
 #include <functional>
 #include <map>
 #include <memory>
@@ -8,6 +7,7 @@
 
 #include "http/picohttpparser.h"
 #include "http/Types.hpp"
+#include "Common.hpp"
 
 namespace eventhub {
 namespace http {
@@ -25,7 +25,7 @@ public:
   const std::map<std::string, std::string>& getHeaders();
   const std::string getHeader(std::string header);
   const std::string getQueryString(std::string param);
-  size_t numQueryString();
+  std::size_t numQueryString();
   const std::string& getErrorMessage();
   void setCallback(ParserCallback callback);
 
@@ -36,7 +36,7 @@ private:
   bool _is_complete;
   const char *_phr_method, *_phr_path;
   struct phr_header _phr_headers[HTTP_REQUEST_MAX_HEADERS];
-  size_t _phr_num_headers, _phr_method_len, _phr_path_len;
+  std::size_t _phr_num_headers, _phr_method_len, _phr_path_len;
   int _phr_minor_version;
   std::string _path;
   std::string _method;
@@ -45,7 +45,7 @@ private:
   std::map<std::string, std::string> _query_parameters;
   std::map<std::string, std::string> _qsmap;
 
-  size_t _parse_query_string(const std::string& buf);
+  std::size_t _parse_query_string(const std::string& buf);
   ParserCallback _callback;
 };
 
