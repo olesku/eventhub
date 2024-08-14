@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cctype>
 #include <string>
-#include <cstddef>
 
 #include "Logger.hpp"
 
