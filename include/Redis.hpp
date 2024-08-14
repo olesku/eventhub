@@ -30,12 +30,12 @@ public:
 
   const std::string& id() { return _id; }
   const std::string& origin() { return _origin; }
-  long expireAt() const { return _expireAt; }
+  unsigned long expireAt() const { return _expireAt; }
   const std::string toStr();
 
 private:
   std::string _id;
-  long int _expireAt = 0;
+  unsigned long _expireAt = 0;
   std::string _origin;
 };
 

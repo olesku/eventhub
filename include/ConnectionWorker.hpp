@@ -21,7 +21,7 @@ typedef std::list<ConnectionPtr> ConnectionList;
 
 class Worker final : public EventhubBase, public WorkerBase {
 public:
-  Worker(Server* srv, std::size_t workerId);
+  Worker(Server* srv, unsigned int workerId);
   ~Worker();
 
   TopicManager* getTopicManager() { return _topic_manager.get(); }
@@ -29,12 +29,12 @@ public:
   void subscribeConnection(ConnectionPtr conn, const std::string& topicFilterName);
   void publish(const std::string& topicName, const std::string& data);
   void addTimer(int64_t delay, std::function<void(TimerCtx* ctx)> callback, bool repeat = false);
-  std::size_t getWorkerId() { return _workerId; }
+  unsigned int getWorkerId() { return _workerId; }
   int getEpollFileDescriptor() { return _epoll_fd; }
   const metrics::WorkerMetrics& getMetrics() { return _metrics; }
 
 private:
-  std::size_t _workerId;
+  unsigned int _workerId;
   Server* _server;
   int _epoll_fd;
   std::unique_ptr<EventLoop> _ev;

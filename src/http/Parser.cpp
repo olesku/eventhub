@@ -35,7 +35,7 @@ Parser::~Parser() {}
     @param data Raw http request data.
     @param len Length of data.
   **/
-void Parser::parse(const char* data, int len) {
+void Parser::parse(const char* data, std::size_t len) {
   int pret;
 
   if (_is_complete)

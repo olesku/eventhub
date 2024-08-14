@@ -331,8 +331,8 @@ bool Connection::unsubscribe(const std::string& topicPattern) {
 
 std::size_t Connection::unsubscribeAll() {
   std::lock_guard<std::mutex> lock(_subscription_list_lock);
-  auto tm            = _worker->getTopicManager();
-  std::size_t count = _subscribedTopics.size();
+  auto tm    = _worker->getTopicManager();
+  auto count = _subscribedTopics.size();
 
   for (auto it = _subscribedTopics.begin(); it != _subscribedTopics.end();) {
     auto& subscription = it->second;

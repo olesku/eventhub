@@ -455,7 +455,7 @@ CacheItemMeta::CacheItemMeta(const std::string& metaStr) {
     throw std::runtime_error("Invalid CacheItemMetaStr '" + metaStr + "'");
   }
 
-  _expireAt = std::stol(expireAtStr, nullptr, 10);
+  _expireAt = std::stoul(expireAtStr, nullptr, 10);
 }
 
 const std::string CacheItemMeta::toStr() {

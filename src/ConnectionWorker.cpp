@@ -38,7 +38,7 @@
 
 namespace eventhub {
 
-Worker::Worker(Server* srv, std::size_t workerId) : EventhubBase(srv->config()), _workerId(workerId) {
+Worker::Worker(Server* srv, unsigned int workerId) : EventhubBase(srv->config()), _workerId(workerId) {
   _server   = srv;
   _epoll_fd = epoll_create1(0);
 

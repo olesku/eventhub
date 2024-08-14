@@ -7,7 +7,6 @@
 
 #include "http/picohttpparser.h"
 #include "http/Types.hpp"
-#include "Common.hpp"
 
 namespace eventhub {
 namespace http {
@@ -19,7 +18,7 @@ class Parser final {
 public:
   Parser();
   ~Parser();
-  void parse(const char* data, int len);
+  void parse(const char* data, std::size_t len);
   const std::string& getPath();
   const std::string& getMethod();
   const std::map<std::string, std::string>& getHeaders();
