@@ -114,7 +114,7 @@ void Connection::read() {
     return;
   }
 
-  std::size_t bytesRead = 0;
+  ssize_t bytesRead = 0;
   bytesRead        = ::read(_fd, _read_buffer.data(), NET_READ_BUFFER_SIZE);
 
   if (bytesRead <= 0) {
@@ -185,7 +185,7 @@ ssize_t Connection::flushSendBuffer() {
     return 0;
   }
 
-  int ret = ::write(_fd, _write_buffer.c_str(), _write_buffer.length());
+  ssize_t ret = ::write(_fd, _write_buffer.c_str(), _write_buffer.length());
 
   if (ret <= 0) {
     if (errno != EAGAIN && errno != EWOULDBLOCK) {
