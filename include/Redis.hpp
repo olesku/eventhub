@@ -22,7 +22,7 @@ using RedisMsgCallback = std::function<void(const std::string& pattern,
 
 class CacheItemMeta final {
 public:
-  explicit CacheItemMeta(const std::string& id, long expireAt, const std::string& origin);
+  explicit CacheItemMeta(const std::string& id, unsigned long expireAt, const std::string& origin);
 
   explicit CacheItemMeta(const std::string& metaStr);
 
@@ -51,7 +51,7 @@ public:
 
   void publishMessage(const std::string& topic, const std::string& id, const std::string& payload, const std::string& origin="");
   void psubscribe(const std::string& pattern, RedisMsgCallback callback);
-  const std::string cacheMessage(const std::string& topic, const std::string& payload, const std::string& origin, long long timestamp = 0, long long ttl = 0);
+  const std::string cacheMessage(const std::string& topic, const std::string& payload, const std::string& origin, long long timestamp = 0, unsigned long ttl = 0);
   std::size_t getCacheSince(const std::string& topicPattern, long long since, long long limit, bool isPattern, nlohmann::json& result);
   std::size_t getCacheSinceId(const std::string& topicPattern, const std::string& sinceId, long long limit, bool isPattern, nlohmann::json& result);
   std::size_t purgeExpiredCacheItems();

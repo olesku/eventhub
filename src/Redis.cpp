@@ -80,7 +80,7 @@ const std::string Redis::_getNextCacheId(long long timestamp) {
 }
 
 // Add a message to the cache.
-const std::string Redis::cacheMessage(const std::string& topic, const std::string& payload, const std::string& origin, long long timestamp, long long ttl) {
+const std::string Redis::cacheMessage(const std::string& topic, const std::string& payload, const std::string& origin, long long timestamp, unsigned long ttl) {
   if (timestamp == 0) {
     timestamp = Util::getTimeSinceEpoch();
   }
@@ -433,7 +433,7 @@ void Redis::incrementLimitCount(const std::string& topic, const std::string& sub
   }
 }
 
-CacheItemMeta::CacheItemMeta(const std::string& id, long expireAt, const std::string& origin) :
+CacheItemMeta::CacheItemMeta(const std::string& id, unsigned long expireAt, const std::string& origin) :
   _id(id), _expireAt(expireAt), _origin(origin) {}
 
 CacheItemMeta::CacheItemMeta(const std::string& metaStr) {

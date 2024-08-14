@@ -14,7 +14,7 @@ Config::Config() {}
 void Config::_loadFromStream(std::istream& data, const std::string& path) {
   std::fstream f;
   std::string line;
-  std::size_t lineNo = 0;
+  unsigned int lineNo = 0;
 
   while (std::getline(data, line)) {
     std::string parsedKey, parsedValue;

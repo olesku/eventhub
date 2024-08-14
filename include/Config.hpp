@@ -44,7 +44,7 @@ class InvalidConfigOptionException : public std::exception {
 public:
   std::string msg;
 
-  InvalidConfigOptionException(const std::string& optName, const std::string& path = "", std::size_t lineNo = 0) {
+  InvalidConfigOptionException(const std::string& optName, const std::string& path = "", unsigned int lineNo = 0) {
     if (!path.empty() && lineNo > 0)
       msg = "Invalid config option \"" + optName + "\" at " + path + ":" + std::to_string(lineNo);
     else
@@ -58,7 +58,7 @@ public:
 
 class SyntaxErrorException final : public std::runtime_error {
 public:
-  SyntaxErrorException(std::string path, std::size_t lineNo) : runtime_error("Invalid syntax at " + path + ":" + std::to_string(lineNo)) {}
+  SyntaxErrorException(std::string path, unsigned int lineNo) : runtime_error("Invalid syntax at " + path + ":" + std::to_string(lineNo)) {}
 };
 
 class RequiredOptionMissingException : public std::runtime_error {

@@ -268,7 +268,7 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
   }
 
   try {
-    ttl = params.get("ttl").get<std::size_t>();
+    ttl = params.get("ttl").get<unsigned long>();
   } catch (...) {
     ttl = 0;
   }
