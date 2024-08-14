@@ -16,10 +16,10 @@ typedef enum {
 
 typedef struct {
   int (*on_data_begin)(void*, uint8_t);
-  int (*on_data_payload)(void*, const char*, unsigned int);
+  int (*on_data_payload)(void*, const char*, size_t);
   int (*on_data_end)(void*);
   int (*on_control_begin)(void*, uint8_t);
-  int (*on_control_payload)(void*, const char*, unsigned int);
+  int (*on_control_payload)(void*, const char*, size_t);
   int (*on_control_end)(void*);
 } ws_parser_callbacks_t;
 
@@ -56,7 +56,7 @@ int ws_parser_execute(
     const ws_parser_callbacks_t* callbacks,
     void* data,
     char* buff /* mutates! */,
-    unsigned int len);
+    size_t len);
 
 const char*
 ws_parser_error(int rc);

@@ -39,7 +39,7 @@ void Response::sendEvent(ConnectionPtr conn, const std::string& id, const std::s
   conn->write(data);
 }
 
-void Response::error(ConnectionPtr conn, const std::string& message, unsigned int statusCode) {
+void Response::error(ConnectionPtr conn, const std::string& message, std::size_t statusCode) {
   nlohmann::json j;
   j["error"] = message;
 

@@ -51,10 +51,10 @@ public:
 
   void publishMessage(const std::string& topic, const std::string& id, const std::string& payload, const std::string& origin="");
   void psubscribe(const std::string& pattern, RedisMsgCallback callback);
-  const std::string cacheMessage(const std::string& topic, const std::string& payload, const std::string& origin, long long timestamp = 0, unsigned int ttl = 0);
-  size_t getCacheSince(const std::string& topicPattern, long long since, long long limit, bool isPattern, nlohmann::json& result);
-  size_t getCacheSinceId(const std::string& topicPattern, const std::string& sinceId, long long limit, bool isPattern, nlohmann::json& result);
-  size_t purgeExpiredCacheItems();
+  const std::string cacheMessage(const std::string& topic, const std::string& payload, const std::string& origin, long long timestamp = 0, long long ttl = 0);
+  std::size_t getCacheSince(const std::string& topicPattern, long long since, long long limit, bool isPattern, nlohmann::json& result);
+  std::size_t getCacheSinceId(const std::string& topicPattern, const std::string& sinceId, long long limit, bool isPattern, nlohmann::json& result);
+  std::size_t purgeExpiredCacheItems();
   void consume();
   void resetSubscribers();
   std::shared_ptr<sw::redis::Redis> connection() { return _redisInstance; }

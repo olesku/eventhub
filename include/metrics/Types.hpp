@@ -16,9 +16,9 @@ struct WorkerMetrics {
 
 struct ServerMetrics {
   std::atomic<unsigned long> server_start_unixtime{0};
-  std::atomic<unsigned int> worker_count{0};
+  std::atomic<std::size_t> worker_count{0};
   std::atomic<unsigned long long> publish_count{0};
-  std::atomic<unsigned int> redis_connection_fail_count{0};
+  std::atomic<std::size_t> redis_connection_fail_count{0};
   std::atomic<unsigned long> redis_publish_delay_ms{0};
 };
 
@@ -34,9 +34,9 @@ struct AggregatedMetrics {
                         eventloop_delay_ms(0){};
 
   unsigned long server_start_unixtime;
-  unsigned int worker_count;
+  std::size_t worker_count;
   unsigned long long publish_count;
-  unsigned int redis_connection_fail_count;
+  std::size_t redis_connection_fail_count;
   unsigned long redis_publish_delay_ms;
 
   unsigned long current_connections_count;

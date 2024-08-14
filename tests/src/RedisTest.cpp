@@ -95,21 +95,21 @@ TEST_CASE("Test redis", "[Redis") {
 
     THEN("Cache size should be larger than 0 when requesting a matching pattern") {
       nlohmann::json j;
-      size_t cacheSize = redis.getCacheSince("test/#", 0, -1, true, j);
+      std::size_t cacheSize = redis.getCacheSince("test/#", 0, -1, true, j);
       REQUIRE(cacheSize > 0);
       REQUIRE(j.size() > 0);
     }
 
     THEN("Cache size should be larger than 0 when requesting the actual topic") {
       nlohmann::json j;
-      size_t cacheSize = redis.getCacheSince("test/channel1", 0, -1, false, j);
+      std::size_t cacheSize = redis.getCacheSince("test/channel1", 0, -1, false, j);
       REQUIRE(cacheSize > 0);
       REQUIRE(j.size() > 0);
     }
   }
 
   GIVEN("That we publish 2 messages") {
-    unsigned int msgRcvd = 0;
+    std::size_t msgRcvd = 0;
     redis.psubscribe("*", [&msgRcvd](const std::string& pattern, const std::string& topic, const std::string& msg) {
       REQUIRE(pattern.compare("eventhub_test:*") == 0);
       REQUIRE((topic.compare("test/topic1") == 0 || topic.compare("test/topic2") == 0));
@@ -176,14 +176,14 @@ TEST_CASE("Test redis", "[Redis") {
     std::vector<std::string> cacheIds;
 
     auto firstId = redis.cacheMessage("test/topic1", "31337", "petter@testmann.no");
-    for (unsigned int i = 0; i < 10; i++) {
+    for (std::size_t i = 0; i < 10; i++) {
       cacheIds.push_back(redis.cacheMessage("test/topic1", "31337", "petter@testmann.no"));
     }
 
     THEN("We should get the expected results back") {
       redis.getCacheSinceId("test/topic1", firstId, 100, false, res);
 
-      unsigned int i = 0;
+      std::size_t i = 0;
       for (auto item : res) {
         REQUIRE(cacheIds[i] == item["id"]);
         i++;

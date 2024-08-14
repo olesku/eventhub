@@ -41,7 +41,7 @@ std::atomic<bool> stopEventhub{false};
 std::atomic<bool> reloadEventhub{false};
 
 unsigned const char alpn_protocol[] = "http/1.1";
-unsigned int alpn_protocol_length   = 8;
+std::size_t alpn_protocol_length   = 8;
 
 Server::Server(Config& cfg)
     : _config(cfg), _server_socket(-1), _server_socket_ssl(-1), _ssl_enabled(false), _ssl_ctx(nullptr), _redis(cfg) {
@@ -77,7 +77,7 @@ void Server::start() {
   // Start the connection workers.
   _connection_workers_lock.lock();
 
-  unsigned int numWorkerThreads = config().get<int>("worker_threads") == 0 ? std::thread::hardware_concurrency() : config().get<int>("worker_threads");
+  std::size_t numWorkerThreads = config().get<int>("worker_threads") == 0 ? std::thread::hardware_concurrency() : config().get<int>("worker_threads");
 
   for (unsigned i = 0; i < numWorkerThreads; i++) {
     _connection_workers.addWorker(new Worker(this, i + 1));

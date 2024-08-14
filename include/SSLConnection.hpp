@@ -21,7 +21,7 @@ public:
 private:
   SSL* _ssl;
   SSL_CTX* _ssl_ctx;
-  unsigned int _ssl_handshake_retries;
+  std::size_t _ssl_handshake_retries;
 
   void _init();
   void _handshake();

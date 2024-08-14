@@ -90,7 +90,7 @@ void Connection::_disableEpollOut() {
 /**
  * Remove n bytes from the beginning og the write buffer.
  */
-size_t Connection::_pruneWriteBuffer(size_t bytes) {
+std::size_t Connection::_pruneWriteBuffer(std::size_t bytes) {
   if (_write_buffer.length() < 1) {
     return 0;
   }
@@ -114,7 +114,7 @@ void Connection::read() {
     return;
   }
 
-  size_t bytesRead = 0;
+  std::size_t bytesRead = 0;
   bytesRead        = ::read(_fd, _read_buffer.data(), NET_READ_BUFFER_SIZE);
 
   if (bytesRead <= 0) {
@@ -131,7 +131,7 @@ void Connection::read() {
 /**
  * Parse the request present in our read buffer and call the correct handler.
  */
-void Connection::_parseRequest(size_t bytesRead) {
+void Connection::_parseRequest(std::size_t bytesRead) {
   // Redirect request to either HTTP handler or websocket handler
   // based on which state the client is in.
   switch (getState()) {
@@ -194,7 +194,7 @@ ssize_t Connection::flushSendBuffer() {
     } else {
       _enableEpollOut();
     }
-  } else if ((unsigned int)ret < _write_buffer.length()) {
+  } else if ((std::size_t)ret < _write_buffer.length()) {
     LOG->trace("Client {} could not write() entire buffer, wrote {} of {} bytes.", ret, _write_buffer.length());
     _pruneWriteBuffer(ret);
     _enableEpollOut();
@@ -329,10 +329,10 @@ bool Connection::unsubscribe(const std::string& topicPattern) {
   return true;
 }
 
-unsigned int Connection::unsubscribeAll() {
+std::size_t Connection::unsubscribeAll() {
   std::lock_guard<std::mutex> lock(_subscription_list_lock);
   auto tm            = _worker->getTopicManager();
-  unsigned int count = _subscribedTopics.size();
+  std::size_t count = _subscribedTopics.size();
 
   for (auto it = _subscribedTopics.begin(); it != _subscribedTopics.end();) {
     auto& subscription = it->second;

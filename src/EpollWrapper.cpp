@@ -12,7 +12,7 @@
 #include <iostream>
 
 namespace {
-unsigned int epfd_index = 0;
+std::size_t epfd_index = 0;
 std::map<int, std::map<int, struct epoll_event*>> _events;
 std::mutex mutex;
 } // namespace

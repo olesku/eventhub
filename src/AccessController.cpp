@@ -11,7 +11,6 @@
 #include "Config.hpp"
 #include "TopicManager.hpp"
 #include "Logger.hpp"
-#include "Common.hpp"
 #include "jwt/impl/jwt.ipp"
 #include "jwt/json/json.hpp"
 #include "jwt/parameters.hpp"
@@ -146,7 +145,7 @@ bool RateLimitConfig::loadFromJSON(const nlohmann::json::array_t& config) {
 const rlimit_config_t RateLimitConfig::getRateLimitForTopic(const std::string& topic) {
   rlimit_config_t rlimit;
   bool found = false;
-  size_t matchedPatternLen = 0;
+  std::size_t matchedPatternLen = 0;
 
   // Exit early if no limits is present in token.
   if (_limitConfigs.empty())

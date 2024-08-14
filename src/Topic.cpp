@@ -76,7 +76,7 @@ void Topic::deleteSubscriberByIterator(TopicSubscriberList::iterator it) {
 /**
  * Returns the number of subscribers on the topic.
  */
-size_t Topic::getSubscriberCount() {
+std::size_t Topic::getSubscriberCount() {
   std::lock_guard<std::mutex> lock(_subscriber_lock);
   return _subscriber_list.size();
 }

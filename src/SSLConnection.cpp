@@ -72,7 +72,7 @@ ssize_t SSLConnection::flushSendBuffer() {
     return 0;
   }
 
-  unsigned int pcktSize = _write_buffer.length() > NET_READ_BUFFER_SIZE ? NET_READ_BUFFER_SIZE : _write_buffer.length();
+  std::size_t pcktSize = _write_buffer.length() > NET_READ_BUFFER_SIZE ? NET_READ_BUFFER_SIZE : _write_buffer.length();
   int ret               = SSL_write(_ssl, _write_buffer.c_str(), pcktSize);
 
   if (ret > 0) {

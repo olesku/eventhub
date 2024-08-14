@@ -42,7 +42,7 @@ int ws_parser_execute(
     const ws_parser_callbacks_t* callbacks,
     void* data,
     char* buff /* mutates! */,
-    unsigned int len) {
+    size_t len) {
   while (len) {
     uint8_t cur_byte = *buff;
 
@@ -227,14 +227,14 @@ int ws_parser_execute(
         break;
       }
       case S_PAYLOAD: {
-        unsigned int chunk_length = len;
+        size_t chunk_length = len;
 
         if (chunk_length > parser->bytes_remaining) {
           chunk_length = parser->bytes_remaining;
         }
 
         if (parser->mask_flag) {
-          for (unsigned int i = 0; i < chunk_length; i++) {
+          for (size_t i = 0; i < chunk_length; i++) {
             buff[i] ^= parser->mask[parser->mask_pos++];
           }
         }
