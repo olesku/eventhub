@@ -12,8 +12,8 @@ namespace websocket {
 void Response::_sendFragment(ConnectionPtr conn, const std::string& fragment, uint8_t frameType, bool fin) {
   std::string sndBuf;
   char header[8];
-  size_t headerSize   = 0;
-  size_t fragmentSize = fragment.size();
+  std::size_t headerSize   = 0;
+  std::size_t fragmentSize = fragment.size();
 
   header[0] = fin << 7;
   header[0] = header[0] | (0xF & frameType);
@@ -40,7 +40,7 @@ void Response::_sendFragment(ConnectionPtr conn, const std::string& fragment, ui
 }
 
 void Response::sendData(ConnectionPtr conn, const std::string& data, FrameType frameType) {
-  size_t dataSize = data.size();
+  std::size_t dataSize = data.size();
 
   if (dataSize < WS_MAX_CHUNK_SIZE) {
     _sendFragment(conn, data, (uint8_t)frameType, true);
@@ -48,11 +48,11 @@ void Response::sendData(ConnectionPtr conn, const std::string& data, FrameType f
     // First: fin = false, frameType = frameType
     // Following: fin = false, frameType = CONTINUATION_FRAME
     // Last: fin = true, frameType = CONTINUATION_FRAME
-    size_t nChunks = dataSize / WS_MAX_CHUNK_SIZE;
+    std::size_t nChunks = dataSize / WS_MAX_CHUNK_SIZE;
     for (unsigned i = 0; i < nChunks; i++) {
       uint8_t chunkFrametype = uint8_t((i == 0) ? frameType : FrameType::CONTINUATION_FRAME);
       bool fin               = (i < (nChunks - 1)) ? false : true;
-      size_t len             = (i < (nChunks - 1)) ? WS_MAX_CHUNK_SIZE : std::string::npos;
+      std::size_t len             = (i < (nChunks - 1)) ? WS_MAX_CHUNK_SIZE : std::string::npos;
       auto const chunk       = data.substr(i * WS_MAX_CHUNK_SIZE, len);
       _sendFragment(conn, chunk, chunkFrametype, fin);
     }

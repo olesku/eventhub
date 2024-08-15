@@ -294,6 +294,6 @@ ws_parser_error(int rc) {
   PARSER_ERROR_CODES(XX)
 #undef XX
 
-  return NULL;
+  return nullptr;
 }
 } // namespace eventhub

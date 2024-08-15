@@ -145,7 +145,7 @@ bool RateLimitConfig::loadFromJSON(const nlohmann::json::array_t& config) {
 const rlimit_config_t RateLimitConfig::getRateLimitForTopic(const std::string& topic) {
   rlimit_config_t rlimit;
   bool found = false;
-  size_t matchedPatternLen = 0;
+  std::size_t matchedPatternLen = 0;
 
   // Exit early if no limits is present in token.
   if (_limitConfigs.empty())

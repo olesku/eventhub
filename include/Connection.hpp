@@ -62,7 +62,7 @@ public:
 
   void subscribe(const std::string& topicPattern, const jsonrpcpp::Id subscriptionRequestId);
   bool unsubscribe(const std::string& topicPattern);
-  unsigned int unsubscribeAll();
+  std::size_t unsubscribeAll();
   std::vector<std::string> listSubscriptions();
 
   void onHTTPRequest(http::ParserCallback callback);
@@ -92,8 +92,8 @@ protected:
 
   void _enableEpollOut();
   void _disableEpollOut();
-  size_t _pruneWriteBuffer(size_t bytes);
-  void _parseRequest(size_t bytesRead);
+  std::size_t _pruneWriteBuffer(std::size_t bytes);
+  void _parseRequest(std::size_t bytesRead);
 };
 
 } // namespace eventhub

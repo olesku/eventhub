@@ -35,7 +35,7 @@ Parser::~Parser() {}
     @param data Raw http request data.
     @param len Length of data.
   **/
-void Parser::parse(const char* data, int len) {
+void Parser::parse(const char* data, std::size_t len) {
   int pret;
 
   if (_is_complete)
@@ -74,7 +74,7 @@ void Parser::parse(const char* data, int len) {
     std::string rawPath;
     rawPath.insert(0, _phr_path, _phr_path_len);
 
-    size_t qsPos = rawPath.find_first_of('?', 0);
+    std::size_t qsPos = rawPath.find_first_of('?', 0);
     if (qsPos != std::string::npos) {
       std::string qStr;
       qStr  = rawPath.substr(qsPos + 1, std::string::npos);
@@ -135,12 +135,12 @@ const std::map<std::string, std::string>& Parser::getHeaders() {
     Extracts query parameters from a string if they exist.
     @param buf The string to parse.
   **/
-size_t Parser::_parse_query_string(const std::string& buf) {
-  size_t prevpos = 0, eqlpos = 0;
+std::size_t Parser::_parse_query_string(const std::string& buf) {
+  std::size_t prevpos = 0, eqlpos = 0;
 
   while ((eqlpos = buf.find("=", prevpos)) != std::string::npos) {
     std::string param, val;
-    size_t len;
+    std::size_t len;
 
     len = buf.find("&", eqlpos);
 
@@ -181,7 +181,7 @@ const std::string Parser::getQueryString(std::string param) {
 /**
     Returns number of query strings in the request.
   **/
-size_t Parser::numQueryString() {
+std::size_t Parser::numQueryString() {
   return _qsmap.size();
 }
 

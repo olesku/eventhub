@@ -41,7 +41,7 @@ std::atomic<bool> stopEventhub{false};
 std::atomic<bool> reloadEventhub{false};
 
 unsigned const char alpn_protocol[] = "http/1.1";
-unsigned int alpn_protocol_length   = 8;
+std::size_t alpn_protocol_length   = 8;
 
 Server::Server(Config& cfg)
     : _config(cfg), _server_socket(-1), _server_socket_ssl(-1), _ssl_enabled(false), _ssl_ctx(nullptr), _redis(cfg) {
@@ -77,7 +77,7 @@ void Server::start() {
   // Start the connection workers.
   _connection_workers_lock.lock();
 
-  unsigned int numWorkerThreads = config().get<int>("worker_threads") == 0 ? std::thread::hardware_concurrency() : config().get<int>("worker_threads");
+ unsigned int numWorkerThreads = config().get<int>("worker_threads") == 0 ? std::thread::hardware_concurrency() : config().get<int>("worker_threads");
 
   for (unsigned i = 0; i < numWorkerThreads; i++) {
     _connection_workers.addWorker(new Worker(this, i + 1));
@@ -288,7 +288,7 @@ void Server::_initSSL() {
   const SSL_METHOD* method = TLS_server_method();
   _ssl_ctx                 = SSL_CTX_new(method);
 
-  if (_ssl_ctx == NULL) {
+  if (_ssl_ctx == nullptr) {
     LOG->critical("Could not initialize SSL context: {}", Util::getSSLErrorString(ERR_get_error()));
     exit(1);
   }
@@ -297,7 +297,7 @@ void Server::_initSSL() {
 
   SSL_CTX_set_ecdh_auto(_ssl_ctx, 1);
   SSL_CTX_set_options(_ssl_ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
-  SSL_CTX_set_alpn_select_cb(_ssl_ctx, alpn_cb, NULL);
+  SSL_CTX_set_alpn_select_cb(_ssl_ctx, alpn_cb, nullptr);
 
   _ssl_enabled = true;
 }
@@ -314,7 +314,7 @@ void Server::_loadSSLCertificates() {
   if (caCert.empty()) {
     SSL_CTX_set_default_verify_paths(_ssl_ctx);
   } else {
-    if (SSL_CTX_load_verify_locations(_ssl_ctx, caCert.c_str(), NULL) <= 0) {
+    if (SSL_CTX_load_verify_locations(_ssl_ctx, caCert.c_str(), nullptr) <= 0) {
       LOG->error("Error loading CA certificate: {}", Util::getSSLErrorString(ERR_get_error()));
       stop();
       exit(EXIT_FAILURE);
@@ -356,7 +356,7 @@ void Server::_checkSSLCertUpdated() {
 
       auto fp = fopen(config().get<std::string>("ssl_certificate").c_str(), "r");
       if (fp) {
-        PEM_read_X509(fp, NULL, NULL, NULL);
+        PEM_read_X509(fp, nullptr, nullptr, nullptr);
         auto err = ERR_get_error();
 
         if (err != 0) {
@@ -372,7 +372,7 @@ void Server::_checkSSLCertUpdated() {
       LOG->info("Change to private key file " + config().get<std::string>("ssl_private_key") + " detected.");
       auto fp = fopen(config().get<std::string>("ssl_private_key").c_str(), "r");
       if (fp) {
-        PEM_read_PrivateKey(fp, NULL, NULL, NULL);
+        PEM_read_PrivateKey(fp, nullptr, nullptr, nullptr);
         auto err = ERR_get_error();
 
         if (err != 0) {

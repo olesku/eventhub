@@ -195,7 +195,7 @@ void RPCHandler::_handleUnsubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr 
   }
 
   auto topics        = req->params().to_json();
-  unsigned int count = 0;
+  std::size_t count = 0;
   for (auto topic : topics) {
     if (!TopicManager::isValidTopicOrFilter(topic) || !accessController->allowSubscribe(topic)) {
       continue;
@@ -236,7 +236,7 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
   std::string message;
   std::stringstream msg;
   long long timestamp;
-  unsigned int ttl;
+  std::size_t ttl;
 
   auto accessController = ctx.connection()->getAccessController();
   auto params           = req->params();
@@ -268,7 +268,7 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
   }
 
   try {
-    ttl = params.get("ttl").get<unsigned int>();
+    ttl = params.get("ttl").get<unsigned long>();
   } catch (...) {
     ttl = 0;
   }

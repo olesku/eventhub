@@ -19,7 +19,7 @@
 #include "Logger.hpp"
 
 namespace eventhub {
-const std::string Util::base64Encode(const unsigned char* buffer, size_t length) {
+const std::string Util::base64Encode(const unsigned char* buffer, std::size_t length) {
   BIO *bio, *b64;
   BUF_MEM* bufferPtr;
   std::string s;

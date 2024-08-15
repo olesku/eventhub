@@ -258,7 +258,7 @@ void Worker::_workerMain() {
   }
 
   while (!stopRequested()) {
-    unsigned int timeout = EPOLL_MAX_TIMEOUT;
+    std::size_t timeout = EPOLL_MAX_TIMEOUT;
 
     if (_ev->hasWork() && _ev->getNextTimerDelay().count() < EPOLL_MAX_TIMEOUT) {
       timeout = _ev->getNextTimerDelay().count();

@@ -17,7 +17,7 @@ static int parserOnDataBegin(void* userData, uint8_t frameType) {
   return 0;
 }
 
-static int parserOnDataPayload(void* userData, const char* buff, size_t len) {
+static int parserOnDataPayload(void* userData, const char* buff, std::size_t len) {
   auto obj = static_cast<Parser*>(userData);
   obj->appendDataPayload(buff, len);
   return 0;
@@ -36,7 +36,7 @@ static int parserOnControlBegin(void* userData, uint8_t frameType) {
   return 0;
 }
 
-static int parserOnControlPayload(void* userData, const char* buff, size_t len) {
+static int parserOnControlPayload(void* userData, const char* buff, std::size_t len) {
   auto obj = static_cast<Parser*>(userData);
   obj->appendControlPayload(buff, len);
   return 0;
@@ -73,7 +73,7 @@ void Parser::clearControlPayload() {
   _control_payload_buf.clear();
 }
 
-void Parser::appendDataPayload(const char* data, size_t len) {
+void Parser::appendDataPayload(const char* data, std::size_t len) {
   _data_payload_buf.insert(_data_payload_buf.size(), data, len);
 
   if (_data_payload_buf.size() > MAX_DATA_FRAME_SIZE) {
@@ -81,7 +81,7 @@ void Parser::appendDataPayload(const char* data, size_t len) {
   }
 }
 
-void Parser::appendControlPayload(const char* data, size_t len) {
+void Parser::appendControlPayload(const char* data, std::size_t len) {
   _control_payload_buf.insert(_control_payload_buf.size(), data, len);
 
   if (_control_payload_buf.size() > WS_MAX_CONTROL_FRAME_SIZE) {
@@ -113,7 +113,7 @@ const std::string& Parser::getControlPayload() {
   return _control_payload_buf;
 }
 
-void Parser::parse(char* buf, size_t len) {
+void Parser::parse(char* buf, std::size_t len) {
   ws_parser_execute(&_ws_parser, &_ws_parser_callbacks, this, buf, len);
 }
 

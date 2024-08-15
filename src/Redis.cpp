@@ -19,7 +19,6 @@
 #include <initializer_list>
 #include <iterator>
 #include <tuple>
-
 #include "Redis.hpp"
 #include "Config.hpp"
 #include "TopicManager.hpp"
@@ -28,7 +27,6 @@
 #include "Logger.hpp"
 
 namespace eventhub {
-
 Redis::Redis(Config &cfg) : EventhubBase(cfg) {
   sw::redis::ConnectionOptions connOpts;
   sw::redis::ConnectionPoolOptions poolOpts;
@@ -82,7 +80,7 @@ const std::string Redis::_getNextCacheId(long long timestamp) {
 }
 
 // Add a message to the cache.
-const std::string Redis::cacheMessage(const std::string& topic, const std::string& payload, const std::string& origin, long long timestamp, unsigned int ttl) {
+const std::string Redis::cacheMessage(const std::string& topic, const std::string& payload, const std::string& origin, long long timestamp, unsigned long ttl) {
   if (timestamp == 0) {
     timestamp = Util::getTimeSinceEpoch();
   }
@@ -112,7 +110,7 @@ const std::string Redis::cacheMessage(const std::string& topic, const std::strin
 // GetCache returns all matching cached messages for topics matching topicPattern
 // @param since List all messages since Unix timestamp or message ID
 // @param limit Limit resultset to at most @limit elements.
-size_t Redis::getCacheSince(const std::string& topicPattern, long long since, long long limit, bool isPattern, nlohmann::json& result) {
+std::size_t Redis::getCacheSince(const std::string& topicPattern, long long since, long long limit, bool isPattern, nlohmann::json& result) {
   std::vector<std::string> topics;
   result = nlohmann::json::array();
 
@@ -179,7 +177,7 @@ size_t Redis::getCacheSince(const std::string& topicPattern, long long since, lo
       continue;
     }
 
-    for (unsigned int i = 0; i < cacheItems.size(); i++) {
+    for (std::size_t i = 0; i < cacheItems.size(); i++) {
       // Key returned from ZSET does not exist in the HSET anymore.
       // continue on to the next key.
       if (cacheItems[i].value().empty()) {
@@ -217,7 +215,7 @@ std::pair<long long, long long> _splitIdAndSeq(const std::string& cacheId) {
 }
 
 // Get cached messages after a given message ID.
-size_t Redis::getCacheSinceId(const std::string& topicPattern, const std::string& sinceId, long long limit, bool isPattern, nlohmann::json& result) {
+std::size_t Redis::getCacheSinceId(const std::string& topicPattern, const std::string& sinceId, long long limit, bool isPattern, nlohmann::json& result) {
   result = nlohmann::json::array();
 
   // If cache is not enabled simply return an empty set.
@@ -293,7 +291,7 @@ size_t Redis::getCacheSinceId(const std::string& topicPattern, const std::string
 }
 
 // Delete expired items from the cache.
-size_t Redis::purgeExpiredCacheItems() {
+std::size_t Redis::purgeExpiredCacheItems() {
   std::vector<std::string> allTopics;
   std::vector<std::pair<std::string, std::string>> expiredItems;
   auto now = Util::getTimeSinceEpoch();
@@ -435,14 +433,14 @@ void Redis::incrementLimitCount(const std::string& topic, const std::string& sub
   }
 }
 
-CacheItemMeta::CacheItemMeta(const std::string& id, long expireAt, const std::string& origin) :
+CacheItemMeta::CacheItemMeta(const std::string& id, unsigned long expireAt, const std::string& origin) :
   _id(id), _expireAt(expireAt), _origin(origin) {}
 
 CacheItemMeta::CacheItemMeta(const std::string& metaStr) {
   std::string expireAtStr;
-  unsigned int j = 0;
+  std::size_t j = 0;
 
-  for (unsigned int i = 0; i < metaStr.length(); i++) {
+  for (std::size_t i = 0; i < metaStr.length(); i++) {
     if (metaStr[i] == ':') {
       j++;
       continue;
@@ -457,7 +455,7 @@ CacheItemMeta::CacheItemMeta(const std::string& metaStr) {
     throw std::runtime_error("Invalid CacheItemMetaStr '" + metaStr + "'");
   }
 
-  _expireAt = std::stol(expireAtStr, nullptr, 10);
+  _expireAt = std::stoul(expireAtStr, nullptr, 10);
 }
 
 const std::string CacheItemMeta::toStr() {

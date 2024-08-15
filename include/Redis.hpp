@@ -22,7 +22,7 @@ using RedisMsgCallback = std::function<void(const std::string& pattern,
 
 class CacheItemMeta final {
 public:
-  explicit CacheItemMeta(const std::string& id, long expireAt, const std::string& origin);
+  explicit CacheItemMeta(const std::string& id, unsigned long expireAt, const std::string& origin);
 
   explicit CacheItemMeta(const std::string& metaStr);
 
@@ -30,12 +30,12 @@ public:
 
   const std::string& id() { return _id; }
   const std::string& origin() { return _origin; }
-  long expireAt() const { return _expireAt; }
+  unsigned long expireAt() const { return _expireAt; }
   const std::string toStr();
 
 private:
   std::string _id;
-  long int _expireAt = 0;
+  unsigned long _expireAt = 0;
   std::string _origin;
 };
 
@@ -51,10 +51,10 @@ public:
 
   void publishMessage(const std::string& topic, const std::string& id, const std::string& payload, const std::string& origin="");
   void psubscribe(const std::string& pattern, RedisMsgCallback callback);
-  const std::string cacheMessage(const std::string& topic, const std::string& payload, const std::string& origin, long long timestamp = 0, unsigned int ttl = 0);
-  size_t getCacheSince(const std::string& topicPattern, long long since, long long limit, bool isPattern, nlohmann::json& result);
-  size_t getCacheSinceId(const std::string& topicPattern, const std::string& sinceId, long long limit, bool isPattern, nlohmann::json& result);
-  size_t purgeExpiredCacheItems();
+  const std::string cacheMessage(const std::string& topic, const std::string& payload, const std::string& origin, long long timestamp = 0, unsigned long ttl = 0);
+  std::size_t getCacheSince(const std::string& topicPattern, long long since, long long limit, bool isPattern, nlohmann::json& result);
+  std::size_t getCacheSinceId(const std::string& topicPattern, const std::string& sinceId, long long limit, bool isPattern, nlohmann::json& result);
+  std::size_t purgeExpiredCacheItems();
   void consume();
   void resetSubscribers();
   std::shared_ptr<sw::redis::Redis> connection() { return _redisInstance; }
