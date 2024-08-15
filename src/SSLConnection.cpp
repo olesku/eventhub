@@ -109,13 +109,13 @@ void SSLConnection::read() {
     return;
   }
 
-  size_t bytesRead = 0;
+  std::size_t bytesRead = 0;
   int ret          = 0;
 
   do {
     // If more read buffer capacity is required increase it by chunks of NET_READ_BUFFER_SIZE.
     if ((bytesRead + NET_READ_BUFFER_SIZE) > _read_buffer.capacity()) {
-      size_t newCapacity = _read_buffer.capacity() + NET_READ_BUFFER_SIZE;
+      std::size_t newCapacity = _read_buffer.capacity() + NET_READ_BUFFER_SIZE;
 
       if (newCapacity > MAX_DATA_FRAME_SIZE + NET_READ_BUFFER_SIZE) {
         LOG->error("Client {} exceeded max buffer size. Disconnecting.", getIP());
