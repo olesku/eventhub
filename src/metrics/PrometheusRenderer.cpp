@@ -21,12 +21,12 @@ const std::string PrometheusRenderer::RenderMetrics(Server* server) {
       {"worker_count", "gauge", metrics.worker_count},
       {"publish_count", "counter", metrics.publish_count},
       {"redis_connection_fail_count", "counter", metrics.redis_connection_fail_count},
-      {"redis_publish_delay_ms", "histogram", metrics.redis_publish_delay_ms},
+      {"redis_publish_delay_ms", "gauge", metrics.redis_publish_delay_ms},
 
       {"current_connections_count", "gauge", metrics.current_connections_count},
       {"total_connect_count", "counter", metrics.total_connect_count},
       {"total_disconnect_count", "counter", metrics.total_disconnect_count},
-      {"eventloop_delay_ms", "histogram", metrics.eventloop_delay_ms}};
+      {"eventloop_delay_ms", "gauge", metrics.eventloop_delay_ms}};
 
   char h_buf[128] = {0};
   std::stringstream ss;
