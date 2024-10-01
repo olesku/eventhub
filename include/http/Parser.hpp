@@ -25,7 +25,7 @@ public:
   const std::string getHeader(std::string header);
   const std::string getQueryString(std::string param);
   std::size_t numQueryString();
-  const std::string& getErrorMessage();
+  std::string_view getErrorMessage();
   void setCallback(ParserCallback callback);
 
 private:
@@ -44,7 +44,7 @@ private:
   std::map<std::string, std::string> _query_parameters;
   std::map<std::string, std::string> _qsmap;
 
-  std::size_t _parse_query_string(const std::string& buf);
+  std::size_t _parse_query_string(std::string_view buf);
   ParserCallback _callback;
 };
 

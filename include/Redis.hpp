@@ -16,13 +16,13 @@
 
 namespace eventhub {
 
-using RedisMsgCallback = std::function<void(const std::string& pattern,
-                                            const std::string& channel,
+using RedisMsgCallback = std::function<void(std::string_view pattern,
+                                            std::string_view channel,
                                             const std::string& msg)>;
 
 class CacheItemMeta final {
 public:
-  explicit CacheItemMeta(const std::string& id, unsigned long expireAt, const std::string& origin);
+  explicit CacheItemMeta(std::string_view id, unsigned long expireAt, std::string_view origin);
 
   explicit CacheItemMeta(const std::string& metaStr);
 
@@ -49,9 +49,9 @@ public:
   explicit Redis(Config &cfg);
   ~Redis() {}
 
-  void publishMessage(const std::string& topic, const std::string& id, const std::string& payload, const std::string& origin="");
-  void psubscribe(const std::string& pattern, RedisMsgCallback callback);
-  const std::string cacheMessage(const std::string& topic, const std::string& payload, const std::string& origin, long long timestamp = 0, unsigned long ttl = 0);
+  void publishMessage(const std::string& topic, std::string_view id, std::string_view payload, std::string_view origin="");
+  void psubscribe(const std::string&, RedisMsgCallback callback);
+  const std::string cacheMessage(const std::string& topic, std::string_view payload, std::string_view origin, long long timestamp = 0, unsigned long ttl = 0);
   std::size_t getCacheSince(const std::string& topicPattern, long long since, long long limit, bool isPattern, nlohmann::json& result);
   std::size_t getCacheSinceId(const std::string& topicPattern, const std::string& sinceId, long long limit, bool isPattern, nlohmann::json& result);
   std::size_t purgeExpiredCacheItems();

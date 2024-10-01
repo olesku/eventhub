@@ -27,7 +27,7 @@ public:
   Config& config() { return _config; }
   int getServerSocket() { return _server_socket; };
   Worker* getWorker();
-  void publish(const std::string& topicName, const std::string& data);
+  void publish(std::string_view topicName, const std::string& data);
   Redis& getRedis() { return _redis; }
   KVStore* getKVStore() { return _kv_store.get(); }
   metrics::AggregatedMetrics getAggregatedMetrics();

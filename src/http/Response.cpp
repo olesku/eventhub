@@ -9,13 +9,13 @@ namespace http {
 
 #define CRLF "\r\n"
 
-Response::Response(int statusCode, const std::string& body) {
+Response::Response(int statusCode, std::string_view body) {
   _statusCode = statusCode;
   _statusMsg  = getStatusMsg(statusCode);
   _body       = body;
 }
 
-void Response::setStatus(int status, const std::string& statusMsg) {
+void Response::setStatus(int status, std::string_view statusMsg) {
   _statusCode = status;
   _statusMsg  = statusMsg;
 }
@@ -26,15 +26,15 @@ void Response::setStatus(int status) {
   ;
 }
 
-void Response::setHeader(const std::string& name, const std::string& value) {
-  _headers[name] = value;
+void Response::setHeader(std::string_view name, std::string_view value) {
+  _headers[name.data()] = value;
 }
 
-void Response::setBody(const std::string& data) {
+void Response::setBody(std::string_view data) {
   _body = data;
 }
 
-void Response::appendBody(const std::string& data) {
+void Response::appendBody(std::string_view data) {
   _body.append(data);
 }
 

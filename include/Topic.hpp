@@ -17,7 +17,7 @@ using TopicSubscriberList = std::list<std::pair<ConnectionWeakPtr, jsonrpcpp::Id
 
 class Topic final {
 public:
-  explicit Topic(const std::string& topicFilter) { _id = topicFilter; }
+  explicit Topic(std::string_view topicFilter) { _id = topicFilter; }
   ~Topic();
 
   TopicSubscriberList::iterator addSubscriber(ConnectionPtr conn, const jsonrpcpp::Id subscriptionRequestId);

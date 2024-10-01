@@ -88,7 +88,7 @@ std::string Util::getSSLErrorString(unsigned long e) {
   return buf;
 }
 
-std::string Util::getFileMD5Sum(const std::string& filePath) {
+std::string Util::getFileMD5Sum(std::string_view filePath) {
   char buf[EVP_MAX_MD_SIZE] = { '\0' };
   std::stringstream out;
 
@@ -97,7 +97,7 @@ std::string Util::getFileMD5Sum(const std::string& filePath) {
   BIO_set_md(sha1, EVP_md5());
   bio = BIO_push(sha1, bio);
 
-  auto fd = open(filePath.c_str(), O_RDONLY);
+  auto fd = open(filePath.data(), O_RDONLY);
   if (!fd) {
     throw new std::runtime_error("getFileMD5Sum: no such file");
   }

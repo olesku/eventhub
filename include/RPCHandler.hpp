@@ -18,7 +18,7 @@ using RPCHandlerList = std::vector<std::pair<std::string, RPCMethod>>;
 
 class RPCHandler final {
 public:
-  static RPCMethod getHandler(const std::string& methodName);
+  static RPCMethod getHandler(std::string_view methodName);
 
 private:
   static void _sendSuccessResponse(HandlerContext& hCtx, jsonrpcpp::request_ptr req, const nlohmann::json& result);

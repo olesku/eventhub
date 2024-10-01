@@ -34,7 +34,7 @@ std::pair<TopicPtr, TopicSubscriberList::iterator> TopicManager::subscribeConnec
 * @param topicName topic to publish to.
 * @param data message to publish.
 */
-void TopicManager::publish(const std::string& topicName, const std::string& data) {
+void TopicManager::publish(std::string_view topicName, const std::string& data) {
   std::lock_guard<std::mutex> lock(_topic_list_lock);
 
   for (auto& topic : _topic_list) {
@@ -66,7 +66,7 @@ void TopicManager::deleteTopic(const std::string& topicFilter) {
 * @param topicName topic name to validate.
 * @returns true if valid, false otherwise.
 */
-bool TopicManager::isValidTopic(const std::string& topicName) {
+bool TopicManager::isValidTopic(std::string_view topicName) {
   if (topicName.empty()) {
     return false;
   }
@@ -98,7 +98,7 @@ bool TopicManager::isValidTopic(const std::string& topicName) {
 * @param filterName filter to validate.
 * @returns true if valid, false otherwise.
 */
-bool TopicManager::isValidTopicFilter(const std::string& filterName) {
+bool TopicManager::isValidTopicFilter(std::string_view filterName) {
   if (filterName.empty()) {
     return false;
   }
@@ -144,7 +144,7 @@ bool TopicManager::isValidTopicFilter(const std::string& filterName) {
 * Helper function to check if input is a valid topic or topic filter.
 * @param topic input.
 */
-bool TopicManager::isValidTopicOrFilter(const std::string& topic) {
+bool TopicManager::isValidTopicOrFilter(std::string_view topic) {
   if (isValidTopic(topic) || isValidTopicFilter(topic)) {
     return true;
   }
@@ -158,7 +158,7 @@ bool TopicManager::isValidTopicOrFilter(const std::string& topic) {
 * @param topicName topic name to validate.
 * @returns true if it matches, false otherwise.
 */
-bool TopicManager::isFilterMatched(const std::string& filterName, const std::string& topicName) {
+bool TopicManager::isFilterMatched(std::string_view filterName, std::string_view topicName) {
   // Loop through filterName and topicName one character at the time.
   for (auto fnIt = filterName.begin(), tnIt = topicName.begin();
        tnIt != topicName.end(); fnIt++, tnIt++) {

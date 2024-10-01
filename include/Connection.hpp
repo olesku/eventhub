@@ -45,7 +45,7 @@ public:
   Connection(int fd, struct sockaddr_in* csin, Worker* worker, Config& cfg);
   virtual ~Connection();
 
-  void write(const std::string& data);
+  void write(std::string_view data);
   virtual void read();
   virtual ssize_t flushSendBuffer();
 

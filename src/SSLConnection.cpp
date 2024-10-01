@@ -19,6 +19,7 @@ SSLConnection::SSLConnection(int fd, struct sockaddr_in* csin, Worker* worker, C
   Connection(fd, csin, worker, cfg), _ssl_ctx(ctx) {
   _ssl                   = nullptr;
   _ssl_handshake_retries = 0;
+   _read_buffer.reserve(NET_READ_BUFFER_SIZE * 2);
   _init();
 }
 

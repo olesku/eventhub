@@ -23,7 +23,7 @@ namespace eventhub {
 
       bool is_enabled();
       const std::string get(const std::string& key) const;
-      bool set(const std::string& key, const std::string& value, unsigned long ttl = 0) const;
+      bool set(const std::string& key, std::string_view value, unsigned long ttl = 0) const;
       long long del(const std::string& key) const;
   };
 }

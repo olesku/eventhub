@@ -110,7 +110,7 @@ TEST_CASE("Test redis", "[Redis") {
 
   GIVEN("That we publish 2 messages") {
     std::size_t msgRcvd = 0;
-    redis.psubscribe("*", [&msgRcvd](const std::string& pattern, const std::string& topic, const std::string& msg) {
+    redis.psubscribe("*", [&msgRcvd](std::string_view pattern, std::string_view topic, std::string_view msg) {
       REQUIRE(pattern.compare("eventhub_test:*") == 0);
       REQUIRE((topic.compare("test/topic1") == 0 || topic.compare("test/topic2") == 0));
 

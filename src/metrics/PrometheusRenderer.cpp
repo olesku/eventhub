@@ -35,8 +35,8 @@ const std::string PrometheusRenderer::RenderMetrics(Server* server) {
 
   for (const auto& metric : metricList) {
     // Add prefix provided in configuration to metric name
-    const std::string& metricName = config.get<std::string>("prometheus_metric_prefix") + "_" + std::get<0>(metric);
-    const std::string& metricType = std::get<1>(metric);
+    std::string metricName = config.get<std::string>("prometheus_metric_prefix") + "_" + std::get<0>(metric);
+    std::string_view metricType = std::get<1>(metric);
     const long long& metricValue   = std::get<2>(metric);
 
     // Output the type of each metric

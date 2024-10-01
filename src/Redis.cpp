@@ -52,7 +52,7 @@ Redis::Redis(Config &cfg) : EventhubBase(cfg) {
 }
 
 // Publish a message.
-void Redis::publishMessage(const std::string& topic, const std::string& id, const std::string& payload, const std::string& origin) {
+void Redis::publishMessage(const std::string& topic, std::string_view id, std::string_view payload, std::string_view origin) {
   std::lock_guard<std::mutex> lock(_publish_mtx);
   nlohmann::json j;
 
@@ -80,7 +80,7 @@ const std::string Redis::_getNextCacheId(long long timestamp) {
 }
 
 // Add a message to the cache.
-const std::string Redis::cacheMessage(const std::string& topic, const std::string& payload, const std::string& origin, long long timestamp, unsigned long ttl) {
+const std::string Redis::cacheMessage(const std::string& topic, std::string_view payload, std::string_view origin, long long timestamp, unsigned long ttl) {
   if (timestamp == 0) {
     timestamp = Util::getTimeSinceEpoch();
   }
@@ -352,7 +352,7 @@ void Redis::psubscribe(const std::string& pattern, RedisMsgCallback callback) {
     _redisSubscriber = std::make_unique<sw::redis::Subscriber>(_redisInstance->subscriber());
   }
 
-  _redisSubscriber->on_pmessage([=](const std::string& pattern, const std::string& topic, const std::string& msg) {
+  _redisSubscriber->on_pmessage([=](std::string_view pattern, const std::string& topic, const std::string& msg) {
     std::string actualTopic;
 
     if (_prefix.length() > 0) {
@@ -433,7 +433,7 @@ void Redis::incrementLimitCount(const std::string& topic, const std::string& sub
   }
 }
 
-CacheItemMeta::CacheItemMeta(const std::string& id, unsigned long expireAt, const std::string& origin) :
+CacheItemMeta::CacheItemMeta(std::string_view id, unsigned long expireAt, std::string_view origin) :
   _id(id), _expireAt(expireAt), _origin(origin) {}
 
 CacheItemMeta::CacheItemMeta(const std::string& metaStr) {
