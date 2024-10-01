@@ -373,20 +373,20 @@ void Redis::consume() {
 
 // _incrTopicPubCount increase the counter of published messages to topicName
 // in our Redis stats HSET.
-void Redis::_incrTopicPubCount(const std::string& topicName) {
-  _redisInstance->hincrby(REDIS_PREFIX("pub_count"), topicName, 1);
+void Redis::_incrTopicPubCount(std::string_view topicName) {
+  _redisInstance->hincrby(REDIS_PREFIX("pub_count"), std::string(topicName), 1);
 }
 
 // _getTopicsSeen Look up in our pubcount HSET in redis and return
 // all topics we have received events on that matches topicPattern.
-std::vector<std::string> Redis::_getTopicsSeen(const std::string& topicPattern) {
+std::vector<std::string> Redis::_getTopicsSeen(std::string_view topicPattern) {
   std::vector<std::string> allTopics;
   std::vector<std::string> matchingTopics;
 
   _redisInstance->hkeys(REDIS_PREFIX("pub_count"), std::back_inserter(allTopics));
 
   for (auto& topic : allTopics) {
-    if (TopicManager::isFilterMatched(topicPattern, topic)) {
+    if (TopicManager::isFilterMatched(std::string(topicPattern), topic)) {
       matchingTopics.push_back(topic);
     }
   }
