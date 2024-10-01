@@ -19,13 +19,13 @@ using TopicList = std::unordered_map<std::string, TopicPtr>;
 class TopicManager final {
 public:
   std::pair<TopicPtr, TopicSubscriberList::iterator> subscribeConnection(ConnectionPtr conn, const std::string& topicFilter, const jsonrpcpp::Id subscriptionRequestId);
-  void publish(const std::string& topicName, const std::string& data);
+  void publish(std::string_view topicName, const std::string& data);
   void deleteTopic(const std::string& topicFilter);
 
-  static bool isValidTopic(const std::string& topicName);
-  static bool isValidTopicFilter(const std::string& filterName);
-  static bool isValidTopicOrFilter(const std::string& topic);
-  static bool isFilterMatched(const std::string& filterName, const std::string& topicName);
+  static bool isValidTopic(std::string_view topicName);
+  static bool isValidTopicFilter(std::string_view filterName);
+  static bool isValidTopicOrFilter(std::string_view topic);
+  static bool isFilterMatched(std::string_view filterName, std::string_view topicName);
 
 private:
   TopicList _topic_list;

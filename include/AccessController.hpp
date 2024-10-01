@@ -31,7 +31,7 @@ class RateLimitConfig final {
 
   public:
     bool loadFromJSON(const nlohmann::json::array_t& config);
-    const rlimit_config_t getRateLimitForTopic(const std::string& topic);
+    const rlimit_config_t getRateLimitForTopic(std::string_view topic);
 };
 
 class AccessController final : public EventhubBase {
@@ -48,11 +48,11 @@ public:
   AccessController(Config &cfg) :
     EventhubBase(cfg), _token_loaded(false), _subject("") {};
 
-  bool authenticate(const std::string& jwtToken, const std::string& secret);
+  bool authenticate(std::string_view jwtToken, std::string_view secret);
   bool isAuthenticated();
-  bool allowPublish(const std::string& topic);
-  bool allowSubscribe(const std::string& topic);
-  bool allowCreateToken(const std::string& path);
+  bool allowPublish(std::string_view topic);
+  bool allowSubscribe(std::string_view topic);
+  bool allowCreateToken(std::string_view path);
   const std::string& subject();
   RateLimitConfig& getRateLimitConfig() { return _rlimit; };
 };

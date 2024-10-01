@@ -57,7 +57,7 @@ Connection::Connection(int fd, struct sockaddr_in* csin, Worker* worker, Config&
   // Set initial state.
   setState(ConnectionState::HTTP);
 
-  _read_buffer.resize(NET_READ_BUFFER_SIZE);
+  _read_buffer.reserve(NET_READ_BUFFER_SIZE);
 }
 
 Connection::~Connection() {
@@ -154,7 +154,7 @@ void Connection::_parseRequest(std::size_t bytesRead) {
 /**
  * Add data to send buffer and enable EPOLLOUT on the socket.
  */
-void Connection::write(const std::string& data) {
+void Connection::write(std::string_view data) {
   std::lock_guard<std::mutex> lock(_write_lock);
 
   if (isShutdown()) {

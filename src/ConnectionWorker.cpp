@@ -199,7 +199,7 @@ void Worker::_removeConnection(ConnectionPtr conn) {
   _metrics.total_disconnect_count++;
 }
 
-void Worker::publish(const std::string& topicName, const std::string& data) {
+void Worker::publish(std::string_view topicName, const std::string& data) {
   _ev->addJob([this, topicName, data]() {
     _topic_manager->publish(topicName, data);
   });

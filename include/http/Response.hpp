@@ -10,12 +10,12 @@ typedef std::unordered_map<std::string, std::string> HeaderList_t;
 
 class Response final {
 public:
-  explicit Response(int statusCode = 200, const std::string& body = "");
-  void setStatus(int status, const std::string& statusMsg);
+  explicit Response(int statusCode = 200, std::string_view body = "");
+  void setStatus(int status, std::string_view statusMsg);
   void setStatus(int status);
-  void setHeader(const std::string& name, const std::string& value);
-  void setBody(const std::string& data);
-  void appendBody(const std::string& data);
+  void setHeader(std::string_view name, std::string_view value);
+  void setBody(std::string_view data);
+  void appendBody(std::string_view data);
   const std::string getStatusMsg(int statusCode);
   const std::string get();
 

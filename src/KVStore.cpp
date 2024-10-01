@@ -23,7 +23,7 @@ namespace eventhub {
     return value;
   }
 
-  bool KVStore::set(const std::string& key, const std::string& value, unsigned long ttl) const {
+  bool KVStore::set(const std::string& key, std::string_view value, unsigned long ttl) const {
     if (ttl > 0) {
       return _redis.connection()->set(_prefix_key(key), value, std::chrono::seconds(ttl));
     } else {

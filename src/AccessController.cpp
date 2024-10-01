@@ -27,7 +27,7 @@ namespace eventhub {
 
 
 // authenticate loads a a JWT token and extracts ACL's for publish and subscribe.
-bool AccessController::authenticate(const std::string& jwtToken, const std::string& secret) {
+bool AccessController::authenticate(std::string_view jwtToken, std::string_view secret) {
   BYPASS_AUTH_IF_DISABLED();
 
   try {
@@ -86,7 +86,7 @@ bool AccessController::isAuthenticated() {
 }
 
 // allowPublish checks if the loaded token is allowed to publish to topic.
-bool AccessController::allowPublish(const std::string& topic) {
+bool AccessController::allowPublish(std::string_view topic) {
   BYPASS_AUTH_IF_DISABLED();
   REQUIRE_TOKEN_LOADED();
 
@@ -100,7 +100,7 @@ bool AccessController::allowPublish(const std::string& topic) {
 }
 
 // allowPublish checks if the loaded token is allowed to subscribe to topic.
-bool AccessController::allowSubscribe(const std::string& topic) {
+bool AccessController::allowSubscribe(std::string_view topic) {
   BYPASS_AUTH_IF_DISABLED();
   REQUIRE_TOKEN_LOADED();
 
@@ -113,7 +113,7 @@ bool AccessController::allowSubscribe(const std::string& topic) {
   return false;
 }
 
-bool AccessController::allowCreateToken(const std::string& path) {
+bool AccessController::allowCreateToken(std::string_view path) {
   BYPASS_AUTH_IF_DISABLED();
   REQUIRE_TOKEN_LOADED();
   // Not implemented yet.
@@ -142,7 +142,7 @@ bool RateLimitConfig::loadFromJSON(const nlohmann::json::array_t& config) {
 
 // Returns limits for given topic if there are any.
 // If no limits is defined we throw NoRateLimitForTopic exception.
-const rlimit_config_t RateLimitConfig::getRateLimitForTopic(const std::string& topic) {
+const rlimit_config_t RateLimitConfig::getRateLimitForTopic(std::string_view topic) {
   rlimit_config_t rlimit;
   bool found = false;
   std::size_t matchedPatternLen = 0;

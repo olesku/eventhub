@@ -19,6 +19,7 @@ SSLConnection::SSLConnection(int fd, struct sockaddr_in* csin, Worker* worker, C
   Connection(fd, csin, worker, cfg), _ssl_ctx(ctx) {
   _ssl                   = nullptr;
   _ssl_handshake_retries = 0;
+   _read_buffer.reserve(NET_READ_BUFFER_SIZE * 2);
   _init();
 }
 
@@ -31,7 +32,6 @@ SSLConnection::~SSLConnection() {
 void SSLConnection::_init() {
   _ssl = SSL_new(_ssl_ctx);
   if (_ssl == nullptr) {
-    _ssl = nullptr;
     LOG->error("Failed to initialize SSL object for client {}", getIP());
     shutdown();
     return;
@@ -123,7 +123,7 @@ void SSLConnection::read() {
         return;
       }
 
-      // Retain data we have in the _read_buffer and copy it back after call to resize().
+      // Retain data we have in the _read_buffer and copy it back after call to reserve().
       // We have to do this since resize() invalidates existing data.
       std::vector<char> retain;
       retain.resize(bytesRead);

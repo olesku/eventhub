@@ -135,7 +135,7 @@ const std::map<std::string, std::string>& Parser::getHeaders() {
     Extracts query parameters from a string if they exist.
     @param buf The string to parse.
   **/
-std::size_t Parser::_parse_query_string(const std::string& buf) {
+std::size_t Parser::_parse_query_string(std::string_view buf) {
   std::size_t prevpos = 0, eqlpos = 0;
 
   while ((eqlpos = buf.find("=", prevpos)) != std::string::npos) {
@@ -185,7 +185,7 @@ std::size_t Parser::numQueryString() {
   return _qsmap.size();
 }
 
-const std::string& Parser::getErrorMessage() {
+std::string_view Parser::getErrorMessage() {
   return _error_message;
 }
 

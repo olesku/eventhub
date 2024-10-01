@@ -9,7 +9,7 @@
 
 namespace eventhub {
 namespace websocket {
-void Response::_sendFragment(ConnectionPtr conn, const std::string& fragment, uint8_t frameType, bool fin) {
+void Response::_sendFragment(ConnectionPtr conn, std::string_view fragment, uint8_t frameType, bool fin) {
   std::string sndBuf;
   char header[8];
   std::size_t headerSize   = 0;
@@ -39,7 +39,7 @@ void Response::_sendFragment(ConnectionPtr conn, const std::string& fragment, ui
   conn->write(sndBuf);
 }
 
-void Response::sendData(ConnectionPtr conn, const std::string& data, FrameType frameType) {
+void Response::sendData(ConnectionPtr conn, std::string_view data, FrameType frameType) {
   std::size_t dataSize = data.size();
 
   if (dataSize < WS_MAX_CHUNK_SIZE) {

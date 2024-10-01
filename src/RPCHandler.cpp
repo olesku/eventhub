@@ -29,7 +29,7 @@ namespace eventhub {
  * @param methodName Name of RPC method.
  * @throws std::bad_function_call if an invalid method is requested.
  */
-RPCMethod RPCHandler::getHandler(const std::string& methodName) {
+RPCMethod RPCHandler::getHandler(std::string_view methodName) {
   static RPCHandlerList handlers = {
       {"subscribe", _handleSubscribe},
       {"unsubscribe", _handleUnsubscribe},
@@ -43,7 +43,7 @@ RPCMethod RPCHandler::getHandler(const std::string& methodName) {
       {"ping", _handlePing},
       {"disconnect", _handleDisconnect}};
 
-  std::string methodNameLC = methodName;
+  std::string methodNameLC = std::string(methodName);
   Util::strToLower(methodNameLC);
 
   for (auto handler : handlers) {
@@ -197,7 +197,7 @@ void RPCHandler::_handleUnsubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr 
   auto topics        = req->params().to_json();
   std::size_t count = 0;
   for (auto topic : topics) {
-    if (!TopicManager::isValidTopicOrFilter(topic) || !accessController->allowSubscribe(topic)) {
+    if (!TopicManager::isValidTopicOrFilter(std::string(topic)) || !accessController->allowSubscribe(std::string(topic))) {
       continue;
     }
 

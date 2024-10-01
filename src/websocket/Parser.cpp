@@ -49,7 +49,7 @@ static int parserOnControlEnd(void* userData) {
 }
 
 Parser::Parser() {
-  _callback = [](ParserStatus status, FrameType frameType, const std::string& data) {
+  _callback = [](ParserStatus status, FrameType frameType, std::string_view data) {
     LOG->error("Websocket parser callback was called before it was initialized.");
   };
 

@@ -20,6 +20,22 @@ extern std::atomic<bool> reloadEventhub;
 
 using namespace eventhub;
 
+#ifdef DEBUG
+unsigned long g_num_allocations = 0;
+unsigned long long g_num_allocated_bytes = 0;
+void* operator new(size_t size) {
+  void* p = malloc(size);
+
+  if (!p) {
+    throw std::bad_alloc();
+  }
+
+  g_num_allocations++;
+  g_num_allocated_bytes += size;
+  return p;
+}
+#endif
+
 void sighandler(int sigid) {
   switch (sigid) {
     case SIGINT:
@@ -41,6 +57,10 @@ void sighandler(int sigid) {
 shutdown:
   LOG->info("Exiting.");
   stopEventhub = true;
+  #ifdef DEBUG
+  LOG->info("Total allocations: {}", g_num_allocations);
+  LOG->info("Total allocated bytes: {}", g_num_allocated_bytes);
+  #endif
 }
 
 void printUsage(char** argv) {

@@ -12,10 +12,10 @@ namespace websocket {
 
 class Response final {
   public:
-    static void sendData(ConnectionPtr conn, const std::string& data, FrameType frameType);
+    static void sendData(ConnectionPtr conn, std::string_view data, FrameType frameType);
 
   private:
-    static void _sendFragment(ConnectionPtr conn, const std::string& fragment, uint8_t frameType, bool fin);
+    static void _sendFragment(ConnectionPtr conn, std::string_view fragment, uint8_t frameType, bool fin);
 };
 
 } // namespace websocket
