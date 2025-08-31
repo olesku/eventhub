@@ -1,5 +1,5 @@
-FROM debian:bookworm-slim
-ENV DEBIAN_FRONTEND noninteractive
+FROM debian:stable-slim
+ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
     apt-get -qq install clang cmake git openssl libssl-dev libhiredis-dev \
@@ -7,7 +7,7 @@ RUN apt-get update && \
 
 RUN mkdir -p /usr/src/redis-plus-plus && cd /usr/src/redis-plus-plus && \
     git clone https://github.com/sewenew/redis-plus-plus.git . && \
-    git checkout tags/1.3.3 && \
+    git checkout tags/1.3.15 && \
     mkdir compile && cd compile && cmake -GNinja -DCMAKE_BUILD_TYPE=Release .. && \
     ninja && ninja install
 
