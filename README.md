@@ -2,7 +2,7 @@
 <img width="308" height="85" src="./docs/images/logo.png" />
 </p>
 
-[![Build Status](https://github.com/olesku/eventhub/actions/workflows/build.yaml/badge.svg)]
+![Build Status](https://github.com/olesku/eventhub/actions/workflows/build.yaml/badge.svg)
 [![Docker Repository on Quay](https://quay.io/repository/olesku/eventhub/status "Docker Repository on Quay")](https://quay.io/repository/olesku/eventhub)
 
 Eventhub is a pub/sub over WebSocket server written in modern C++.
