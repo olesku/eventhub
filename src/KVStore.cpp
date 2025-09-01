@@ -10,8 +10,8 @@
 
 namespace eventhub {
   const std::string KVStore::_prefix_key(const std::string& key) const {
-    return _prefix.empty() ? std::string(_prefix + ":kv:" + key)
-                           : std::string("kv:" + key);
+    return _prefix.empty() ? std::string("kv:" + key) :
+                             std::string(_prefix + ":kv:" + key);
   }
 
   bool KVStore::is_enabled() {
