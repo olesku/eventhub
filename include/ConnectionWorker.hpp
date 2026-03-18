@@ -37,6 +37,8 @@ private:
   unsigned int _workerId;
   Server* _server;
   int _epoll_fd;
+  int _event_fd;
+  int _timer_fd;
   std::unique_ptr<EventLoop> _ev;
   ConnectionList _connection_list;
   std::mutex _connection_list_mutex;
@@ -48,10 +50,16 @@ private:
   ConnectionPtr _addConnection(int fd, struct sockaddr_in* csin, bool ssl);
   void _removeConnection(ConnectionPtr conn);
   void _read(ConnectionPtr conn);
+  void _initEventFd();
+  void _closeEventFd();
+  void _initTimerFd();
+  void _closeTimerFd();
+  void _signalWork();
+  void _drainEventFd();
+  void _drainTimerFd();
+  void _armTimerFd();
 
   void _workerMain();
 };
 
 } // namespace eventhub
-
-

@@ -23,7 +23,6 @@ set (SOURCES
   SSLConnection.cpp
   ConnectionWorker.cpp
   AccessController.cpp
-  EpollWrapper.cpp
 )
 
 add_library(eventhub_core ${SOURCES})

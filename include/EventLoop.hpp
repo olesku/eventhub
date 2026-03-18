@@ -47,12 +47,20 @@ public:
   void processTimers() {
     std::lock_guard<std::mutex> lock(_timer_queue_lock);
     const auto now = _now();
+    std::chrono::milliseconds nextFire;
+    {
+      std::lock_guard<std::mutex> nextLock(_next_timer_fire_time_lock);
+      nextFire = _next_timer_fire_time;
+    }
 
-    if (_timer_queue.empty() || _next_timer_fire_time > now) {
+    if (_timer_queue.empty() || nextFire > now) {
       return;
     }
 
-    _next_timer_fire_time = std::chrono::milliseconds::zero();
+    {
+      std::lock_guard<std::mutex> nextLock(_next_timer_fire_time_lock);
+      _next_timer_fire_time = std::chrono::milliseconds::zero();
+    }
 
     for (auto timerQueueIterator = _timer_queue.begin(); timerQueueIterator != _timer_queue.end();) {
       auto& timerTask = *timerQueueIterator;
@@ -85,12 +93,26 @@ public:
   }
 
   const std::chrono::milliseconds getNextTimerDelay() {
-    if (!_job_queue.empty()) {
-      return std::chrono::milliseconds(0);
+    {
+      std::lock_guard<std::mutex> lock(_job_queue_lock);
+      if (!_job_queue.empty()) {
+        return std::chrono::milliseconds(0);
+      }
     }
 
-    const auto delay = _next_timer_fire_time - _now();
+    std::chrono::milliseconds nextFire;
+    {
+      std::lock_guard<std::mutex> lock(_next_timer_fire_time_lock);
+      nextFire = _next_timer_fire_time;
+    }
+
+    const auto delay = nextFire - _now();
     return (delay < std::chrono::milliseconds(0) || delay == std::chrono::milliseconds::zero()) ? std::chrono::milliseconds(0) : delay;
+  }
+
+  const std::chrono::milliseconds getNextTimerFireTime() {
+    std::lock_guard<std::mutex> lock(_next_timer_fire_time_lock);
+    return _next_timer_fire_time;
   }
 
   void addJob(std::function<void()> callback) {
@@ -99,7 +121,15 @@ public:
   }
 
   bool hasWork() {
-    return !_job_queue.empty() || !_timer_queue.empty();
+    {
+      std::lock_guard<std::mutex> lock(_job_queue_lock);
+      if (!_job_queue.empty()) {
+        return true;
+      }
+    }
+
+    std::lock_guard<std::mutex> lock(_timer_queue_lock);
+    return !_timer_queue.empty();
   }
 
 private:

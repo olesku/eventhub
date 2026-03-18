@@ -9,8 +9,10 @@
 #include "websocket/Types.hpp"
 #ifdef __linux__
 #include <sys/epoll.h>
+#include <sys/eventfd.h>
+#include <sys/timerfd.h>
 #else
-#include "EpollWrapper.hpp"
+#error "eventhub worker requires Linux (epoll/eventfd/timerfd)"
 #endif
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -41,15 +43,22 @@ namespace eventhub {
 Worker::Worker(Server* srv, unsigned int workerId) : EventhubBase(srv->config()), _workerId(workerId) {
   _server   = srv;
   _epoll_fd = epoll_create1(0);
+  _event_fd = -1;
+  _timer_fd = -1;
 
   _ev = std::make_unique<EventLoop>();
   _topic_manager = std::make_unique<TopicManager>();
+
+  _initEventFd();
+  _initTimerFd();
 }
 
 Worker::~Worker() {
   if (_epoll_fd != -1) {
     close(_epoll_fd);
   }
+  _closeEventFd();
+  _closeTimerFd();
 
   std::lock_guard<std::mutex> lock(_connection_list_mutex);
 
@@ -62,43 +71,171 @@ Worker::~Worker() {
 
 void Worker::addTimer(int64_t delay, std::function<void(TimerCtx* ctx)> callback, bool repeat) {
   _ev->addTimer(delay, callback, repeat);
+  _armTimerFd();
+}
+
+void Worker::_initEventFd() {
+  _event_fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+  if (_event_fd == -1) {
+    LOG->critical("Worker {} failed to create eventfd: {}.", getWorkerId(), strerror(errno));
+    exit(1);
+  }
+}
+
+void Worker::_closeEventFd() {
+  if (_event_fd != -1) {
+    close(_event_fd);
+    _event_fd = -1;
+  }
+}
+
+void Worker::_initTimerFd() {
+  _timer_fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
+  if (_timer_fd == -1) {
+    LOG->critical("Worker {} failed to create timerfd: {}.", getWorkerId(), strerror(errno));
+    exit(1);
+  }
+}
+
+void Worker::_closeTimerFd() {
+  if (_timer_fd != -1) {
+    close(_timer_fd);
+    _timer_fd = -1;
+  }
+}
+
+void Worker::_signalWork() {
+  if (_event_fd == -1) {
+    return;
+  }
+
+  uint64_t inc = 1;
+  ssize_t ret = ::write(_event_fd, &inc, sizeof(inc));
+  if (ret == -1 && errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
+    LOG->trace("Worker {} failed to signal eventfd: {}.", getWorkerId(), strerror(errno));
+  }
+}
+
+void Worker::_drainEventFd() {
+  if (_event_fd == -1) {
+    return;
+  }
+
+  uint64_t value = 0;
+  while (true) {
+    ssize_t ret = ::read(_event_fd, &value, sizeof(value));
+    if (ret > 0) {
+      continue;
+    }
+    if (ret == -1 && errno == EINTR) {
+      continue;
+    }
+    if (ret == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+      break;
+    }
+    break;
+  }
+}
+
+void Worker::_drainTimerFd() {
+  if (_timer_fd == -1) {
+    return;
+  }
+
+  uint64_t value = 0;
+  while (true) {
+    ssize_t ret = ::read(_timer_fd, &value, sizeof(value));
+    if (ret > 0) {
+      continue;
+    }
+    if (ret == -1 && errno == EINTR) {
+      continue;
+    }
+    if (ret == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+      break;
+    }
+    break;
+  }
+}
+
+void Worker::_armTimerFd() {
+  if (_timer_fd == -1) {
+    return;
+  }
+
+  const auto nextFire = _ev->getNextTimerFireTime();
+  struct itimerspec spec {};
+
+  if (nextFire != std::chrono::milliseconds::zero()) {
+    const auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch());
+    auto delay = nextFire - now;
+    if (delay <= std::chrono::milliseconds::zero()) {
+      delay = std::chrono::milliseconds(0);
+    }
+
+    const auto delay_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(delay);
+    time_t secs = static_cast<time_t>(delay_ns.count() / 1000000000LL);
+    long nsecs = static_cast<long>(delay_ns.count() % 1000000000LL);
+    if (secs == 0 && nsecs == 0) {
+      nsecs = 1;
+    }
+
+    spec.it_value.tv_sec = secs;
+    spec.it_value.tv_nsec = nsecs;
+  }
+
+  if (timerfd_settime(_timer_fd, 0, &spec, nullptr) == -1) {
+    LOG->trace("Worker {} failed to arm timerfd: {}.", getWorkerId(), strerror(errno));
+  }
 }
 
 /**
  * Accept a new connection on the server socket.
  */
 void Worker::_acceptConnection(bool ssl) {
-  struct sockaddr_in csin;
-  socklen_t clen;
-  int clientFd;
+  // The listening socket is non-blocking. Drain the accept backlog in a loop:
+  // - We stop when accept() returns EAGAIN/EWOULDBLOCK (nothing left to accept).
+  // - This avoids extra epoll wakeups and reduces latency under connection bursts.
+  const int listenFd = ssl ? _server->getSSLServerSocket() : _server->getServerSocket();
 
-  // Accept the connection.
-  memset(reinterpret_cast<char*>(&csin), '\0', sizeof(csin));
-  clen     = sizeof(csin);
+  for (;;) {
+    struct sockaddr_in csin;
+    socklen_t clen = sizeof(csin);
+    memset(reinterpret_cast<char*>(&csin), '\0', sizeof(csin));
 
-  if (ssl)
-    clientFd = accept(_server->getSSLServerSocket(), (struct sockaddr*)&csin, &clen);
-  else
-    clientFd = accept(_server->getServerSocket(), (struct sockaddr*)&csin, &clen);
+    // accept4 avoids a separate fcntl() for non-blocking sockets on Linux.
+    // On non-Linux platforms we fall back to accept(), and the Connection
+    // constructor sets O_NONBLOCK.
+#ifdef __linux__
+    const int clientFd = accept4(listenFd, (struct sockaddr*)&csin, &clen, SOCK_NONBLOCK);
+#else
+    const int clientFd = accept(listenFd, (struct sockaddr*)&csin, &clen);
+#endif
 
-  if (clientFd == -1) {
-    switch (errno) {
-      case EMFILE:
+    if (clientFd == -1) {
+      if (errno == EINTR) {
+        // Interrupted by signal; retry accept().
+        continue;
+      }
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        // Backlog drained: no more pending connections right now.
+        LOG->trace("accept() backlog drained.");
+        break;
+      }
+
+      if (errno == EMFILE) {
+        // Process file descriptor limit reached; stop accepting to avoid a tight loop.
         LOG->error("All connections available used. Cannot accept more connections.");
-        break;
-
-      case EAGAIN:
-        LOG->trace("accept() returned EAGAIN.");
-        break;
-
-      default:
+      } else {
         LOG->error("Could not accept new connection: {}.", strerror(errno));
+      }
+
+      break;
     }
 
-    return;
+    _server->getWorker()->_addConnection(clientFd, &csin, ssl);
   }
-
-  _server->getWorker()->_addConnection(clientFd, &csin, ssl);
 }
 
 /**
@@ -203,6 +340,7 @@ void Worker::publish(const std::string& topicName, const std::string& data) {
   _ev->addJob([this, topicName, data]() {
     _topic_manager->publish(topicName, data);
   });
+  _signalWork();
 }
 
 /**
@@ -219,7 +357,7 @@ void Worker::_workerMain() {
   _ev_delay_sample_start = Util::getTimeSinceEpoch();
 
   // Sample eventloop delay every <METRIC_DELAY_SAMPLE_RATE_MS> and store it in our metrics.
-  _ev->addTimer(
+  addTimer(
       METRIC_DELAY_SAMPLE_RATE_MS, [&](TimerCtx* ctx) {
         const auto epoch = Util::getTimeSinceEpoch();
         long diff        = epoch - _ev_delay_sample_start - METRIC_DELAY_SAMPLE_RATE_MS;
@@ -233,6 +371,26 @@ void Worker::_workerMain() {
     LOG->critical("epoll_create1() failed in worker {}: {}.", getWorkerId(), strerror(errno));
     exit(1);
     return;
+  }
+
+  if (_event_fd != -1) {
+    struct epoll_event eventfdEvent;
+    eventfdEvent.events = EPOLLIN;
+    eventfdEvent.data.fd = _event_fd;
+    if (epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, _event_fd, &eventfdEvent) == -1) {
+      LOG->critical("Failed to add eventfd to epoll in worker {}: {}.", getWorkerId(), strerror(errno));
+      exit(1);
+    }
+  }
+
+  if (_timer_fd != -1) {
+    struct epoll_event timerEvent;
+    timerEvent.events = EPOLLIN;
+    timerEvent.data.fd = _timer_fd;
+    if (epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, _timer_fd, &timerEvent) == -1) {
+      LOG->critical("Failed to add timerfd to epoll in worker {}: {}.", getWorkerId(), strerror(errno));
+      exit(1);
+    }
   }
 
   // Add server listening socket to epoll.
@@ -258,15 +416,17 @@ void Worker::_workerMain() {
   }
 
   while (!stopRequested()) {
-    std::size_t timeout = EPOLL_MAX_TIMEOUT;
-
-    if (_ev->hasWork() && _ev->getNextTimerDelay().count() < EPOLL_MAX_TIMEOUT) {
-      timeout = _ev->getNextTimerDelay().count();
-    }
-
-    int n = epoll_wait(_epoll_fd, eventConnectionList, MAXEVENTS, timeout);
+    int n = epoll_wait(_epoll_fd, eventConnectionList, MAXEVENTS, -1);
 
     for (int i = 0; i < n; i++) {
+      if (_event_fd != -1 && eventConnectionList[i].data.fd == _event_fd) {
+        _drainEventFd();
+        continue;
+      }
+      if (_timer_fd != -1 && eventConnectionList[i].data.fd == _timer_fd) {
+        _drainTimerFd();
+        continue;
+      }
       // Handle new connections.
       if (eventConnectionList[i].data.fd == _server->getServerSocket() || eventConnectionList[i].data.fd == _server->getSSLServerSocket()) {
         if (eventConnectionList[i].events & EPOLLIN) {
@@ -305,6 +465,7 @@ void Worker::_workerMain() {
 
     // Process timers and jobs.
     _ev->process();
+    _armTimerFd();
   }
 }
 } // namespace eventhub
