@@ -5,6 +5,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include "Forward.hpp"
 #include "Common.hpp"
@@ -21,6 +22,8 @@ public:
   std::pair<TopicPtr, TopicSubscriberList::iterator> subscribeConnection(ConnectionPtr conn, const std::string& topicFilter, const jsonrpcpp::Id subscriptionRequestId);
   void publish(const std::string& topicName, const std::string& data);
   void deleteTopic(const std::string& topicFilter);
+  std::size_t getSubscriberCountForTopic(const std::string& topicFilter);
+  std::vector<std::string> getTopicsWithSubscribers();
 
   static bool isValidTopic(const std::string& topicName);
   static bool isValidTopicFilter(const std::string& filterName);

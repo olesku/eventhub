@@ -1,13 +1,26 @@
 version: "3"
 services:
   eventhub:
-    image: quay.io/olesku/eventhub:latest
+    image: eventhub-fork:latest
+    build: .
     environment:
       - disable_auth=1
       - enable_sse=1
       - redis_host=redis
     ports:
       - "8080:8080"
+    depends_on:
+      - redis
+
+  eventhub2:
+    image: eventhub-fork:latest
+    build: .
+    environment:
+      - disable_auth=1
+      - enable_sse=1
+      - redis_host=redis
+    ports:
+      - "8081:8080"
     depends_on:
       - redis
 

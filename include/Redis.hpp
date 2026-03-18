@@ -44,6 +44,7 @@ class Redis final : public EventhubBase {
 #define REDIS_CACHE_SCORE_PATH(key) std::string(REDIS_PREFIX(key) + ":scores")
 #define REDIS_CACHE_DATA_PATH(key) std::string(REDIS_PREFIX(key) + ":cache")
 #define REDIS_RATE_LIMIT_PATH(key, subject, topic) std::string(REDIS_PREFIX(key) + ":rlimit:" + topic + ":" + subject)
+#define REDIS_VIEWER_COUNT_PATH(key) std::string(REDIS_PREFIX("viewer_counts") + ":" + key)
 
 public:
   explicit Redis(Config &cfg);
@@ -65,6 +66,9 @@ public:
 
   bool isRateLimited(const std::string& topic, const std::string& subject, unsigned long max);
   void incrementLimitCount(const std::string& topic, const std::string& subject, unsigned long interval);
+
+  void setInstanceViewerCount(const std::string& topic, const std::string& instanceId, std::size_t count);
+  std::size_t getAggregatedViewerCount(const std::string& topic);
 
 private:
   std::shared_ptr<sw::redis::Redis> _redisInstance;

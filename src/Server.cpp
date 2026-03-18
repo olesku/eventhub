@@ -45,7 +45,12 @@ std::size_t alpn_protocol_length   = 8;
 
 Server::Server(Config& cfg)
     : _config(cfg), _server_socket(-1), _server_socket_ssl(-1), _ssl_enabled(false), _ssl_ctx(nullptr), _redis(cfg) {
-
+  char hostname[256];
+  if (gethostname(hostname, sizeof(hostname)) == 0) {
+    _instance_id = fmt::format("{}-{}", hostname, getpid());
+  } else {
+    _instance_id = fmt::format("unknown-{}", getpid());
+  }
 }
 
 Server::~Server() {

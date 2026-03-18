@@ -25,6 +25,7 @@ public:
   void stop();
   void reload();
   Config& config() { return _config; }
+  const std::string& getInstanceId() const { return _instance_id; }
   int getServerSocket() { return _server_socket; };
   Worker* getWorker();
   void publish(const std::string& topicName, const std::string& data);
@@ -42,6 +43,7 @@ public:
 
 private:
   Config& _config;
+  std::string _instance_id;
   int _server_socket;
   int _server_socket_ssl;
   bool _ssl_enabled;
