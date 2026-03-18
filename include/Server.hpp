@@ -37,15 +37,17 @@ public:
   SSL_CTX* getSSLContext() {
     assert(isSSL());
     assert(_ssl_ctx != nullptr);
-    return _ssl_ctx;
+    return _ssl_ctx.get();
   }
 
 private:
+  using SSL_CTX_ptr = std::unique_ptr<SSL_CTX, decltype(&SSL_CTX_free)>;
+
   Config& _config;
   int _server_socket;
   int _server_socket_ssl;
   bool _ssl_enabled;
-  SSL_CTX* _ssl_ctx;
+  SSL_CTX_ptr _ssl_ctx;
   std::string _ssl_cert_md5_hash;
   std::string _ssl_priv_key_md5_hash;
   WorkerGroup<Worker> _connection_workers;
@@ -65,5 +67,3 @@ private:
 };
 
 } // namespace eventhub
-
-

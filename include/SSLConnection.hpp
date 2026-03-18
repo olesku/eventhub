@@ -4,6 +4,7 @@
 #include <openssl/ssl.h>
 #include <openssl/ossl_typ.h>
 #include <sys/types.h>
+#include <memory>
 
 #include "Forward.hpp"
 #include "Connection.hpp"
@@ -19,7 +20,9 @@ public:
   void read();
 
 private:
-  SSL* _ssl;
+  using SSL_ptr = std::unique_ptr<SSL, decltype(&SSL_free)>;
+
+  SSL_ptr _ssl;
   SSL_CTX* _ssl_ctx;
   unsigned int _ssl_handshake_retries;
 
