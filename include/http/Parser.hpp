@@ -45,6 +45,7 @@ private:
   std::map<std::string, std::string> _qsmap;
 
   std::size_t _parse_query_string(const std::string& buf);
+  void _resetState();
   ParserCallback _callback;
 };
 
