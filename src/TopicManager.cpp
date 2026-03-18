@@ -5,12 +5,29 @@
 #include <unordered_map>
 #include <utility>
 #include <list>
+#include <string_view>
+#include <vector>
 
 #include "TopicManager.hpp"
 #include "Topic.hpp"
 #include "Logger.hpp"
 
 namespace eventhub {
+namespace {
+std::vector<std::string_view> splitLevels(const std::string& input) {
+  std::vector<std::string_view> parts;
+  std::size_t start = 0;
+
+  for (std::size_t i = 0; i <= input.size(); ++i) {
+    if (i == input.size() || input[i] == '/') {
+      parts.emplace_back(input.data() + start, i - start);
+      start = i + 1;
+    }
+  }
+
+  return parts;
+}
+} // namespace
 /*
 * Subscribe a client to a topic.
 * @param conn Client to subscribe.
@@ -20,13 +37,14 @@ namespace eventhub {
 std::pair<TopicPtr, TopicSubscriberList::iterator> TopicManager::subscribeConnection(ConnectionPtr conn, const std::string& topicFilter, const jsonrpcpp::Id subscriptionRequestId) {
   std::lock_guard<std::mutex> lock(_topic_list_lock);
 
-  if (!_topic_list.count(topicFilter)) {
-    _topic_list.insert(std::make_pair(topicFilter, std::make_unique<Topic>(topicFilter)));
+  auto it = _topic_list.find(topicFilter);
+  if (it == _topic_list.end()) {
+    it = _topic_list.emplace(topicFilter, std::make_shared<Topic>(topicFilter)).first;
   }
 
-  auto it = _topic_list[topicFilter]->addSubscriber(conn, subscriptionRequestId);
+  auto subIt = it->second->addSubscriber(conn, subscriptionRequestId);
 
-  return std::make_pair(_topic_list[topicFilter], it);
+  return std::make_pair(it->second, subIt);
 }
 
 /*
@@ -108,36 +126,29 @@ bool TopicManager::isValidTopicFilter(const std::string& filterName) {
     return false;
   }
 
-  // A filter must contain either + or #.
-  auto hashBangPos = filterName.find('#');
-  if (filterName.find('+') == std::string::npos && hashBangPos == std::string::npos) {
-    return false;
-  }
-
-  // A # must always be at the end.
-  if (hashBangPos != std::string::npos && (hashBangPos + 1) != filterName.length()) {
-    return false;
-  }
-
+  bool hasWildcard = false;
   for (auto it = filterName.begin(); it != filterName.end(); it++) {
     if (!isalnum(*it) && *it != '-' && *it != '_' && *it != '+' && *it != '#' && *it != '/') {
       return false;
     }
 
-    if (*it == '+' && (it + 1) != filterName.end() && ((*(it + 1) != '/' || (*(it - 1) != '/' && (it) != filterName.begin())))) {
-      return false;
-    }
-
-    if (*it == '#') {
-      if (it == filterName.begin() && (it + 1) == filterName.end()) {
-        return true;
-      } else if (((it + 1) != filterName.end() || *(it - 1) != '/')) {
+    if (*it == '+') {
+      hasWildcard = true;
+      const bool prevOk = (it == filterName.begin()) || (*(it - 1) == '/');
+      const bool nextOk = ((it + 1) == filterName.end()) || (*(it + 1) == '/');
+      if (!prevOk || !nextOk) {
+        return false;
+      }
+    } else if (*it == '#') {
+      hasWildcard = true;
+      const bool prevOk = (it == filterName.begin()) || (*(it - 1) == '/');
+      if (!prevOk || (it + 1) != filterName.end()) {
         return false;
       }
     }
   }
 
-  return true;
+  return hasWildcard;
 }
 
 /*
@@ -159,60 +170,30 @@ bool TopicManager::isValidTopicOrFilter(const std::string& topic) {
 * @returns true if it matches, false otherwise.
 */
 bool TopicManager::isFilterMatched(const std::string& filterName, const std::string& topicName) {
-  // Loop through filterName and topicName one character at the time.
-  for (auto fnIt = filterName.begin(), tnIt = topicName.begin();
-       tnIt != topicName.end(); fnIt++, tnIt++) {
-    // We reached the end of our filter without a match.
-    if (fnIt == filterName.end()) {
+  const auto filterLevels = splitLevels(filterName);
+  const auto topicLevels  = splitLevels(topicName);
+
+  std::size_t topicIndex = 0;
+  for (std::size_t filterIndex = 0; filterIndex < filterLevels.size(); ++filterIndex, ++topicIndex) {
+    const auto filterLevel = filterLevels[filterIndex];
+
+    if (filterLevel == "#") {
+      return true;
+    }
+
+    if (topicIndex >= topicLevels.size()) {
       return false;
     }
 
-    // We have reached the end of the topic.
-    if (tnIt + 1 == topicName.end() && fnIt + 1 != filterName.end()) {
-      if (*fnIt != *tnIt) {
-        return false;
-      }
+    if (filterLevel == "+") {
+      continue;
+    }
 
-      // Match the root topic in addition to every subtopic
-      // when we have a match-all (#) on that path.
-      // Example: topic/foo/# should also match topic/foo.
-      if ((fnIt + 2 != filterName.end() && fnIt + 3 == filterName.end()) &&
-          *(fnIt + 1) == '/' && *(fnIt + 2) == '#') {
-        return true;
-      }
-
+    if (filterLevel != topicLevels[topicIndex]) {
       return false;
     }
-
-    // Filter character at current pos matches topicName character.
-    if (*fnIt == *tnIt) {
-      continue;
-    }
-
-    // If we hit a + in the filter we should increment the pos of
-    // the topicName until we match a '/'.
-    if (*fnIt == '+') {
-      for (; tnIt != topicName.end() && *(tnIt + 1) != '/'; tnIt++)
-        ;
-      // If we reached the end of the topicName before we found a '/'
-      // it means we don't have a match.
-      if (tnIt == topicName.end() && fnIt + 1 == filterName.end())
-        return true;
-      else if (tnIt == topicName.end())
-        return false;
-      continue;
-    }
-
-    // We matched up until now and the filter ends with a '#'
-    // which means we should match.
-    if (*fnIt == '#' && fnIt + 1 == filterName.end()) {
-      break;
-    }
-
-    return false;
   }
 
-  // We have a match.
-  return true;
+  return topicIndex == topicLevels.size();
 }
 } // namespace eventhub
