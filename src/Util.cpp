@@ -98,8 +98,8 @@ std::string Util::getFileMD5Sum(const std::string& filePath) {
   bio = BIO_push(sha1, bio);
 
   auto fd = open(filePath.c_str(), O_RDONLY);
-  if (!fd) {
-    throw new std::runtime_error("getFileMD5Sum: no such file");
+  if (fd == -1) {
+    throw std::runtime_error("getFileMD5Sum: no such file");
   }
 
   int rdLen = 0;
