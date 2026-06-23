@@ -4,6 +4,9 @@
 #include <bits/getopt_core.h>
 #include <spdlog/logger.h>
 #include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <sys/resource.h>
 #include <string>
 #include <atomic>
 #include <iostream>
@@ -41,6 +44,38 @@ void sighandler(int sigid) {
 shutdown:
   LOG->info("Exiting.");
   stopEventhub = true;
+}
+
+/**
+ * Raise the open file descriptor soft limit (RLIMIT_NOFILE) up to the hard
+ * limit. Each connection consumes a file descriptor, so a low soft limit
+ * (commonly 65536 in containers) caps the number of concurrent connections
+ * and makes accept() fail with EMFILE once reached. Raising the soft limit
+ * up to the hard limit needs no privileges and removes the dependency on the
+ * runtime/container default.
+ */
+void raiseFileDescriptorLimit() {
+  struct rlimit rl;
+
+  if (getrlimit(RLIMIT_NOFILE, &rl) == -1) {
+    LOG->warn("Could not read RLIMIT_NOFILE: {}. Leaving fd limit unchanged.", strerror(errno));
+    return;
+  }
+
+  if (rl.rlim_cur >= rl.rlim_max) {
+    LOG->info("Open file descriptor limit already at maximum ({}).", rl.rlim_cur);
+    return;
+  }
+
+  const rlim_t previous = rl.rlim_cur;
+  rl.rlim_cur           = rl.rlim_max;
+
+  if (setrlimit(RLIMIT_NOFILE, &rl) == -1) {
+    LOG->warn("Could not raise RLIMIT_NOFILE from {} to {}: {}.", previous, rl.rlim_max, strerror(errno));
+    return;
+  }
+
+  LOG->info("Raised open file descriptor limit from {} to {}.", previous, rl.rlim_max);
 }
 
 void printUsage(char** argv) {
@@ -132,6 +167,8 @@ int main(int argc, char** argv) {
     LOG->error("Error reading configuration: {}", e.what());
     return 1;
   }
+
+  raiseFileDescriptorLimit();
 
   Server server(cfg);
   server.start();
