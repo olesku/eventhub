@@ -1,0 +1,175 @@
+{{- if and (hasKey $.Values "redis") (eq $.Values.redis.enabled true) }}
+{{- fail "The 'redis' deployment is no longer supported. Please use valkey instead." }}
+{{- end }}
+
+{{- if .Values.https.enabled }}
+{{- $tls := .Values.https.tls | default dict }}
+{{- if not (or $tls.existingSecret (and $tls.cert $tls.key)) }}
+{{- fail "https.enabled requires a TLS certificate: set either https.tls.existingSecret (a kubernetes.io/tls secret) or both https.tls.cert and https.tls.key." }}
+{{- end }}
+{{- end }}
+
+{{- $jwt := .Values.jwtSecret | default dict }}
+{{- if not (or $jwt.value (and $jwt.existingSecret $jwt.existingSecret.name)) }}
+{{- fail "A JWT secret is required: set jwtSecret.value (high-entropy) or jwtSecret.existingSecret.name. If you run eventhub with auth disabled in config, set jwtSecret.value to any non-empty placeholder." }}
+{{- end }}
+
+{{- $defaultImageTag := printf "v%s" .Chart.AppVersion -}}
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "eventhub.fullname" . }}
+  labels:
+    {{ include "eventhub.labels" .  | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicas | default 1 }}
+  selector:
+    matchLabels:
+      {{ include "eventhub.selectorLabels" . | nindent 6 }}
+
+  strategy:
+  {{- if .Values.strategy }}
+    {{- toYaml .Values.strategy | nindent 4 }}
+  {{- else }}
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 50%
+  {{- end }}
+
+  template:
+    metadata:
+      annotations:
+        eventhub.conf.hash: {{ .Values.config | toYaml | sha256sum | quote }}
+        jwt_secret.hash: {{ .Values.jwtSecret.value | sha256sum | quote }}
+        {{- with .Values.annotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{ include "eventhub.labels" .  | nindent 8 }}
+    spec:
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "eventhub.fullname" . }}-config
+        {{- if .Values.https.enabled }}
+        - name: tls
+          secret:
+            secretName: {{ include "eventhub.tlsSecretName" . }}
+        {{- end }}
+      {{- if .Values.volumes }}
+      {{- toYaml .Values.volumes | indent 8 }}
+      {{- end }}
+
+      containers:
+        - name: eventhub
+          env:
+          - name: LISTEN_PORT
+            value: {{ .Values.http.port | default 8080 | quote }}
+          {{- if .Values.https.enabled }}
+          - name: ENABLE_SSL
+            value: "true"
+          - name: SSL_LISTEN_PORT
+            value: {{ .Values.https.port | default 8443 | quote }}
+          - name: SSL_CERTIFICATE
+            value: /etc/eventhub/tls/tls.crt
+          - name: SSL_PRIVATE_KEY
+            value: /etc/eventhub/tls/tls.key
+          {{- end }}
+          {{- if eq .Values.http.enabled false }}
+          - name: DISABLE_UNSECURE_LISTENER
+            value: "true"
+          {{- end }}
+          {{- if .Values.valkey.enabled }}
+          - name: REDIS_HOST
+            value: {{ include "eventhub.valkey.host" . | quote }}
+          {{- end }}
+          - name: PROMETHEUS_METRIC_PREFIX
+            value: {{ include "eventhub.identifier" . | quote }}
+
+          {{- with .Values.jwtSecret }}
+            {{- if or (and .existingSecret .existingSecret.name) .value }}
+          - name: JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                {{- if and .existingSecret .existingSecret.name }}
+                name: {{ .existingSecret.name | quote }}
+                key: {{ .existingSecret.key | default "jwt_secret" | quote }}
+                {{- else if .value }}
+                name: {{ include "eventhub.jwtSecretName" $ }}
+                key: "jwt_secret"
+                {{- end }}
+            {{- end }}
+          {{- end }}
+
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default $defaultImageTag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+
+          args: ["-c", "/etc/eventhub/eventhub.conf"]
+
+          ports:
+          {{- if eq .Values.http.enabled true }}
+            - name: http
+              containerPort: {{ .Values.http.port | default 8080 }}
+          {{- end }}
+          {{- if eq .Values.https.enabled true }}
+            - name: https
+              containerPort: {{ .Values.https.port | default 8443 }}
+          {{- end }}
+
+          {{- if .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 -}}
+          {{- end }}
+
+          readinessProbe:
+          {{- if .Values.readinessProbe }}
+           {{- toYaml .Values.readinessProbe | nindent 12 -}}
+          {{- else }}
+            httpGet:
+              path: /healthz
+              port: {{ if .Values.https.enabled }}https{{ else }}http{{ end }}
+              scheme: {{ if .Values.https.enabled }}HTTPS{{ else }}HTTP{{ end }}
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          {{- end }}
+
+          {{- if .Values.resources }}
+          resources: {{ toYaml .Values.resources | nindent 12 }}
+          {{- end }}
+
+          volumeMounts:
+            - name: config
+              mountPath: /etc/eventhub/eventhub.conf
+              subPath: eventhub.conf
+            {{- if .Values.https.enabled }}
+            - name: tls
+              mountPath: /etc/eventhub/tls
+              readOnly: true
+            {{- end }}
+      {{- if .Values.volumeMounts }}
+      {{- toYaml .Values.volumeMounts | indent 12 }}
+      {{- end }}
+      restartPolicy: Always

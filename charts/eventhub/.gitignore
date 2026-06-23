@@ -1,0 +1,3 @@
+# Resolved Helm subchart archives (pulled from OCI at build time)
+charts/
+*.tgz
