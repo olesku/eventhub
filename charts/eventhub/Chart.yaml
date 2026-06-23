@@ -1,0 +1,30 @@
+apiVersion: v2
+name: eventhub
+description: Eventhub is a high performance pub/sub over WebSocket server written in modern C++
+type: application
+
+# version and appVersion are placeholders. They are set from the git tag at
+# release time by .github/workflows/helm-package.yaml, so the chart always
+# follows the eventhub application version.
+version: 0.0.0
+appVersion: 0.0.0
+
+home: https://github.com/olesku/eventhub
+sources:
+  - https://github.com/olesku/eventhub
+
+keywords:
+  - pubsub
+  - websocket
+  - sse
+  - eventhub
+
+maintainers:
+  - name: Ole Fredrik Skudsvik
+    email: ole.skudsvik@gmail.com
+
+dependencies:
+  - name: valkey
+    version: "0.7.5"
+    repository: "oci://ghcr.io/valkey-io/valkey-helm"
+    condition: valkey.enabled

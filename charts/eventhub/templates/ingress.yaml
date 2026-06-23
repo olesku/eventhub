@@ -1,0 +1,39 @@
+{{- if and .Values.ingress .Values.ingress.enabled -}}
+{{- if or (not .Values.http.enabled) (not .Values.service.http.enabled) }}
+{{- fail "ingress.enabled routes to the 'http' Service port, so both http.enabled and service.http.enabled must be true. Terminate TLS at the ingress/LB, or disable the ingress and expose HTTPS via the Service." }}
+{{- end }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "eventhub.fullname" . }}
+  labels:
+    {{ include "eventhub.labels" .  | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.tls }}
+  tls:
+    {{- range .Values.ingress.tls }}
+    - hosts:
+        {{- toYaml .hosts | nindent 8 }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ include "eventhub.fullname" $ }}
+                port:
+                  name: http
+          {{- end }}
+    {{- end }}
+{{- end }}

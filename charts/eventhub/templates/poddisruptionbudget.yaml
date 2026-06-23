@@ -1,0 +1,13 @@
+{{- if gt (.Values.replicas | int) 1 }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "eventhub.fullname" . }}
+  labels:
+    {{ include "eventhub.labels" .  | nindent 4 }}
+spec:
+  minAvailable: 50%
+  selector:
+    matchLabels:
+      {{ include "eventhub.selectorLabels" . | nindent 6 }}
+{{- end }}
