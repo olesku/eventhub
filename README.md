@@ -3,7 +3,7 @@
 </p>
 
 ![Build Status](https://github.com/olesku/eventhub/actions/workflows/build.yaml/badge.svg?branch=master)
-[![Docker Repository on Quay](https://quay.io/repository/olesku/eventhub/status "Docker Repository on Quay")](https://quay.io/repository/olesku/eventhub)
+[![Container image on GHCR](https://img.shields.io/badge/ghcr.io-olesku%2Feventhub-blue?logo=github)](https://github.com/olesku/eventhub/pkgs/container/eventhub)
 
 Eventhub is a pub/sub over WebSocket server written in modern C++.
 It implements the [publish-subscribe pattern](https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern) and concept of topics.
@@ -125,11 +125,24 @@ To run locally with authentication disabled (for test), connecting to redis on
 `my-redis-server.local`:
 
 ```sh
-docker run --rm -e disable_auth=1 -e redis_host=my-redis-server.local -p 8080:8080 quay.io/olesku/eventhub:latest
+docker run --rm -e disable_auth=1 -e redis_host=my-redis-server.local -p 8080:8080 ghcr.io/olesku/eventhub:latest
 ```
+
+Images are published to GitHub Container Registry as multi-arch (`linux/amd64` + `linux/arm64`) manifests at `ghcr.io/olesku/eventhub`, tagged per release (`vX.Y.Z`) with `latest` tracking the most recent stable release.
 
 The repo also contains a [docker-compose](https://docs.docker.com/compose/) file which will run both redis and eventhub for you.
 To use that run ```docker-compose up```
+
+## Kubernetes (Helm)
+
+A Helm chart is maintained in [`charts/eventhub`](./charts/eventhub) and published to GHCR as an OCI artifact. It deploys eventhub together with a [Valkey](https://valkey.io/) backend:
+
+```sh
+helm install my-eventhub oci://ghcr.io/olesku/charts/eventhub \
+  --set-string jwtSecret.value="$(openssl rand -hex 32)"
+```
+
+A JWT secret is required (the chart ships no default signing key). See the [chart README](./charts/eventhub/README.md) for configuration. The chart version tracks the eventhub release version.
 
 
 ## Building yourself
