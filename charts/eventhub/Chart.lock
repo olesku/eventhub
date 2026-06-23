@@ -1,0 +1,6 @@
+dependencies:
+- name: valkey
+  repository: oci://ghcr.io/valkey-io/valkey-helm
+  version: 0.7.5
+digest: sha256:3922947895b88594cdf62ba120ffff03ebd9e1e8fe2223c199410e8274d414d8
+generated: "2026-06-23T15:01:30.896808868+02:00"

@@ -1,0 +1,48 @@
+{{- if not (or .Values.http.enabled .Values.https.enabled) }}
+{{- fail "At least one listener must be enabled: set http.enabled or https.enabled." }}
+{{- end }}
+{{- if not (or .Values.service.http.enabled .Values.service.https.enabled) }}
+{{- fail "At least one Service port must be enabled: set service.http.enabled or service.https.enabled." }}
+{{- end }}
+{{- if and .Values.service.http.enabled (not .Values.http.enabled) }}
+{{- fail "service.http.enabled requires http.enabled — the container does not listen on the HTTP port otherwise." }}
+{{- end }}
+{{- if and .Values.service.https.enabled (not .Values.https.enabled) }}
+{{- fail "service.https.enabled requires https.enabled — the container does not listen on the HTTPS port otherwise." }}
+{{- end }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "eventhub.fullname" . }}
+  {{- if .Values.service.annotations }}
+  annotations:
+  {{- toYaml .Values.service.annotations | nindent 4 }}
+  {{- end }}
+  labels:
+    {{ include "eventhub.labels" .  | nindent 4 }}
+spec:
+  {{- with .Values.service }}
+  type: {{ .type | default "LoadBalancer" }}
+  {{- end }}
+  ports:
+    {{- with .Values.service.http }}
+    {{- if .enabled }}
+    - name: http
+      port: {{ .port | default 80 }}
+      targetPort: {{ .targetPort | default $.Values.http.port | default 8080 }}
+      protocol: TCP
+    {{- end }}
+    {{- end }}
+
+    {{- with .Values.service.https }}
+    {{- if .enabled }}
+    - name: https
+      port: {{ .port | default 443 }}
+      targetPort: {{ .targetPort | default $.Values.https.port | default 8443 }}
+      protocol: TCP
+    {{- end }}
+    {{- end }}
+
+  selector:
+    app.kubernetes.io/name: {{ include "eventhub.fullname" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
