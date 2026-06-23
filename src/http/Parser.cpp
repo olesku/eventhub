@@ -16,12 +16,9 @@ namespace http {
   Constructor.
 **/
 Parser::Parser() {
-  _bytes_read      = 0;
-  _bytes_read_prev = 0;
-  _is_complete     = false;
-  _error_message   = "";
-  _callback        = [](http::Parser* req, http::RequestState reqState) {
-        LOG->error("HTTP parser callback was called before it was initialized.");
+  _resetState();
+  _callback = [](http::Parser* req, http::RequestState reqState) {
+    LOG->error("HTTP parser callback was called before it was initialized.");
   };
 }
 
@@ -38,8 +35,17 @@ Parser::~Parser() {}
 void Parser::parse(const char* data, std::size_t len) {
   int pret;
 
-  if (_is_complete)
-    return _callback(this, RequestState::REQ_OK);
+  if (_is_complete) {
+    if (len == 0) {
+      return _callback(this, RequestState::REQ_OK);
+    }
+
+    // Previously we kept stale headers/query params around, so a second
+    // request would quietly re-use the old state. Resetting here ensures that
+    // every HTTP message is parsed from a clean slate.
+    _resetState();
+  }
+
   _bytes_read_prev = _bytes_read;
 
   // Request is to large.
@@ -53,6 +59,8 @@ void Parser::parse(const char* data, std::size_t len) {
 
   _phr_num_headers = sizeof(_phr_headers) / sizeof(_phr_headers[0]);
 
+  // std::string already guarantees contiguous storage, so we avoid the old
+  // pattern of manually writing a terminator that could overflow the buffer.
   pret = phr_parse_request(_buf.c_str(), _bytes_read, &_phr_method, &_phr_method_len, &_phr_path,
                            &_phr_path_len, &_phr_minor_version, _phr_headers, &_phr_num_headers, _bytes_read_prev);
 
@@ -93,8 +101,7 @@ void Parser::parse(const char* data, std::size_t len) {
     _headers[name] = value;
   }
 
-  _is_complete      = true;
-  _buf[_bytes_read] = '\0';
+  _is_complete = true;
 
   return _callback(this, RequestState::REQ_OK);
 }
@@ -136,24 +143,19 @@ const std::map<std::string, std::string>& Parser::getHeaders() {
     @param buf The string to parse.
   **/
 std::size_t Parser::_parse_query_string(const std::string& buf) {
-  std::size_t prevpos = 0, eqlpos = 0;
+  std::size_t pos = 0;
 
-  while ((eqlpos = buf.find("=", prevpos)) != std::string::npos) {
-    std::string param, val;
-    std::size_t len;
+  while (pos < buf.size()) {
+    const auto eqlpos = buf.find('=', pos);
+    if (eqlpos == std::string::npos) {
+      break;
+    }
 
-    len = buf.find("&", eqlpos);
+    const auto amp = buf.find('&', eqlpos + 1);
+    std::string param = buf.substr(pos, eqlpos - pos);
+    std::string val   = buf.substr(eqlpos + 1, (amp == std::string::npos) ? std::string::npos : amp - (eqlpos + 1));
 
-    if (len != std::string::npos)
-      len = (len - eqlpos);
-    else
-      len = (buf.size() - eqlpos);
-
-    param = buf.substr(prevpos, (eqlpos - prevpos));
-
-    eqlpos++;
-    val     = buf.substr(eqlpos, len - 1);
-    prevpos = eqlpos + len;
+    pos = (amp == std::string::npos) ? buf.size() : amp + 1;
 
     if (!param.empty() && !val.empty()) {
       Util::strToLower(param);
@@ -161,6 +163,8 @@ std::size_t Parser::_parse_query_string(const std::string& buf) {
     }
   }
 
+  // Earlier we chopped off the final character of each value, so make it
+  // explicit that we now keep the full token.
   return _qsmap.size();
 }
 
@@ -191,6 +195,24 @@ const std::string& Parser::getErrorMessage() {
 
 void Parser::setCallback(ParserCallback callback) {
   _callback = callback;
+}
+
+void Parser::_resetState() {
+  _buf.clear();
+  _headers.clear();
+  _qsmap.clear();
+  _method.clear();
+  _path.clear();
+  _error_message.clear();
+  _bytes_read      = 0;
+  _bytes_read_prev = 0;
+  _is_complete     = false;
+  _phr_method      = nullptr;
+  _phr_path        = nullptr;
+  _phr_num_headers = 0;
+  _phr_method_len  = 0;
+  _phr_path_len    = 0;
+  _phr_minor_version = 0;
 }
 
 } // namespace http

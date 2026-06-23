@@ -47,7 +47,7 @@ Redis::Redis(Config &cfg) : EventhubBase(cfg) {
   poolOpts.size                = config().get<int>("redis_pool_size");
   poolOpts.wait_timeout        = std::chrono::seconds(5);
 
-  _redisInstance   = std::make_shared<sw::redis::Redis>(connOpts, poolOpts);
+  _redisInstance   = std::make_unique<sw::redis::Redis>(connOpts, poolOpts);
   _redisSubscriber = nullptr;
 }
 
@@ -180,14 +180,16 @@ std::size_t Redis::getCacheSince(const std::string& topicPattern, long long sinc
     for (std::size_t i = 0; i < cacheItems.size(); i++) {
       // Key returned from ZSET does not exist in the HSET anymore.
       // continue on to the next key.
-      if (cacheItems[i].value().empty()) {
+      if (!cacheItems[i]) {
         continue;
       }
+
+      const auto& cacheValue = cacheItems[i].value();
 
       nlohmann::json j;
       j["id"]      = cacheKeys[i];
       j["topic"]   = topic;
-      j["message"] = cacheItems[i].value();
+      j["message"] = cacheValue;
 
       if (!originIdMap[cacheKeys[i]].empty()) {
         j["origin"]  = originIdMap[cacheKeys[i]];

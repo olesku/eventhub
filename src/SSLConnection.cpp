@@ -16,34 +16,29 @@
 namespace eventhub {
 
 SSLConnection::SSLConnection(int fd, struct sockaddr_in* csin, Worker* worker, Config& cfg, SSL_CTX* ctx) :
-  Connection(fd, csin, worker, cfg), _ssl_ctx(ctx) {
-  _ssl                   = nullptr;
+  Connection(fd, csin, worker, cfg), _ssl(nullptr, SSL_free), _ssl_ctx(ctx) {
   _ssl_handshake_retries = 0;
   _init();
 }
 
 SSLConnection::~SSLConnection() {
-  if (_ssl != nullptr) {
-    SSL_free(_ssl);
-  }
 }
 
 void SSLConnection::_init() {
-  _ssl = SSL_new(_ssl_ctx);
+  _ssl = SSL_ptr(SSL_new(_ssl_ctx), SSL_free);
   if (_ssl == nullptr) {
-    _ssl = nullptr;
     LOG->error("Failed to initialize SSL object for client {}", getIP());
     shutdown();
     return;
   }
 
-  SSL_set_fd(_ssl, _fd);
-  SSL_set_accept_state(_ssl);
+  SSL_set_fd(_ssl.get(), _fd);
+  SSL_set_accept_state(_ssl.get());
 }
 
 void SSLConnection::_handshake() {
   ERR_clear_error();
-  int ret = SSL_accept(_ssl);
+  int ret = SSL_accept(_ssl.get());
 
   if (_ssl_handshake_retries >= SSL_MAX_HANDSHAKE_RETRY) {
     LOG->error("Max SSL retries ({}) reached for client {}", _ssl_handshake_retries, getIP());
@@ -52,7 +47,7 @@ void SSLConnection::_handshake() {
   }
 
   if (ret <= 0) {
-    int errorCode = SSL_get_error(_ssl, ret);
+    int errorCode = SSL_get_error(_ssl.get(), ret);
     if (errorCode == SSL_ERROR_WANT_READ ||
         errorCode == SSL_ERROR_WANT_WRITE) {
       LOG->trace("OpenSSL retry handshake. Try #{}", _ssl_handshake_retries);
@@ -73,12 +68,12 @@ ssize_t SSLConnection::flushSendBuffer() {
   }
 
   std::size_t pcktSize = _write_buffer.length() > NET_READ_BUFFER_SIZE ? NET_READ_BUFFER_SIZE : _write_buffer.length();
-  int ret               = SSL_write(_ssl, _write_buffer.c_str(), pcktSize);
+  int ret               = SSL_write(_ssl.get(), _write_buffer.c_str(), pcktSize);
 
   if (ret > 0) {
     _pruneWriteBuffer(ret);
   } else {
-    int err = SSL_get_error(_ssl, ret);
+    int err = SSL_get_error(_ssl.get(), ret);
 
     if (!(err == SSL_ERROR_SYSCALL && (errno == EAGAIN || errno == EWOULDBLOCK)) &&
         err != SSL_ERROR_WANT_WRITE && err != SSL_ERROR_WANT_READ) {
@@ -104,7 +99,7 @@ void SSLConnection::read() {
     return;
   }
 
-  if (!SSL_is_init_finished(_ssl)) {
+  if (!SSL_is_init_finished(_ssl.get())) {
     _handshake();
     return;
   }
@@ -134,14 +129,14 @@ void SSLConnection::read() {
       memcpy(_read_buffer.data(), retain.data(), bytesRead);
     }
 
-    ret = SSL_read(_ssl, _read_buffer.data() + bytesRead, NET_READ_BUFFER_SIZE);
+    ret = SSL_read(_ssl.get(), _read_buffer.data() + bytesRead, NET_READ_BUFFER_SIZE);
 
     if (ret > 0) {
       bytesRead += ret;
       continue;
     }
 
-    int err = SSL_get_error(_ssl, ret);
+    int err = SSL_get_error(_ssl.get(), ret);
     if (err == SSL_ERROR_ZERO_RETURN) {
       // Client closed the connection.
       shutdown();

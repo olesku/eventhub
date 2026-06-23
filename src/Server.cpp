@@ -44,7 +44,12 @@ unsigned const char alpn_protocol[] = "http/1.1";
 std::size_t alpn_protocol_length   = 8;
 
 Server::Server(Config& cfg)
-    : _config(cfg), _server_socket(-1), _server_socket_ssl(-1), _ssl_enabled(false), _ssl_ctx(nullptr), _redis(cfg) {
+    : _config(cfg),
+      _server_socket(-1),
+      _server_socket_ssl(-1),
+      _ssl_enabled(false),
+      _ssl_ctx(nullptr, SSL_CTX_free),
+      _redis(cfg) {
 
 }
 
@@ -80,7 +85,7 @@ void Server::start() {
  unsigned int numWorkerThreads = config().get<int>("worker_threads") == 0 ? std::thread::hardware_concurrency() : config().get<int>("worker_threads");
 
   for (unsigned i = 0; i < numWorkerThreads; i++) {
-    _connection_workers.addWorker(new Worker(this, i + 1));
+    _connection_workers.addWorker(std::make_unique<Worker>(this, i + 1));
   }
 
   _cur_worker = _connection_workers.begin();
@@ -236,7 +241,8 @@ void Server::_listenerInit() {
     exit(1);
   }
 
-  if (listen(_server_socket, 0) == -1) {
+  // Use a reasonable backlog size to reduce dropped connections during bursts.
+  if (listen(_server_socket, SOMAXCONN) == -1) {
     LOG->critical("Could not listen on server socket: {}", strerror(errno));
     exit(1);
   }
@@ -269,7 +275,8 @@ void Server::_sslListenerInit() {
     exit(1);
   }
 
-  if (listen(_server_socket_ssl, 0) == -1) {
+  // Use a reasonable backlog size to reduce dropped connections during bursts.
+  if (listen(_server_socket_ssl, SOMAXCONN) == -1) {
     LOG->critical("Could not listen on server socket: {}", strerror(errno));
     exit(1);
   }
@@ -286,7 +293,7 @@ void Server::_initSSL() {
   _sslListenerInit();
 
   const SSL_METHOD* method = TLS_server_method();
-  _ssl_ctx                 = SSL_CTX_new(method);
+  _ssl_ctx = SSL_CTX_ptr(SSL_CTX_new(method), SSL_CTX_free);
 
   if (_ssl_ctx == nullptr) {
     LOG->critical("Could not initialize SSL context: {}", Util::getSSLErrorString(ERR_get_error()));
@@ -295,9 +302,9 @@ void Server::_initSSL() {
 
   _loadSSLCertificates();
 
-  SSL_CTX_set_ecdh_auto(_ssl_ctx, 1);
-  SSL_CTX_set_options(_ssl_ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
-  SSL_CTX_set_alpn_select_cb(_ssl_ctx, alpn_cb, nullptr);
+  SSL_CTX_set_ecdh_auto(_ssl_ctx.get(), 1);
+  SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_CIPHER_SERVER_PREFERENCE);
+  SSL_CTX_set_alpn_select_cb(_ssl_ctx.get(), alpn_cb, nullptr);
 
   _ssl_enabled = true;
 }
@@ -312,28 +319,28 @@ void Server::_loadSSLCertificates() {
   const std::string key    = config().get<std::string>("ssl_private_key");
 
   if (caCert.empty()) {
-    SSL_CTX_set_default_verify_paths(_ssl_ctx);
+    SSL_CTX_set_default_verify_paths(_ssl_ctx.get());
   } else {
-    if (SSL_CTX_load_verify_locations(_ssl_ctx, caCert.c_str(), nullptr) <= 0) {
+    if (SSL_CTX_load_verify_locations(_ssl_ctx.get(), caCert.c_str(), nullptr) <= 0) {
       LOG->error("Error loading CA certificate: {}", Util::getSSLErrorString(ERR_get_error()));
       stop();
       exit(EXIT_FAILURE);
     }
   }
 
-  if (SSL_CTX_use_certificate_chain_file(_ssl_ctx, cert.c_str()) <= 0) {
+  if (SSL_CTX_use_certificate_chain_file(_ssl_ctx.get(), cert.c_str()) <= 0) {
     LOG->error("Error loading certificate: {}", Util::getSSLErrorString(ERR_get_error()));
     stop();
     exit(EXIT_FAILURE);
   }
 
-  if (SSL_CTX_use_PrivateKey_file(_ssl_ctx, key.c_str(), SSL_FILETYPE_PEM) <= 0) {
+  if (SSL_CTX_use_PrivateKey_file(_ssl_ctx.get(), key.c_str(), SSL_FILETYPE_PEM) <= 0) {
     LOG->error("Error loading private key: {}", Util::getSSLErrorString(ERR_get_error()));
     stop();
     exit(EXIT_FAILURE);
   }
 
-  if (!SSL_CTX_check_private_key(_ssl_ctx)) {
+  if (!SSL_CTX_check_private_key(_ssl_ctx.get())) {
     LOG->error("Error validating private key: {}", Util::getSSLErrorString(ERR_get_error()));
     stop();
     exit(EXIT_FAILURE);
@@ -417,9 +424,7 @@ void Server::stop() {
     close(_server_socket_ssl);
 
   _connection_workers.killAndDeleteAll();
-  if (_ssl_enabled && _ssl_ctx != nullptr) {
-    SSL_CTX_free(_ssl_ctx);
-  }
+  _ssl_ctx.reset();
 }
 
 metrics::AggregatedMetrics Server::getAggregatedMetrics() {
@@ -440,8 +445,15 @@ metrics::AggregatedMetrics Server::getAggregatedMetrics() {
     m.eventloop_delay_ms += wrkM.eventloop_delay_ms.load();
   }
 
-  // Calculate avg eventloop delay accross workers.
-  m.eventloop_delay_ms = (m.eventloop_delay_ms / _connection_workers.getWorkerList().size());
+  const auto workerCount = _connection_workers.getWorkerList().size();
+  // Earlier we divided unconditionally, which blew up when no workers were
+  // running (e.g. listener init failed). Guard to keep the metrics pipeline
+  // alive even in that degraded state.
+  if (workerCount > 0U) {
+    m.eventloop_delay_ms /= workerCount;
+  } else {
+    m.eventloop_delay_ms = 0;
+  }
 
   return m;
 }

@@ -74,7 +74,7 @@ void Handler::HandleRequest(HandlerContext&& ctx, ParserStatus parserStatus, Fra
  * @param conn Connection
  */
 void Handler::_handleTextFrame(HandlerContext& ctx, const std::string& data) {
-  static jsonrpcpp::Parser parser;
+  thread_local jsonrpcpp::Parser parser;
   jsonrpcpp::entity_ptr entity;
 
   try {

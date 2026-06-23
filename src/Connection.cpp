@@ -108,14 +108,14 @@ std::size_t Connection::_pruneWriteBuffer(std::size_t bytes) {
  * Read from client, parse and call the correct handler.
  */
 void Connection::read() {
-  _read_buffer.clear();
-
   if (isShutdown()) {
     return;
   }
 
-  ssize_t bytesRead = 0;
-  bytesRead        = ::read(_fd, _read_buffer.data(), NET_READ_BUFFER_SIZE);
+  // Keep the backing storage intact so _read_buffer.data() never dangles; we
+  // previously cleared the vector here, which left ::read() writing through a
+  // null pointer on some STL implementations.
+  ssize_t bytesRead = ::read(_fd, _read_buffer.data(), _read_buffer.size());
 
   if (bytesRead <= 0) {
     if (errno != EAGAIN) {
@@ -147,8 +147,6 @@ void Connection::_parseRequest(std::size_t bytesRead) {
       LOG->debug("Connection {} has invalid state, disconnecting.", getIP());
       shutdown();
   }
-
-  _read_buffer.clear();
 }
 
 /**
@@ -195,7 +193,7 @@ ssize_t Connection::flushSendBuffer() {
       _enableEpollOut();
     }
   } else if ((std::size_t)ret < _write_buffer.length()) {
-    LOG->trace("Client {} could not write() entire buffer, wrote {} of {} bytes.", ret, _write_buffer.length());
+    LOG->trace("Client {} could not write() entire buffer, wrote {} of {} bytes.", getIP(), ret, _write_buffer.length());
     _pruneWriteBuffer(ret);
     _enableEpollOut();
   } else {

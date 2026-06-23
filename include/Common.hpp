@@ -6,9 +6,6 @@
 
 #include "Logger.hpp"
 
-// How long to make epoll_wait sleep if there are no events, timers or jobs in the queue.
-static constexpr unsigned int EPOLL_MAX_TIMEOUT = 100;
-
 // How many events to maximum read in one call to epoll_wait.
 static constexpr unsigned int MAXEVENTS = 1024;
 
@@ -38,5 +35,4 @@ static constexpr unsigned int CACHE_PURGER_INTERVAL_MS = (60 * 1000);
 
 // Maximum SSL handshake retries.
 static const unsigned int SSL_MAX_HANDSHAKE_RETRY = 5;
-
 

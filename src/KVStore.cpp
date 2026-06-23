@@ -3,6 +3,7 @@
 #include <string>
 #include <chrono>
 #include <memory>
+#include <stdexcept>
 
 #include "KVStore.hpp"
 #include "Config.hpp"
@@ -19,15 +20,18 @@ namespace eventhub {
   }
 
   const std::string KVStore::get(const std::string& key) const {
-    const std::string value = _redis.connection()->get(_prefix_key(key)).value();
-    return value;
+    const auto value = _redis.connection().get(_prefix_key(key));
+    if (!value) {
+      throw std::runtime_error("KVStore: key not found");
+    }
+    return value.value();
   }
 
   bool KVStore::set(const std::string& key, const std::string& value, unsigned long ttl) const {
     if (ttl > 0) {
-      return _redis.connection()->set(_prefix_key(key), value, std::chrono::seconds(ttl));
+      return _redis.connection().set(_prefix_key(key), value, std::chrono::seconds(ttl));
     } else {
-      return _redis.connection()->set(_prefix_key(key), value);
+      return _redis.connection().set(_prefix_key(key), value);
     }
   }
 
@@ -35,7 +39,7 @@ namespace eventhub {
     long long ret = 0;
 
     try {
-      ret = _redis.connection()->del(_prefix_key(key));
+      ret = _redis.connection().del(_prefix_key(key));
     } catch(...) {}
 
     return ret;

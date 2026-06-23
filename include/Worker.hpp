@@ -59,9 +59,9 @@ public:
   ~WorkerGroup<T>() {}
   using iterator = typename worker_list_t<T>::iterator;
 
-  void addWorker(T* worker) {
-    _workers.push_back(std::unique_ptr<T>(worker));
-    worker->run();
+  void addWorker(std::unique_ptr<T> worker) {
+    _workers.push_back(std::move(worker));
+    _workers.back()->run();
   }
 
   void killAndDeleteAll() {
@@ -90,5 +90,4 @@ public:
 private:
   worker_list_t<T> _workers;
 };
-
 
