@@ -5,6 +5,11 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
+  # Allow the release workflow to reuse this as a test gate.
+  workflow_call:
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -15,7 +20,7 @@ jobs:
 
     steps:
     - name: Git checkout
-      uses: actions/checkout@v1
+      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
     - name: Install required packages
       run: sudo apt-get -f install git make cmake cmake-data ninja-build libhiredis-dev libssl-dev libfmt-dev libspdlog-dev
@@ -26,7 +31,7 @@ jobs:
       run: |
         git clone https://github.com/sewenew/redis-plus-plus.git && \
         cd redis-plus-plus && \
-        git checkout tags/1.3.15 && \
+        git checkout a63ac43bf192772910b52e27cd2b42a6098a0071 && \
         mkdir compile && \
         cd compile && \
         cmake -GNinja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr .. && \
@@ -41,7 +46,7 @@ jobs:
         ninja -j0
 
     - name: Start Redis
-      uses: supercharge/redis-github-action@1.1.0
+      uses: supercharge/redis-github-action@8dd3c86cd02fabe1bc459d55ba892a9ce91e23c6 # 1.1.0
       with:
         redis-version: ${{ matrix.redis-version }}
 
@@ -55,10 +60,10 @@ jobs:
 
     steps:
     - name: Git checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
     - name: Checkout eventhub-pyclient
-      uses: actions/checkout@v4
+      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       with:
         repository: olesku/eventhub-pyclient
         ref: master
@@ -69,7 +74,7 @@ jobs:
         git -C eventhub-pyclient rev-parse HEAD
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
       with:
         python-version: "3.11"
 
@@ -82,7 +87,7 @@ jobs:
       run: |
         git clone https://github.com/sewenew/redis-plus-plus.git && \
         cd redis-plus-plus && \
-        git checkout tags/1.3.15 && \
+        git checkout a63ac43bf192772910b52e27cd2b42a6098a0071 && \
         mkdir compile && \
         cd compile && \
         cmake -GNinja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr .. && \
@@ -102,7 +107,7 @@ jobs:
         python -m pip install websockets
 
     - name: Start Redis
-      uses: supercharge/redis-github-action@1.1.0
+      uses: supercharge/redis-github-action@8dd3c86cd02fabe1bc459d55ba892a9ce91e23c6 # 1.1.0
       with:
         redis-version: 6
 

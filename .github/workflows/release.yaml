@@ -1,0 +1,78 @@
+name: Release
+
+# Triggered by a semver tag (e.g. v1.5.0). Validates the tag, runs the test
+# suite, then publishes the multi-arch container image and the Helm chart to
+# GHCR. The tag drives the image tag and the chart version/appVersion. Only
+# stable (non pre-release) tags move the ':latest' image tag.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+# Least privilege by default; publish jobs opt into packages:write explicitly.
+permissions:
+  contents: read
+
+concurrency:
+  # Do not cancel in-progress releases — a half-published image/chart is worse
+  # than waiting. Group per-tag so re-runs of the same tag still serialise.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  setup:
+    name: Validate tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      is_stable: ${{ steps.v.outputs.is_stable }}
+    steps:
+      - name: Validate release tag
+        id: v
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          # Canonical SemVer (no leading zeros, valid pre-release), prefixed with
+          # 'v', and no build metadata since Docker tags cannot contain '+'.
+          semver='(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)'
+          prerelease='(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*'
+          if ! printf '%s' "$TAG" | grep -Eq "^v${semver}(-${prerelease})?$"; then
+            echo "::error::Tag '$TAG' is not a valid release version (expected vMAJOR.MINOR.PATCH[-prerelease], no build metadata)."
+            exit 1
+          fi
+          if printf '%s' "$TAG" | grep -Eq "^v${semver}$"; then
+            is_stable=true
+          else
+            is_stable=false
+          fi
+          echo "version=$TAG" >> "$GITHUB_OUTPUT"
+          echo "is_stable=$is_stable" >> "$GITHUB_OUTPUT"
+          echo "Tag '$TAG' validated (stable=$is_stable)."
+
+  test:
+    needs: setup
+    permissions:
+      contents: read
+    uses: ./.github/workflows/build.yaml
+
+  docker-image:
+    needs: [setup, test]
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/docker-build-push.yaml
+    with:
+      image_tag: ${{ needs.setup.outputs.version }}
+      tag_latest: ${{ needs.setup.outputs.is_stable == 'true' }}
+
+  helm-package:
+    needs: [setup, docker-image]
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/helm-package.yaml
+    with:
+      release_version: ${{ needs.setup.outputs.version }}
