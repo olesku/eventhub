@@ -11,7 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        redis-version: [6, 7]
+        # Both documented backends: docker-compose uses Redis, the Helm chart
+        # deploys Valkey by default.
+        backend: ["redis:7", "valkey/valkey:9"]
 
     steps:
     - name: Git checkout
@@ -40,10 +42,10 @@ jobs:
         cmake -GNinja -DCMAKE_BUILD_TYPE=Release .. && \
         ninja -j0
 
-    - name: Start Redis
-      uses: supercharge/redis-github-action@1.1.0
-      with:
-        redis-version: ${{ matrix.redis-version }}
+    - name: Start ${{ matrix.backend }}
+      run: |
+        docker run -d --name backend -p 6379:6379 ${{ matrix.backend }}
+        timeout 30 bash -c 'until (echo > /dev/tcp/127.0.0.1/6379) 2>/dev/null; do sleep 0.5; done'
 
     - name: Run tests
       run: |
@@ -101,10 +103,11 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install ./eventhub-pyclient
 
-    - name: Start Redis
-      uses: supercharge/redis-github-action@1.1.0
-      with:
-        redis-version: 7
+    # The Helm chart's default backend gets end-to-end coverage.
+    - name: Start Valkey
+      run: |
+        docker run -d --name backend -p 6379:6379 valkey/valkey:9
+        timeout 30 bash -c 'until (echo > /dev/tcp/127.0.0.1/6379) 2>/dev/null; do sleep 0.5; done'
 
     - name: Run e2e tests
       run: |
