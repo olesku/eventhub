@@ -156,6 +156,12 @@ def start_eventhub(
 def add_pyclient_to_path():
     import sys
 
+    try:
+        import eventhub_client  # noqa: F401  # already installed as a package
+        return
+    except ImportError:
+        pass
+
     env_path = os.environ.get("EVENTHUB_PYCLIENT_PATH")
     if env_path:
         sys.path.insert(0, env_path)
