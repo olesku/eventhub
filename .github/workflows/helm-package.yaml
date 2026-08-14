@@ -1,0 +1,112 @@
+name: Package and push Helm chart
+
+# Reusable workflow: stamps the chart version/appVersion from the release tag so
+# the chart follows the eventhub application version, then packages and pushes it
+# to GHCR as an OCI artifact. The chart is published under a separate `charts/`
+# path so it does not collide with the container image at ghcr.io/<owner>/eventhub.
+on:
+  workflow_call:
+    inputs:
+      release_version:
+        description: "Release version, e.g. v1.5.0 (the leading 'v' is stripped). Validated by the caller."
+        required: true
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  package-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@fe7b79cd5ee1e45176fcad797de68ecaf3ca4814 # v4.2.0
+        with:
+          version: v3.19.5
+
+      - name: Log in to GHCR (Helm OCI)
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$GHCR_TOKEN" \
+            | helm registry login "$REGISTRY" --username "$GHCR_USER" --password-stdin
+
+      - name: Stamp chart version from tag
+        working-directory: charts/eventhub
+        env:
+          RELEASE_VERSION: ${{ inputs.release_version }}
+        run: |
+          set -euo pipefail
+          version="${RELEASE_VERSION#v}"
+          # Defense in depth: the caller validates the tag, but re-check with the
+          # same canonical SemVer before interpolating into sed so a malformed
+          # value cannot corrupt Chart.yaml.
+          semver='(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)'
+          prerelease='(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*'
+          if ! printf '%s' "$version" | grep -Eq "^${semver}(-${prerelease})?$"; then
+            echo "::error::Refusing to stamp invalid chart version '$version'."
+            exit 1
+          fi
+          sed -i -E "s|^version:[[:space:]].*|version: ${version}|" Chart.yaml
+          sed -i -E "s|^appVersion:[[:space:]].*|appVersion: ${version}|" Chart.yaml
+          echo "Chart.yaml version/appVersion:"
+          grep -E '^(version|appVersion):' Chart.yaml
+
+      - name: Build dependencies, lint and smoke-test chart
+        run: |
+          set -euo pipefail
+          # Resolve the Valkey dependency pinned in Chart.lock. The dependency is
+          # an OCI reference, so Helm fetches it directly — no `helm repo add`
+          # needed. `charts/` is gitignored, so this does pull over the network
+          # (from GHCR) at release time.
+          helm dependency build charts/eventhub
+
+          # Gate the release: lint and render representative configurations so
+          # template bugs fail here rather than shipping a broken chart.
+          # jwtSecret has no default (a known signing key would be insecure), so
+          # provide one for lint/render.
+          helm lint charts/eventhub --set jwtSecret.value=ci
+          helm template smoke charts/eventhub --set jwtSecret.value=ci >/dev/null
+          helm template smoke charts/eventhub --set jwtSecret.value=ci --set replicas=2 >/dev/null
+          helm template smoke charts/eventhub --set jwtSecret.value=ci \
+            --set https.enabled=true --set https.tls.existingSecret=tls >/dev/null
+          helm template smoke charts/eventhub --set-string jwtSecret.existingSecret.name=eh-jwt >/dev/null
+          helm template smoke charts/eventhub --set jwtSecret.value=ci --set ingress.enabled=true \
+            --set 'ingress.hosts[0].host=eh.example.com' \
+            --set 'ingress.hosts[0].paths[0].path=/' \
+            --set 'ingress.hosts[0].paths[0].pathType=Prefix' >/dev/null
+
+      - name: Package and push chart
+        env:
+          RELEASE_VERSION: ${{ inputs.release_version }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          version="${RELEASE_VERSION#v}"
+          owner="$(printf '%s' "$OWNER" | tr '[:upper:]' '[:lower:]')"
+          oci_repo="oci://${REGISTRY}/${owner}/charts"
+
+          mkdir -p /tmp/chart
+          helm package charts/eventhub -d /tmp/chart
+
+          pkg="/tmp/chart/eventhub-${version}.tgz"
+          echo "Pushing ${pkg} to ${oci_repo}"
+          helm push "${pkg}" "${oci_repo}"
+
+          {
+            echo "## Helm chart published"
+            echo ""
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| Chart | eventhub |"
+            echo "| Version / appVersion | ${version} |"
+            echo "| OCI ref | ${oci_repo#oci://}/eventhub:${version} |"
+          } >> "$GITHUB_STEP_SUMMARY"
