@@ -8,6 +8,7 @@ set(SOURCES
   src/RedisTest.cpp
   src/AccessControllerTest.cpp
   src/UtilTest.cpp
+  src/WebsocketParserTest.cpp
   src/KVStoreTest.cpp
   src/main.cpp
 )

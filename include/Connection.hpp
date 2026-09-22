@@ -62,7 +62,7 @@ public:
   std::vector<std::string> listSubscriptions();
 
   void onHTTPRequest(http::ParserCallback callback);
-  void onWebsocketRequest(websocket::ParserCallback callback);
+  void onWebsocketRequest(websocket::ParserCallbacks callbacks);
 
   void shutdownAfterFlush();
   void shutdown();

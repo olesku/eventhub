@@ -23,6 +23,7 @@
 #include <string>
 #include <atomic>
 #include <type_traits>
+#include <utility>
 
 #include "Common.hpp"
 #include "Config.hpp"
@@ -264,16 +265,21 @@ ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin, bool ssl)
     http::Handler::HandleRequest(HandlerContext(_config, _server, this, c), req, reqState);
   });
 
-  // Set up websocket request callback.
-  client->onWebsocketRequest([this, wptrClient](websocket::ParserStatus status,
-                                                    websocket::FrameType frameType,
-                                                    const std::string& data) {
+  // Set up WebSocket message and protocol-error callbacks.
+  websocket::ParserCallbacks callbacks;
+  callbacks.onMessage = [this, wptrClient](websocket::FrameType frameType, const std::string& data) {
     auto c = wptrClient.lock();
-    if (!c)
+    if (!c || c->isShutdown())
       return;
-    websocket::Handler::HandleRequest(HandlerContext(_config, _server, this, c),
-                                      status, frameType, data);
-  });
+    websocket::Handler::HandleRequest(HandlerContext(_config, _server, this, c), frameType, data);
+  };
+  callbacks.onError = [this, wptrClient](websocket::ParserError error) {
+    auto c = wptrClient.lock();
+    if (!c || c->isShutdown())
+      return;
+    websocket::Handler::HandleError(HandlerContext(_config, _server, this, c), error);
+  };
+  client->onWebsocketRequest(std::move(callbacks));
 
   client->assignConnectionListIterator(connectionIterator);
   int ret = client->addToEpoll((EPOLLIN | EPOLLRDHUP | EPOLLHUP | EPOLLERR));

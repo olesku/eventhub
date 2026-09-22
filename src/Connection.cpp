@@ -8,6 +8,7 @@
 #include <spdlog/logger.h>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -51,7 +52,7 @@ Connection::Connection(int fd, struct sockaddr_in* csin, Worker* worker, Config&
   LOG->trace("Client {} connected.", getIP());
 
   _http_parser = std::make_unique<http::Parser>();
-  _websocket_parser = std::make_unique<websocket::Parser>();
+  _websocket_parser = std::make_unique<websocket::Parser>(MAX_DATA_FRAME_SIZE);
   _access_controller = std::make_unique<AccessController>(cfg);
 
   // Set initial state.
@@ -140,7 +141,7 @@ void Connection::_parseRequest(std::size_t bytesRead) {
       break;
 
     case ConnectionState::WEBSOCKET:
-      _websocket_parser->parse(_read_buffer.data(), bytesRead);
+      _websocket_parser->parse(std::string_view(_read_buffer.data(), bytesRead));
       break;
 
     default:
@@ -281,8 +282,8 @@ ConnectionState Connection::getState() {
   return _state;
 }
 
-void Connection::onWebsocketRequest(websocket::ParserCallback callback) {
-  _websocket_parser->setCallback(callback);
+void Connection::onWebsocketRequest(websocket::ParserCallbacks callbacks) {
+  _websocket_parser->setCallbacks(std::move(callbacks));
 }
 
 void Connection::onHTTPRequest(http::ParserCallback callback) {

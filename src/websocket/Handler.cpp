@@ -18,32 +18,11 @@ namespace websocket {
 
 /**
  * Process incoming websocket requests and call the correct handlers.
- * @param parserStatus Websocket parser status.
- * @param frameType Websoket request frame type.
+ * @param frameType WebSocket message or control frame type.
  * @param data Request data.
  * @param ctx HandlerContext (server, worker, client).
  */
-void Handler::HandleRequest(HandlerContext&& ctx, ParserStatus parserStatus, FrameType frameType,
-                            const std::string& data) {
-  switch (parserStatus) {
-    case ParserStatus::PARSER_OK:
-      break;
-
-    case ParserStatus::MAX_DATA_FRAME_SIZE_EXCEEDED:
-      LOG->debug("Client {} exceeded max data frame size, hanging up.", ctx.connection()->getIP());
-      Response::sendData(ctx.connection(), "", websocket::FrameType::CLOSE_FRAME);
-      ctx.connection()->shutdown();
-      return;
-      break;
-
-    case ParserStatus::MAX_CONTROL_FRAME_SIZE_EXCEEDED:
-      LOG->debug("Client {} exceeded max control frame size, hanging up.", ctx.connection()->getIP());
-      Response::sendData(ctx.connection(), "", websocket::FrameType::CLOSE_FRAME);
-      ctx.connection()->shutdown();
-      return;
-      break;
-  }
-
+void Handler::HandleRequest(HandlerContext&& ctx, FrameType frameType, const std::string& data) {
   switch (frameType) {
     case FrameType::TEXT_FRAME:
       _handleTextFrame(ctx, data);
@@ -61,12 +40,26 @@ void Handler::HandleRequest(HandlerContext&& ctx, ParserStatus parserStatus, Fra
       break;
 
     case FrameType::CLOSE_FRAME:
-      ctx.connection()->shutdown();
+      Response::sendData(ctx.connection(), data, FrameType::CLOSE_FRAME);
+      ctx.connection()->shutdownAfterFlush();
       break;
 
     case FrameType::CONTINUATION_FRAME:
       break;
   }
+}
+
+void Handler::HandleError(HandlerContext&& ctx, ParserError error) {
+  LOG->debug("WebSocket error from {}: {}. Closing connection.", ctx.connection()->getIP(), errorMessage(error));
+  std::uint16_t closeCode = 1002; // Protocol error.
+  if (error == ParserError::MESSAGE_TOO_BIG) {
+    closeCode = 1009;
+  } else if (error == ParserError::INVALID_UTF8) {
+    closeCode = 1007;
+  }
+  const std::string payload{static_cast<char>(closeCode >> 8), static_cast<char>(closeCode & 0xff)};
+  Response::sendData(ctx.connection(), payload, FrameType::CLOSE_FRAME);
+  ctx.connection()->shutdownAfterFlush();
 }
 
 /**
