@@ -10,11 +10,7 @@ test: release
 asan:
 	mkdir -p build-asan
 	cd build-asan && cmake -GNinja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-		-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
-		-DCMAKE_C_FLAGS="-O1 -g -fsanitize=address -fno-omit-frame-pointer" \
-		-DCMAKE_CXX_FLAGS="-O1 -g -fsanitize=address -fno-omit-frame-pointer" \
-		-DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address" \
-		-DCMAKE_SHARED_LINKER_FLAGS="-fsanitize=address" .. && ninja -j0
+		-DEVENTHUB_SANITIZER=address .. && ninja -j0
 
 asan-test: asan
 	cd build-asan && env LD_LIBRARY_PATH="$(PWD)/build-asan:/usr/local/lib:/usr/lib" ./eventhub_tests
@@ -22,11 +18,7 @@ asan-test: asan
 tsan:
 	mkdir -p build-tsan
 	cd build-tsan && cmake -GNinja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-		-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
-		-DCMAKE_C_FLAGS="-O1 -g -fsanitize=thread -fno-omit-frame-pointer" \
-		-DCMAKE_CXX_FLAGS="-O1 -g -fsanitize=thread -fno-omit-frame-pointer" \
-		-DCMAKE_EXE_LINKER_FLAGS="-fsanitize=thread" \
-		-DCMAKE_SHARED_LINKER_FLAGS="-fsanitize=thread" .. && ninja -j0
+		-DEVENTHUB_SANITIZER=thread .. && ninja -j0
 
 tsan-test: tsan
 	cd build-tsan && env LD_LIBRARY_PATH="$(PWD)/build-tsan:/usr/local/lib:/usr/lib" ./eventhub_tests

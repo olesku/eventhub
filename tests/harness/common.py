@@ -6,6 +6,7 @@ import os
 import random
 import socket
 import subprocess
+import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -84,25 +85,54 @@ def wait_tcp_open(host, port, timeout=5.0):
 class ManagedProcess:
     process: subprocess.Popen
     name: str
+    log_path: Path
 
     def stop(self):
         if self.process is None:
             return
-        if self.process.poll() is not None:
-            return
-        self.process.terminate()
-        try:
-            self.process.wait(timeout=5)
-        except Exception:
-            self.process.kill()
+        exited_early = self.process.poll() is not None
+        if not exited_early:
+            self.process.terminate()
+            try:
+                self.process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self.process.kill()
+                self.process.wait(timeout=5)
+
+        log = self.log_path.read_text(errors="replace") if self.log_path.exists() else ""
+        sanitizer_markers = (
+            "AddressSanitizer",
+            "ThreadSanitizer",
+            "UndefinedBehaviorSanitizer",
+            "runtime error:",
+        )
+        sanitizer_failure = next((marker for marker in sanitizer_markers if marker in log), None)
+        if sanitizer_failure:
+            raise RuntimeError(
+                f"{self.name} reported {sanitizer_failure}; log retained at {self.log_path}"
+            )
+        if exited_early and self.process.returncode != 0:
+            raise RuntimeError(
+                f"{self.name} exited unexpectedly with {self.process.returncode}; "
+                f"log retained at {self.log_path}"
+            )
+
+
+def _start_logged_process(args, name, env=None, quiet=True):
+    log_file = tempfile.NamedTemporaryFile(
+        mode="w+b", prefix=f"eventhub-{name}-", suffix=".log", delete=False
+    )
+    log_path = Path(log_file.name)
+    process = subprocess.Popen(args, env=env, stdout=log_file, stderr=subprocess.STDOUT)
+    log_file.close()
+    if not quiet:
+        print(f"{name} log: {log_path}")
+    return ManagedProcess(process, name, log_path)
 
 
 def start_redis(redis_bin="redis-server", port=None, quiet=True):
     if port is None:
         port = pick_free_port()
-
-    stdout = subprocess.DEVNULL if quiet else None
-    stderr = subprocess.DEVNULL if quiet else None
 
     args = [
         redis_bin,
@@ -116,8 +146,7 @@ def start_redis(redis_bin="redis-server", port=None, quiet=True):
         "/tmp",
     ]
 
-    proc = subprocess.Popen(args, stdout=stdout, stderr=stderr)
-    return ManagedProcess(proc, "redis"), port
+    return _start_logged_process(args, "redis", quiet=quiet), port
 
 
 def start_eventhub(
@@ -146,11 +175,7 @@ def start_eventhub(
         }
     )
 
-    stdout = subprocess.DEVNULL if quiet else None
-    stderr = subprocess.DEVNULL if quiet else None
-
-    proc = subprocess.Popen([eventhub_bin], env=env, stdout=stdout, stderr=stderr)
-    return ManagedProcess(proc, "eventhub")
+    return _start_logged_process([eventhub_bin], "eventhub", env=env, quiet=quiet)
 
 
 def add_pyclient_to_path():

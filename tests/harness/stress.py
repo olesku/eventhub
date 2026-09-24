@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+from collections import Counter
 import random
 import time
 from pathlib import Path
@@ -85,18 +86,22 @@ async def run_stress(args):
     lock = asyncio.Lock()
     expected = args.subscribers * args.publishers * args.messages
     received = 0
+    received_ids = Counter()
+    malformed = 0
 
     async def on_msg(topic, message):
-        nonlocal received
+        nonlocal received, malformed
         try:
-            ts_str, _ = message.split(":", 1)
+            ts_str, publisher_id, sequence, _ = message.split(":", 3)
             latency_ns = time.time_ns() - int(ts_str)
         except Exception:
+            malformed += 1
             return
 
         async with lock:
             stats.add(latency_ns)
             received += 1
+            received_ids[f"{publisher_id}:{sequence}"] += 1
             if received >= expected:
                 done.set()
 
@@ -106,7 +111,7 @@ async def run_stress(args):
     publishers = []
     payload = "x" * max(0, args.payload_bytes)
 
-    async def publisher_task():
+    async def publisher_task(publisher_id):
         client = Eventhub(args.url, token)
         await client.connect()
 
@@ -114,17 +119,17 @@ async def run_stress(args):
         if args.rate > 0:
             delay = 1.0 / args.rate
 
-        for _ in range(args.messages):
+        for sequence in range(args.messages):
             ts = time.time_ns()
-            msg = f"{ts}:{payload}"
+            msg = f"{ts}:{publisher_id}:{sequence}:{payload}"
             await client.publish(args.topic, msg)
             if delay > 0:
                 await asyncio.sleep(delay)
 
         await client.disconnect()
 
-    for _ in range(args.publishers):
-        publishers.append(asyncio.create_task(publisher_task()))
+    for publisher_id in range(args.publishers):
+        publishers.append(asyncio.create_task(publisher_task(publisher_id)))
 
     start = time.time()
     try:
@@ -154,6 +159,24 @@ async def run_stress(args):
             f"  avg_ms: {summary['avg_ms']:.3f} p50_ms: {summary['p50_ms']:.3f} "
             f"p95_ms: {summary['p95_ms']:.3f} p99_ms: {summary['p99_ms']:.3f} "
             f"min_ms: {summary['min_ms']:.3f} max_ms: {summary['max_ms']:.3f}"
+        )
+
+    expected_ids = {
+        f"{publisher_id}:{sequence}"
+        for publisher_id in range(args.publishers)
+        for sequence in range(args.messages)
+    }
+    missing = expected_ids - received_ids.keys()
+    wrong_counts = {
+        message_id: count
+        for message_id, count in received_ids.items()
+        if message_id not in expected_ids or count != args.subscribers
+    }
+    if received != expected or malformed or missing or wrong_counts:
+        raise AssertionError(
+            "stress delivery integrity failed: "
+            f"received={received}/{expected}, malformed={malformed}, "
+            f"missing_ids={len(missing)}, wrong_id_counts={len(wrong_counts)}"
         )
 
 

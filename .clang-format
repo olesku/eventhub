@@ -12,7 +12,6 @@ SpacesInAngles: false
 AllowShortBlocksOnASingleLine: true
 AlignConsecutiveAssignments: true
 AlignOperands: true
-AlignTrailingComments: true
 SpaceInEmptyParentheses: false
 UseTab: Never
 DerivePointerAlignment: false
