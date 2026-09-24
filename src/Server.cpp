@@ -435,7 +435,19 @@ void Server::stop() {
     _server_socket_ssl = -1;
   }
 
-  _connection_workers.killAndDeleteAll();
+  {
+    std::lock_guard<std::mutex> lock(_connection_workers_lock);
+    _connection_workers.stopAll();
+  }
+
+  // Workers can finish callbacks that take the workers lock, so joins must
+  // happen without holding it. Once all threads have stopped, take the lock
+  // again before invalidating the registry observed by metrics readers.
+  _connection_workers.joinAll();
+  {
+    std::lock_guard<std::mutex> lock(_connection_workers_lock);
+    _connection_workers.clear();
+  }
   _ssl_ctx.reset();
 }
 

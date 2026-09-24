@@ -51,7 +51,7 @@ protected:
 template <class T>
 class WorkerGroup {
 public:
-  WorkerGroup() = default;
+  WorkerGroup()  = default;
   ~WorkerGroup() = default;
   using iterator = typename worker_list_t<T>::iterator;
 
@@ -61,17 +61,28 @@ public:
   }
 
   void killAndDeleteAll() {
+    stopAll();
+    joinAll();
+    clear();
+  }
+
+  void stopAll() {
     for (auto& wrk : _workers) {
       if (wrk->thread().joinable()) {
         wrk->stop();
       }
     }
+  }
+
+  void joinAll() {
     for (auto& wrk : _workers) {
       if (wrk->thread().joinable()) {
         wrk->thread().join();
       }
     }
+  }
 
+  void clear() {
     _workers.clear();
   }
 
