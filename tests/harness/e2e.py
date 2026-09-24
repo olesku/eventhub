@@ -1,7 +1,13 @@
 import argparse
 import asyncio
+import http.client
+import socket
+import ssl
+import subprocess
+import tempfile
 import time
 from pathlib import Path
+from urllib.parse import quote, urlparse
 
 from common import (
     add_pyclient_to_path,
@@ -16,6 +22,70 @@ from common import (
 add_pyclient_to_path()
 
 from eventhub_client import Eventhub
+
+
+def test_http_compatibility(url, token, tls_ca):
+    parsed = urlparse(url)
+
+    def request(method, path, headers=None):
+        if parsed.scheme == "wss":
+            context = ssl.create_default_context(cafile=tls_ca)
+            connection = http.client.HTTPSConnection(parsed.hostname, parsed.port, context=context, timeout=5)
+        else:
+            connection = http.client.HTTPConnection(parsed.hostname, parsed.port, timeout=5)
+        connection.request(method, path, headers=headers or {})
+        response = connection.getresponse()
+        return connection, response
+
+    for method, path, expected in (
+        ("gEt", "/healthz", 200),
+        ("OPTIONS", "/healthz", 204),
+        ("GET", "/metrics?format=json", 200),
+    ):
+        connection, response = request(method, path)
+        body = response.read()
+        if response.status != expected:
+            raise AssertionError(f"HTTP {method} {path}: expected {expected}, got {response.status}")
+        if path.startswith("/metrics") and b'"queued_output_bytes"' not in body:
+            raise AssertionError("JSON metrics are missing output backpressure counters")
+        connection.close()
+
+    auth = f"?auth={quote(token)}" if token else ""
+    connection, response = request(
+        "GET", f"/e2e/sse{auth}", headers={"Accept": "text/event-stream"}
+    )
+    if response.status != 200 or response.getheader("content-type") != "text/event-stream":
+        raise AssertionError(f"SSE handshake failed with status {response.status}")
+    connection.close()
+
+    rpc = b'{"jsonrpc":"2.0","id":1,"method":"ping","params":{}}'
+    mask = b"\x01\x02\x03\x04"
+    masked = bytes(value ^ mask[index % 4] for index, value in enumerate(rpc))
+    frame = bytes((0x81, 0x80 | len(rpc))) + mask + masked
+    raw = socket.create_connection((parsed.hostname, parsed.port), timeout=5)
+    if parsed.scheme == "wss":
+        context = ssl.create_default_context(cafile=tls_ca)
+        raw = context.wrap_socket(raw, server_hostname=parsed.hostname)
+    raw.settimeout(5)
+    target = f"/?auth={quote(token)}" if token else "/"
+    upgrade = (
+        f"GET {target} HTTP/1.1\r\n"
+        f"Host: {parsed.hostname}:{parsed.port}\r\n"
+        "Upgrade: websocket\r\n"
+        "Connection: Upgrade\r\n"
+        "Sec-WebSocket-Version: 13\r\n"
+        "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n"
+    ).encode("ascii")
+    raw.sendall(upgrade + frame)
+    received = b""
+    while b"\r\n\r\n" not in received or not received.split(b"\r\n\r\n", 1)[1]:
+        chunk = raw.recv(4096)
+        if not chunk:
+            raise AssertionError("connection closed before the coalesced WebSocket response")
+        received += chunk
+    raw.close()
+    if not received.startswith(b"HTTP/1.1 101"):
+        raise AssertionError("coalesced WebSocket upgrade didn't return HTTP 101")
 
 
 async def test_basic(client):
@@ -51,6 +121,19 @@ async def test_patterns(client):
     await asyncio.wait_for(event_single.wait(), timeout=5)
 
 
+async def test_large_message(client):
+    event = asyncio.Event()
+    payload = "large:" + ("x" * 70000)
+
+    async def on_msg(topic, message):
+        if topic == "e2e/large" and message == payload:
+            event.set()
+
+    await client.subscribe("e2e/large", on_msg)
+    await client.publish("e2e/large", payload)
+    await asyncio.wait_for(event.wait(), timeout=10)
+
+
 async def test_eventlog(client):
     now_ms = int(time.time() * 1000)
     await client.publish("e2e/eventlog", "m1", {"timestamp": now_ms, "ttl": 60})
@@ -77,7 +160,9 @@ async def test_data_integrity(
     message_count=100,
     timeout=10,
     noise_count=10,
+    connect_kwargs=None,
 ):
+    connect_kwargs = connect_kwargs or {}
     topic_suffix = int(time.time() * 1000)
     topic = f"e2e/integrity/{topic_suffix}"
     other_topic = f"{topic}/other"
@@ -104,12 +189,12 @@ async def test_data_integrity(
         return on_msg
 
     publisher = Eventhub(url, token)
-    await publisher.connect()
+    await publisher.connect(**connect_kwargs)
 
     try:
         for i in range(subscriber_count):
             client = Eventhub(url, token)
-            await client.connect()
+            await client.connect(**connect_kwargs)
             subscribers.append(client)
             handler = make_handler(i, topic)
             await client.subscribe(topic, handler)
@@ -164,7 +249,8 @@ async def test_data_integrity(
             await client.disconnect()
 
 
-async def test_wildcard_topic_integrity(url, token, timeout=10, messages_per_topic=5):
+async def test_wildcard_topic_integrity(url, token, timeout=10, messages_per_topic=5, connect_kwargs=None):
+    connect_kwargs = connect_kwargs or {}
     topic_suffix = int(time.time() * 1000)
     base = f"e2e/wildcard/{topic_suffix}"
     cases = [
@@ -221,12 +307,12 @@ async def test_wildcard_topic_integrity(url, token, timeout=10, messages_per_top
         return on_msg
 
     publisher = Eventhub(url, token)
-    await publisher.connect()
+    await publisher.connect(**connect_kwargs)
 
     try:
         for idx, case in enumerate(cases):
             client = Eventhub(url, token)
-            await client.connect()
+            await client.connect(**connect_kwargs)
             subscribers.append(client)
             expected_topics = {t for t in topics if filter_matches(case["pattern"], t)}
             expected_count = len(expected_topics) * messages_per_topic
@@ -297,16 +383,31 @@ async def run_e2e(args):
             write=["e2e/#", "kv/#"],
         )
 
+    await asyncio.to_thread(test_http_compatibility, args.url, token, args.tls_ca)
+
+    connect_kwargs = {}
+    if args.tls_ca:
+        connect_kwargs["ssl"] = ssl.create_default_context(cafile=args.tls_ca)
+        untrusted = Eventhub(args.url, token)
+        try:
+            await untrusted.connect(ssl=ssl.create_default_context())
+        except (ssl.SSLError, OSError):
+            pass
+        else:
+            await untrusted.disconnect()
+            raise AssertionError("WSS connection unexpectedly accepted an untrusted certificate")
+
     client = Eventhub(args.url, token)
-    await client.connect()
+    await client.connect(**connect_kwargs)
 
     await test_basic(client)
     await test_patterns(client)
+    await test_large_message(client)
     await test_eventlog(client)
     await test_kvstore(client)
     if args.check_data_integrity:
-        await test_data_integrity(args.url, token)
-        await test_wildcard_topic_integrity(args.url, token)
+        await test_data_integrity(args.url, token, connect_kwargs=connect_kwargs)
+        await test_wildcard_topic_integrity(args.url, token, connect_kwargs=connect_kwargs)
 
     await client.disconnect()
 
@@ -322,12 +423,15 @@ def parse_args():
     parser.add_argument("--jwt-secret", default="eventhub_secret")
     parser.add_argument("--check-data-integrity", action="store_true", help="Verify per-subscriber message integrity")
     parser.add_argument("--verbose", action="store_true")
+    parser.add_argument("--with-tls", action="store_true", help="Start and verify a local WSS listener")
+    parser.add_argument("--tls-ca", default="", help="CA file used to verify an external WSS URL")
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
     managed = []
+    certificate_directory = None
 
     try:
         if args.start_redis:
@@ -342,6 +446,23 @@ def main():
                 repo_root = Path(__file__).resolve().parents[2]
                 args.eventhub_bin = str(repo_root / "build" / "eventhub")
             port = pick_free_port()
+            certificate = ""
+            private_key = ""
+            if args.with_tls:
+                certificate_directory = tempfile.TemporaryDirectory(prefix="eventhub-tls-")
+                certificate = str(Path(certificate_directory.name) / "server.crt")
+                private_key = str(Path(certificate_directory.name) / "server.key")
+                subprocess.run(
+                    [
+                        "openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
+                        "-days", "1", "-subj", "/CN=localhost",
+                        "-addext", "subjectAltName=DNS:localhost,IP:127.0.0.1",
+                        "-keyout", private_key, "-out", certificate,
+                    ],
+                    check=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
             eventhub_proc = start_eventhub(
                 args.eventhub_bin,
                 port=port,
@@ -349,13 +470,24 @@ def main():
                 redis_port=redis_port,
                 disable_auth=not args.with_auth,
                 enable_cache=True,
+                enable_sse=True,
                 enable_kvstore=True,
                 jwt_secret=args.jwt_secret,
+                enable_ssl=args.with_tls,
+                ssl_port=port if args.with_tls else None,
+                ssl_certificate=certificate,
+                ssl_private_key=private_key,
+                disable_unsecure_listener=args.with_tls,
                 quiet=not args.verbose,
             )
             managed.append(eventhub_proc)
-            wait_http_ok("127.0.0.1", port)
-            args.url = f"ws://127.0.0.1:{port}"
+            if args.with_tls:
+                wait_tcp_open("127.0.0.1", port)
+                args.url = f"wss://127.0.0.1:{port}"
+                args.tls_ca = certificate
+            else:
+                wait_http_ok("127.0.0.1", port)
+                args.url = f"ws://127.0.0.1:{port}"
 
         if not args.url:
             args.url = "ws://127.0.0.1:8080"
@@ -365,6 +497,8 @@ def main():
     finally:
         for proc in reversed(managed):
             proc.stop()
+        if certificate_directory is not None:
+            certificate_directory.cleanup()
 
 
 if __name__ == "__main__":

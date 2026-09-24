@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <fstream>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -10,6 +11,28 @@
 using namespace eventhub;
 
 using Catch::Matchers::Contains;
+
+namespace {
+class ScopedEnvironmentClear {
+public:
+  explicit ScopedEnvironmentClear(const char* name) : _name(name) {
+    if (const char* value = getenv(name))
+      _value = value;
+    unsetenv(name);
+  }
+
+  ~ScopedEnvironmentClear() {
+    if (_value)
+      setenv(_name.c_str(), _value->c_str(), 1);
+    else
+      unsetenv(_name.c_str());
+  }
+
+private:
+  std::string _name;
+  std::optional<std::string> _value;
+};
+}
 
 TEST_CASE("Config test") {
   SECTION("Test numbers") {
@@ -212,6 +235,8 @@ TEST_CASE("Config test") {
   }
 
   SECTION("Test ConfigMap") {
+    ScopedEnvironmentClear redisHost("REDIS_HOST");
+    ScopedEnvironmentClear redisPort("REDIS_PORT");
     ConfigMap cfgMap = {
       { "listen_port",              ConfigValueType::INT,    "8080",      ConfigValueSettings::REQUIRED },
       { "worker_threads",           ConfigValueType::INT,    "0",         ConfigValueSettings::REQUIRED },

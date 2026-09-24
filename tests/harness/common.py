@@ -159,6 +159,11 @@ def start_eventhub(
     enable_sse=False,
     enable_kvstore=True,
     jwt_secret="eventhub_secret",
+    enable_ssl=False,
+    ssl_port=None,
+    ssl_certificate="",
+    ssl_private_key="",
+    disable_unsecure_listener=False,
     quiet=True,
 ):
     env = os.environ.copy()
@@ -172,8 +177,20 @@ def start_eventhub(
             "ENABLE_SSE": "true" if enable_sse else "false",
             "ENABLE_KVSTORE": "true" if enable_kvstore else "false",
             "JWT_SECRET": jwt_secret,
+            "ENABLE_SSL": "true" if enable_ssl else "false",
+            "DISABLE_UNSECURE_LISTENER": "true" if disable_unsecure_listener else "false",
         }
     )
+    if enable_ssl:
+        env.update(
+            {
+                "SSL_LISTEN_PORT": str(ssl_port),
+                "SSL_CERTIFICATE": ssl_certificate,
+                "SSL_PRIVATE_KEY": ssl_private_key,
+            }
+        )
+    if not quiet:
+        env["LOG_LEVEL"] = "trace"
 
     return _start_logged_process([eventhub_bin], "eventhub", env=env, quiet=quiet)
 

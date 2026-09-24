@@ -14,6 +14,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       matrix:
         # Both documented backends: docker-compose uses Redis, the Helm chart
@@ -56,8 +57,50 @@ jobs:
       run: |
         ./build/eventhub_tests
 
+  sanitizer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        sanitizer: [address, thread]
+
+    steps:
+    - name: Git checkout
+      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+    - name: Install required packages
+      run: sudo apt-get -f install git cmake ninja-build libhiredis-dev libssl-dev libfmt-dev libspdlog-dev
+
+    - name: Build and install redis-plus-plus library
+      run: |
+        git clone https://github.com/sewenew/redis-plus-plus.git
+        git -C redis-plus-plus checkout a63ac43bf192772910b52e27cd2b42a6098a0071
+        cmake -S redis-plus-plus -B redis-plus-plus/build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+        cmake --build redis-plus-plus/build --parallel 2
+        sudo cmake --install redis-plus-plus/build
+
+    - name: Build Eventhub with ${{ matrix.sanitizer }} sanitizer
+      run: |
+        cmake -S . -B build-sanitizer -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+          -DEVENTHUB_SANITIZER=${{ matrix.sanitizer }}
+        cmake --build build-sanitizer --parallel 2
+
+    - name: Start Redis
+      run: |
+        docker run -d --name backend -p 6379:6379 redis:7
+        timeout 30 bash -c 'until (echo > /dev/tcp/127.0.0.1/6379) 2>/dev/null; do sleep 0.5; done'
+
+    - name: Run sanitized tests
+      env:
+        ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+        UBSAN_OPTIONS: halt_on_error=1
+        TSAN_OPTIONS: halt_on_error=1
+      run: ctest --test-dir build-sanitizer --output-on-failure --timeout 180
+
   e2e:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: build
 
     steps:
@@ -68,7 +111,7 @@ jobs:
       uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       with:
         repository: olesku/eventhub-pyclient
-        ref: master
+        ref: 2f82ee36c27a01c2038e6b0da8d1736ffac9e9ce
         path: eventhub-pyclient
 
     - name: Log eventhub-pyclient commit
@@ -118,3 +161,6 @@ jobs:
       run: |
         LD_LIBRARY_PATH=$GITHUB_WORKSPACE/build:/usr/local/lib:/usr/lib \
         python tests/harness/e2e.py --start-eventhub --check-data-integrity --with-auth
+
+        LD_LIBRARY_PATH=$GITHUB_WORKSPACE/build:/usr/local/lib:/usr/lib \
+        python tests/harness/e2e.py --start-eventhub --check-data-integrity --with-auth --with-tls

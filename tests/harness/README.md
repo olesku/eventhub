@@ -21,6 +21,14 @@ With auth:
 python tests/harness/e2e.py --start-redis --start-eventhub --with-auth
 ```
 
+With a generated one-day test certificate and verified WSS connection:
+```bash
+python tests/harness/e2e.py --start-redis --start-eventhub --with-tls --with-auth --check-data-integrity
+```
+
+Child stdout/stderr is retained in an `eventhub-*.log` file under the system
+temporary directory. Unexpected exits and sanitizer diagnostics fail the run.
+
 ## Stress
 ```bash
 python tests/harness/stress.py --start-redis --start-eventhub --subscribers 100 --publishers 2 --messages 1000
