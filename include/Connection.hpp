@@ -15,8 +15,6 @@
 
 #include "Forward.hpp"
 #include "EventhubBase.hpp"
-#include "websocket/Types.hpp"
-#include "http/Types.hpp"
 #include "jsonrpc/jsonrpcpp.hpp"
 
 namespace eventhub {
@@ -61,8 +59,9 @@ public:
   std::size_t unsubscribeAll();
   std::vector<std::string> listSubscriptions();
 
-  void onHTTPRequest(http::ParserCallback callback);
-  void onWebsocketRequest(websocket::ParserCallbacks callbacks);
+  // Non-owning access; the HTTP parser is destroyed on WebSocket upgrade.
+  http::Parser* getHttpParser() { return _http_parser.get(); }
+  websocket::Parser* getWebSocketParser() { return _websocket_parser.get(); }
 
   void shutdownAfterFlush();
   void shutdown();

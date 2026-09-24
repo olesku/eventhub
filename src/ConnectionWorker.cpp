@@ -6,6 +6,7 @@
 #include "ConnectionWorker.hpp"
 #include "Logger.hpp"
 #include "http/Parser.hpp"
+#include "websocket/Parser.hpp"
 #include "websocket/Types.hpp"
 #ifdef __linux__
 #include <sys/epoll.h>
@@ -258,7 +259,8 @@ ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin, bool ssl)
   std::weak_ptr<Connection> wptrClient(client);
 
   // Set up HTTP request callback.
-  client->onHTTPRequest([this, wptrClient](http::Parser* req, http::RequestState reqState) {
+  auto* httpParser = client->getHttpParser();
+  httpParser->setCallback([this, wptrClient](http::Parser* req, http::RequestState reqState) {
     auto c = wptrClient.lock();
     if (!c)
       return;
@@ -279,7 +281,8 @@ ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin, bool ssl)
       return;
     websocket::Handler::HandleError(HandlerContext(_config, _server, this, c), error);
   };
-  client->onWebsocketRequest(std::move(callbacks));
+  auto* websocketParser = client->getWebSocketParser();
+  websocketParser->setCallbacks(std::move(callbacks));
 
   client->assignConnectionListIterator(connectionIterator);
   int ret = client->addToEpoll((EPOLLIN | EPOLLRDHUP | EPOLLHUP | EPOLLERR));

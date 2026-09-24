@@ -282,14 +282,6 @@ ConnectionState Connection::getState() {
   return _state;
 }
 
-void Connection::onWebsocketRequest(websocket::ParserCallbacks callbacks) {
-  _websocket_parser->setCallbacks(std::move(callbacks));
-}
-
-void Connection::onHTTPRequest(http::ParserCallback callback) {
-  _http_parser->setCallback(callback);
-}
-
 AccessController* Connection::getAccessController() {
   return _access_controller.get();
 }
