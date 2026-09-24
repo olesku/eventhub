@@ -6,9 +6,9 @@
 #include <unordered_map>
 #include <utility>
 
-#include "Forward.hpp"
 #include "Common.hpp"
 #include "Connection.hpp"
+#include "Forward.hpp"
 #include "Topic.hpp"
 #include "jsonrpc/jsonrpcpp.hpp"
 
@@ -18,9 +18,9 @@ using TopicList = std::unordered_map<std::string, TopicPtr>;
 
 class TopicManager final {
 public:
-  std::pair<TopicPtr, TopicSubscriberList::iterator> subscribeConnection(ConnectionPtr conn, const std::string& topicFilter, const jsonrpcpp::Id subscriptionRequestId);
+  std::pair<TopicPtr, SubscriptionId> subscribeConnection(ConnectionPtr connection, const std::string& topicFilter, const jsonrpcpp::Id subscriptionRequestId);
   void publish(const std::string& topicName, const std::string& data);
-  void deleteTopic(const std::string& topicFilter);
+  void deleteTopic(const std::string& topicFilter, const TopicPtr& expectedTopic);
 
   static bool isValidTopic(const std::string& topicName);
   static bool isValidTopicFilter(const std::string& filterName);

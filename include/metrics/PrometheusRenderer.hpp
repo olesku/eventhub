@@ -11,10 +11,8 @@ namespace metrics {
 
 class PrometheusRenderer final {
 public:
-  static const std::string RenderMetrics(Server* server);
+  static const std::string RenderMetrics(const AggregatedMetrics& metrics, const Config& config);
 };
 
 } // namespace metrics
 } // namespace eventhub
-
-

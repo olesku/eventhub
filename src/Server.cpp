@@ -1,39 +1,39 @@
+#include <atomic>
+#include <chrono>
 #include <errno.h>
 #include <fcntl.h>
+#include <fmt/format.h>
+#include <initializer_list>
+#include <list>
+#include <memory>
+#include <mutex>
 #include <netinet/in.h>
 #include <openssl/err.h>
-#include <signal.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <fmt/format.h>
 #include <openssl/pem.h>
 #include <openssl/ssl3.h>
 #include <openssl/tls1.h>
+#include <signal.h>
 #include <spdlog/logger.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <sw/redis++/errors.h>
-#include <unistd.h>
-#include <atomic>
-#include <chrono>
-#include <memory>
-#include <mutex>
+#include <stdlib.h>
+#include <string.h>
 #include <string>
-#include <initializer_list>
-#include <list>
+#include <sw/redis++/errors.h>
+#include <sys/socket.h>
 #include <thread>
+#include <unistd.h>
 #include <vector>
 
-#include "Server.hpp"
 #include "Common.hpp"
 #include "Config.hpp"
-#include "Util.hpp"
-#include "jwt/json/json.hpp"
-#include "metrics/Types.hpp"
 #include "ConnectionWorker.hpp"
 #include "KVStore.hpp"
 #include "Logger.hpp"
+#include "Server.hpp"
+#include "Util.hpp"
+#include "jwt/json/json.hpp"
+#include "metrics/Types.hpp"
 
 namespace eventhub {
 
@@ -41,7 +41,7 @@ std::atomic<bool> stopEventhub{false};
 std::atomic<bool> reloadEventhub{false};
 
 unsigned const char alpn_protocol[] = "http/1.1";
-std::size_t alpn_protocol_length   = 8;
+std::size_t alpn_protocol_length    = 8;
 
 Server::Server(Config& cfg)
     : _config(cfg),
@@ -50,7 +50,6 @@ Server::Server(Config& cfg)
       _ssl_enabled(false),
       _ssl_ctx(nullptr, SSL_CTX_free),
       _redis(cfg) {
-
 }
 
 Server::~Server() {
@@ -79,10 +78,13 @@ void Server::start() {
     _initSSL();
   }
 
+  // Handler contexts borrow this service, so it must outlive and predate workers.
+  _kv_store = std::make_unique<KVStore>(_config, _redis);
+
   // Start the connection workers.
   _connection_workers_lock.lock();
 
- unsigned int numWorkerThreads = config().get<int>("worker_threads") == 0 ? std::thread::hardware_concurrency() : config().get<int>("worker_threads");
+  unsigned int numWorkerThreads = config().get<int>("worker_threads") == 0 ? std::thread::hardware_concurrency() : config().get<int>("worker_threads");
 
   for (unsigned i = 0; i < numWorkerThreads; i++) {
     _connection_workers.addWorker(std::make_unique<Worker>(this, i + 1));
@@ -136,9 +138,6 @@ void Server::start() {
   // Connect to redis.
   _redis.psubscribe("*", cb);
 
-  // Instanciate KVStore.
-  _kv_store = std::make_unique<KVStore>(_config, _redis);
-
   // Add cache purge cronjob if cache functionality is enabled.
   if (config().get<bool>("enable_cache")) {
     _ev.addTimer(
@@ -163,9 +162,7 @@ void Server::start() {
 
   // Monitor ssl certificate and key for changes on disk and reload if updated.
   if (isSSL() && config().get<bool>("ssl_cert_auto_reload")) {
-    _ev.addTimer(1000 * config().get<int>("ssl_cert_check_interval"), [&](TimerCtx* ctx) {
-      _checkSSLCertUpdated();
-    }, true);
+    _ev.addTimer(1000 * config().get<int>("ssl_cert_check_interval"), [&](TimerCtx* ctx) { _checkSSLCertUpdated(); }, true);
   }
 
   bool reconnect = false;
@@ -293,7 +290,7 @@ void Server::_initSSL() {
   _sslListenerInit();
 
   const SSL_METHOD* method = TLS_server_method();
-  _ssl_ctx = SSL_CTX_ptr(SSL_CTX_new(method), SSL_CTX_free);
+  _ssl_ctx                 = SSL_CTX_ptr(SSL_CTX_new(method), SSL_CTX_free);
 
   if (_ssl_ctx == nullptr) {
     LOG->critical("Could not initialize SSL context: {}", Util::getSSLErrorString(ERR_get_error()));
@@ -346,7 +343,7 @@ void Server::_loadSSLCertificates() {
     exit(EXIT_FAILURE);
   }
 
-  _ssl_cert_md5_hash = Util::getFileMD5Sum(cert);
+  _ssl_cert_md5_hash     = Util::getFileMD5Sum(cert);
   _ssl_priv_key_md5_hash = Util::getFileMD5Sum(key);
 }
 
@@ -354,9 +351,9 @@ void Server::_checkSSLCertUpdated() {
   assert(isSSL());
 
   try {
-    const std::string ssl_cert_md5_hash = Util::getFileMD5Sum(config().get<std::string>("ssl_certificate"));
+    const std::string ssl_cert_md5_hash     = Util::getFileMD5Sum(config().get<std::string>("ssl_certificate"));
     const std::string ssl_priv_key_md5_hash = Util::getFileMD5Sum(config().get<std::string>("ssl_private_key"));
-    bool reload = false;
+    bool reload                             = false;
 
     if (ssl_cert_md5_hash != _ssl_cert_md5_hash) {
       LOG->info("Change to certificate file " + config().get<std::string>("ssl_certificate") + " detected.");
@@ -395,7 +392,7 @@ void Server::_checkSSLCertUpdated() {
       LOG->info("Reloading SSL certificate and private key.");
       _loadSSLCertificates();
     }
-  } catch(...) {
+  } catch (...) {
     // getFileMD5Sum throws a runtime_error if file has been deleted.
     // TODO: We might want to handle this case, for now return no change.
   }
@@ -403,6 +400,9 @@ void Server::_checkSSLCertUpdated() {
 
 Worker* Server::getWorker() {
   std::lock_guard<std::mutex> lock(_connection_workers_lock);
+  if (_stopped.load(std::memory_order_acquire) || _connection_workers.begin() == _connection_workers.end()) {
+    return nullptr;
+  }
   if (_cur_worker == _connection_workers.end()) {
     _cur_worker = _connection_workers.begin();
   }
@@ -412,16 +412,28 @@ Worker* Server::getWorker() {
 
 void Server::publish(const std::string& topicName, const std::string& data) {
   std::lock_guard<std::mutex> lock(_connection_workers_lock);
+  if (_stopped.load(std::memory_order_acquire)) {
+    return;
+  }
   for (auto& worker : _connection_workers.getWorkerList()) {
     worker->publish(topicName, data);
   }
 }
 
 void Server::stop() {
-  close(_server_socket);
+  if (_stopped.exchange(true, std::memory_order_acq_rel)) {
+    return;
+  }
 
-  if (isSSL())
+  if (_server_socket != -1) {
+    close(_server_socket);
+    _server_socket = -1;
+  }
+
+  if (_server_socket_ssl != -1) {
     close(_server_socket_ssl);
+    _server_socket_ssl = -1;
+  }
 
   _connection_workers.killAndDeleteAll();
   _ssl_ctx.reset();
@@ -443,6 +455,9 @@ metrics::AggregatedMetrics Server::getAggregatedMetrics() {
     m.total_connect_count += wrkM.total_connect_count.load();
     m.total_disconnect_count += wrkM.total_disconnect_count.load();
     m.eventloop_delay_ms += wrkM.eventloop_delay_ms.load();
+    m.queued_output_bytes += wrkM.queued_output_bytes.load();
+    m.congested_connections += wrkM.congested_connections.load();
+    m.slow_consumer_closes += wrkM.slow_consumer_closes.load();
   }
 
   const auto workerCount = _connection_workers.getWorkerList().size();

@@ -1,19 +1,19 @@
-#include <spdlog/logger.h>
-#include <stdint.h>
-#include <memory>
-#include <string>
-#include <utility>
 #include <exception>
 #include <initializer_list>
+#include <memory>
+#include <spdlog/logger.h>
+#include <stdint.h>
+#include <string>
+#include <utility>
 #include <vector>
 
-#include "Topic.hpp"
 #include "Connection.hpp"
+#include "Logger.hpp"
+#include "Topic.hpp"
+#include "jwt/json/json.hpp"
 #include "sse/Response.hpp"
 #include "websocket/Response.hpp"
 #include "websocket/Types.hpp"
-#include "Logger.hpp"
-#include "jwt/json/json.hpp"
 
 namespace eventhub {
 Topic::~Topic() {}
@@ -23,9 +23,11 @@ Topic::~Topic() {}
  * @param conn Connection to add.
  * @param subscriptionRequestId ID from JSONRPC call to publish().
  */
-TopicSubscriberList::iterator Topic::addSubscriber(ConnectionPtr conn, const jsonrpcpp::Id subscriptionRequestId) {
+SubscriptionId Topic::addSubscriber(ConnectionPtr connection, const jsonrpcpp::Id subscriptionRequestId) {
   std::lock_guard<std::mutex> lock(_subscriber_lock);
-  return _subscriber_list.insert(_subscriber_list.begin(), std::make_pair(ConnectionWeakPtr(conn), subscriptionRequestId));
+  const auto id = _next_subscription_id++;
+  _subscriber_list.push_front(TopicSubscriber{id, connection, subscriptionRequestId});
+  return id;
 }
 
 /**
@@ -33,25 +35,32 @@ TopicSubscriberList::iterator Topic::addSubscriber(ConnectionPtr conn, const jso
  * @param data Message to publish.
  */
 void Topic::publish(const std::string& data) {
-  std::lock_guard<std::mutex> lock(_subscriber_lock);
   nlohmann::json jsonData;
+  std::vector<TopicSubscriber> subscribers;
 
   try {
     jsonData = nlohmann::json::parse(data);
+    {
+      std::lock_guard<std::mutex> lock(_subscriber_lock);
+      subscribers.assign(_subscriber_list.begin(), _subscriber_list.end());
+    }
 
-    for (auto subscriber : _subscriber_list) {
-      auto c = subscriber.first.lock();
+    for (const auto& subscriber : subscribers) {
+      if (!hasSubscriber(subscriber.id)) {
+        continue;
+      }
+      auto connection = subscriber.connection.lock();
 
-      if (!c || c->isShutdown()) {
+      if (!connection || connection->isShutdown()) {
         continue;
       }
 
-      if (c->getState() == ConnectionState::WEBSOCKET) {
-        websocket::Response::sendData(c,
-                                      jsonrpcpp::Response(subscriber.second, jsonData).to_json().dump(),
+      if (connection->protocol() == ConnectionProtocol::WEBSOCKET) {
+        websocket::Response::sendData(connection,
+                                      jsonrpcpp::Response(subscriber.requestId, jsonData).to_json().dump(),
                                       websocket::FrameType::TEXT_FRAME);
-      } else if (c->getState() == ConnectionState::SSE) {
-        sse::Response::sendEvent(c, jsonData["id"], jsonData["message"]);
+      } else if (connection->protocol() == ConnectionProtocol::SSE) {
+        sse::Response::sendEvent(connection, jsonData["id"], jsonData["message"]);
       }
     }
   }
@@ -67,9 +76,25 @@ void Topic::publish(const std::string& data) {
  * @param it Iterator pointing to the subscriber to be deleted.
  *           This is obtained by call to addSubscriber.
  */
-void Topic::deleteSubscriberByIterator(TopicSubscriberList::iterator it) {
+bool Topic::deleteSubscriber(SubscriptionId id) {
   std::lock_guard<std::mutex> lock(_subscriber_lock);
-  _subscriber_list.erase(it);
+  for (auto iterator = _subscriber_list.begin(); iterator != _subscriber_list.end(); ++iterator) {
+    if (iterator->id == id) {
+      _subscriber_list.erase(iterator);
+      return true;
+    }
+  }
+  return false;
+}
+
+bool Topic::hasSubscriber(SubscriptionId id) {
+  std::lock_guard<std::mutex> lock(_subscriber_lock);
+  for (const auto& subscriber : _subscriber_list) {
+    if (subscriber.id == id) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**

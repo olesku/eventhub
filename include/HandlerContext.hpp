@@ -1,30 +1,34 @@
 #pragma once
 
+#include <functional>
 #include <memory>
 
-#include "Forward.hpp"
-#include "EventhubBase.hpp"
 #include "Config.hpp"
+#include "EventhubBase.hpp"
+#include "Forward.hpp"
+#include "metrics/Types.hpp"
 
 namespace eventhub {
 
 class HandlerContext final : public EventhubBase {
 public:
-  HandlerContext(Config& cfg, Server* server, Worker* worker, std::shared_ptr<Connection> connection) :
-    EventhubBase(cfg), _server(server), _worker(worker), _connection(connection) {};
+  HandlerContext(Config& config, Redis& redis, KVStore& kvStore,
+                 std::function<metrics::AggregatedMetrics()> metricsSnapshot,
+                 std::shared_ptr<Connection> connection) : EventhubBase(config), _redis(redis), _kv_store(kvStore),
+                                                           _metrics_snapshot(std::move(metricsSnapshot)), _connection(std::move(connection)) {}
 
   ~HandlerContext() {}
 
-  Server* server() { return _server; }
-  Worker* worker() { return _worker; }
+  Redis& redis() { return _redis; }
+  KVStore& kvStore() { return _kv_store; }
+  metrics::AggregatedMetrics metricsSnapshot() { return _metrics_snapshot(); }
   std::shared_ptr<Connection> connection() { return _connection; }
 
 private:
-  Server* _server;
-  Worker* _worker;
+  Redis& _redis;
+  KVStore& _kv_store;
+  std::function<metrics::AggregatedMetrics()> _metrics_snapshot;
   std::shared_ptr<Connection> _connection;
 };
 
 } // namespace eventhub
-
-

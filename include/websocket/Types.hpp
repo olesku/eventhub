@@ -30,6 +30,17 @@ enum class ParserError {
   INVALID_UTF8
 };
 
+enum class ParseStatus {
+  ACTIVE,
+  CLOSED,
+  FAILED
+};
+
+struct ParseResult {
+  std::size_t consumed;
+  ParseStatus status;
+};
+
 [[nodiscard]] std::string_view errorMessage(ParserError error) noexcept;
 
 struct ParserCallbacks {

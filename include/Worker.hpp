@@ -1,7 +1,7 @@
 #pragma once
 
+#include <atomic>
 #include <chrono>
-#include <future>
 #include <list>
 #include <memory>
 #include <thread>
@@ -11,9 +11,7 @@ using worker_list_t = std::list<std::unique_ptr<T>>;
 
 class WorkerBase {
 public:
-  WorkerBase() {
-    _stop_requested_future = _stop_requested.get_future();
-  }
+  WorkerBase() = default;
 
   virtual ~WorkerBase() {}
 
@@ -32,31 +30,29 @@ public:
   }
 
   bool stopRequested() {
-    if (_stop_requested_future.wait_for(std::chrono::milliseconds(0)) == std::future_status::timeout) {
-      return false;
-    }
-
-    return true;
+    return _stop_requested.load(std::memory_order_acquire);
   }
 
   void stop() {
-    _stop_requested.set_value();
+    if (!_stop_requested.exchange(true, std::memory_order_acq_rel)) {
+      _wakeForStop();
+    }
   }
 
 private:
   std::thread _thread;
-  std::promise<void> _stop_requested;
-  std::future<void> _stop_requested_future;
+  std::atomic<bool> _stop_requested{false};
 
 protected:
   virtual void _workerMain() {}
+  virtual void _wakeForStop() {}
 };
 
 template <class T>
 class WorkerGroup {
 public:
-  WorkerGroup<T>() {}
-  ~WorkerGroup<T>() {}
+  WorkerGroup() = default;
+  ~WorkerGroup() = default;
   using iterator = typename worker_list_t<T>::iterator;
 
   void addWorker(std::unique_ptr<T> worker) {
@@ -68,6 +64,10 @@ public:
     for (auto& wrk : _workers) {
       if (wrk->thread().joinable()) {
         wrk->stop();
+      }
+    }
+    for (auto& wrk : _workers) {
+      if (wrk->thread().joinable()) {
         wrk->thread().join();
       }
     }
@@ -90,4 +90,3 @@ public:
 private:
   worker_list_t<T> _workers;
 };
-

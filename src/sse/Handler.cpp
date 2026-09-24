@@ -1,9 +1,10 @@
-#include <stdint.h>
+#include <initializer_list>
 #include <memory>
+#include <stdint.h>
 #include <string>
 #include <vector>
-#include <initializer_list>
 
+#include "AccessController.hpp"
 #include "Config.hpp"
 #include "Connection.hpp"
 #include "HandlerContext.hpp"
@@ -11,25 +12,24 @@
 #include "Server.hpp"
 #include "TopicManager.hpp"
 #include "Util.hpp"
-#include "sse/Handler.hpp"
-#include "sse/Response.hpp"
-#include "AccessController.hpp"
 #include "http/Request.hpp"
 #include "jwt/json/json.hpp"
+#include "sse/Handler.hpp"
+#include "sse/Response.hpp"
 
 namespace eventhub {
 namespace sse {
 
 void Handler::handleRequest(HandlerContext& ctx, const http::Request& request) {
-  auto conn               = ctx.connection();
-  auto& redis             = ctx.server()->getRedis();
-  auto accessController   = conn->getAccessController();
+  auto conn             = ctx.connection();
+  auto& redis           = ctx.redis();
+  auto accessController = conn->getAccessController();
 
   auto path        = Util::uriDecode(request.path());
   auto lastEventId = request.header("Last-Event-ID");
   auto sinceStr    = request.queryParameter("since");
   auto limitStr    = request.queryParameter("limit");
-  long long limit  = ctx.server()->config().get<int>("max_cache_request_limit");
+  long long limit  = ctx.config().get<int>("max_cache_request_limit");
 
   if (path.at(0) == '/') {
     path = path.substr(1, std::string::npos);
@@ -56,14 +56,17 @@ void Handler::handleRequest(HandlerContext& ctx, const http::Request& request) {
     try {
       auto limitParam = std::stoull(limitStr, nullptr, 10);
 
-      if (limitParam < (unsigned long long)ctx.server()->config().get<int>("max_cache_request_limit")) {
+      if (limitParam < (unsigned long long)ctx.config().get<int>("max_cache_request_limit")) {
         limit = limitParam;
       }
     } catch (...) {}
   }
 
   Response::ok(conn);
-  conn->setState(ConnectionState::SSE);
+  if (!conn->startEventStream()) {
+    conn->close();
+    return;
+  }
   conn->subscribe(path, 0);
 
   // Send cache if requested.

@@ -1,39 +1,48 @@
 #pragma once
 
-#include <netinet/in.h>
-#include <stdint.h>
-#include <sys/epoll.h>
-#include <sys/socket.h>
 #include <ctime>
+#include <deque>
 #include <functional>
 #include <list>
 #include <memory>
 #include <mutex>
+#include <netinet/in.h>
+#include <optional>
+#include <stdint.h>
 #include <string>
+#include <sys/epoll.h>
+#include <sys/socket.h>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
-#include "Forward.hpp"
 #include "EventhubBase.hpp"
+#include "Forward.hpp"
+#include "Transport.hpp"
 #include "http/Types.hpp"
 #include "jsonrpc/jsonrpcpp.hpp"
 #include "websocket/Types.hpp"
 
 namespace eventhub {
-using ConnectionPtr          = std::shared_ptr<Connection>;
-using ConnectionWeakPtr      = std::weak_ptr<Connection>;
-using ConnectionListIterator = std::list<ConnectionPtr>::iterator;
+using ConnectionPtr     = std::shared_ptr<Connection>;
+using ConnectionWeakPtr = std::weak_ptr<Connection>;
+using ConnectionId      = std::uint64_t;
 
-enum class ConnectionState {
+enum class ConnectionProtocol {
   HTTP,
   WEBSOCKET,
   SSE
 };
 
+enum class ConnectionLifecycle {
+  OPEN,
+  DRAINING,
+  CLOSED
+};
+
 struct TopicSubscription {
   std::shared_ptr<Topic> topic;
-  std::list<std::pair<ConnectionWeakPtr, jsonrpcpp::Id>>::iterator topicListIterator;
+  std::uint64_t subscriptionId;
   jsonrpcpp::Id rpcSubscriptionRequestId;
 };
 
@@ -48,21 +57,24 @@ struct ConnectionCallbacks {
 
 class Connection : public EventhubBase, public std::enable_shared_from_this<Connection> {
 public:
-  Connection(int fd, struct sockaddr_in* csin, Worker* worker, Config& cfg, ConnectionCallbacks callbacks);
+  Connection(ConnectionId id, std::unique_ptr<Transport> transport, const struct sockaddr_in& address,
+             Worker* worker, Config& cfg, ConnectionCallbacks callbacks);
   virtual ~Connection();
 
-  void write(const std::string& data);
+  bool write(const std::string& data);
   virtual void read();
   virtual ssize_t flushSendBuffer();
+  void handleEvents(std::uint32_t events);
 
-  int addToEpoll(uint32_t epollEvents);
+  int addToEpoll(uint32_t epollEvents, std::uint64_t token);
   int removeFromEpoll();
 
-  ConnectionState setState(ConnectionState newState);
-  ConnectionState getState();
+  bool upgradeToWebSocket();
+  bool startEventStream();
+  ConnectionProtocol protocol() const noexcept { return _protocol; }
+  ConnectionLifecycle lifecycle() const noexcept { return _lifecycle; }
   AccessController* getAccessController();
-  void assignConnectionListIterator(std::list<ConnectionPtr>::iterator connectionIterator);
-  ConnectionListIterator getConnectionListIterator();
+  ConnectionId id() const noexcept { return _id; }
   ConnectionPtr getSharedPtr();
   const std::string getIP();
 
@@ -71,30 +83,48 @@ public:
   std::size_t unsubscribeAll();
   std::vector<std::string> listSubscriptions();
 
-  void shutdownAfterFlush();
-  void shutdown();
-  bool isShutdown() { return _is_shutdown; }
+  void closeAfterFlush();
+  void close();
+  bool isShutdown() const noexcept { return _lifecycle == ConnectionLifecycle::CLOSED; }
 
 protected:
-  int _fd;
+  int socketFd() const noexcept { return _transport->fd(); }
+  ConnectionId _id;
+  std::unique_ptr<Transport> _transport;
   struct sockaddr_in _csin;
   Worker* _worker;
   struct epoll_event _epoll_event;
-  std::string _write_buffer;
+  std::deque<std::string> _write_queue;
+  std::size_t _write_offset{0};
+  std::size_t _queued_bytes{0};
+  bool _congested{false};
   std::vector<char> _read_buffer;
   std::mutex _write_lock;
   std::mutex _subscription_list_lock;
   std::unique_ptr<AccessController> _access_controller;
-  ConnectionState _state;
-  bool _is_shutdown;
+  ConnectionProtocol _protocol{ConnectionProtocol::HTTP};
+  ConnectionLifecycle _lifecycle{ConnectionLifecycle::OPEN};
+  std::optional<ConnectionProtocol> _pending_protocol;
   bool _is_shutdown_after_flush;
-  std::list<std::shared_ptr<Connection>>::iterator _connection_list_iterator;
+  bool _drain_timer_started{false};
   std::unordered_map<std::string, TopicSubscription> _subscribedTopics;
 
   void _enableEpollOut();
   void _disableEpollOut();
-  std::size_t _pruneWriteBuffer(std::size_t bytes);
+  bool _advanceHandshake();
+  enum class PendingIo {
+    NONE,
+    HANDSHAKE,
+    READ,
+    WRITE
+  };
+  PendingIo _pending_io{PendingIo::NONE};
+  IoWait _pending_wait{IoWait::NONE};
+
+  void _setTransportWait(IoWait wait, PendingIo operation);
+  void _updateCongestion();
   void _parseRequest(std::size_t bytesRead);
+  void _applyPendingProtocol();
 
 private:
   ConnectionCallbacks _callbacks;

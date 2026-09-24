@@ -1,14 +1,14 @@
 #include <fmt/format.h>
-#include <stdint.h>
-#include <memory>
-#include <string>
 #include <initializer_list>
+#include <memory>
+#include <stdint.h>
+#include <string>
 #include <vector>
 
-#include "sse/Response.hpp"
-#include "http/Response.hpp"
 #include "Connection.hpp"
+#include "http/Response.hpp"
 #include "jwt/json/json.hpp"
+#include "sse/Response.hpp"
 
 namespace eventhub {
 namespace sse {
@@ -45,7 +45,7 @@ void Response::error(ConnectionPtr conn, const std::string& message, unsigned in
 
   http::Response resp(statusCode, fmt::format("{}\n", j.dump()));
   conn->write(resp.get());
-  conn->shutdownAfterFlush();
+  conn->closeAfterFlush();
 }
 
 } // namespace sse

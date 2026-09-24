@@ -1,54 +1,51 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <netinet/tcp.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <unistd.h>
-#include <spdlog/logger.h>
 #include <memory>
+#include <netinet/tcp.h>
+#include <spdlog/logger.h>
+#include <string.h>
 #include <string>
 #include <string_view>
+#include <sys/socket.h>
+#include <unistd.h>
 #include <utility>
 #include <vector>
 
-#include "Forward.hpp"
-#include "Connection.hpp"
+#include "AccessController.hpp"
 #include "Common.hpp"
+#include "Connection.hpp"
 #include "ConnectionWorker.hpp"
+#include "Forward.hpp"
+#include "Logger.hpp"
 #include "Topic.hpp"
 #include "TopicManager.hpp"
 #include "http/Parser.hpp"
 #include "websocket/Parser.hpp"
-#include "AccessController.hpp"
-#include "Logger.hpp"
 
 namespace eventhub {
 
-Connection::Connection(int fd, struct sockaddr_in* csin, Worker* worker, Config& cfg,
-                       ConnectionCallbacks callbacks) :
-  EventhubBase(cfg), _fd(fd), _worker(worker), _callbacks(std::move(callbacks)) {
-
-  _is_shutdown             = false;
+Connection::Connection(ConnectionId id, std::unique_ptr<Transport> transport, const struct sockaddr_in& address,
+                       Worker* worker, Config& cfg, ConnectionCallbacks callbacks) : EventhubBase(cfg), _id(id), _transport(std::move(transport)), _csin(address),
+                                                                                     _worker(worker), _callbacks(std::move(callbacks)) {
   _is_shutdown_after_flush = false;
 
-  memcpy(&_csin, csin, sizeof(struct sockaddr_in));
   int flag = 1;
 
   // Set socket to non-blocking.
-  fcntl(fd, F_SETFL, O_NONBLOCK);
+  fcntl(socketFd(), F_SETFL, O_NONBLOCK);
 
   // Set KEEPALIVE on socket.
-  setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast<char*>(&flag), sizeof(int));
+  setsockopt(socketFd(), SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast<char*>(&flag), sizeof(int));
 
 // If we have TCP_USER_TIMEOUT set it to 10 seconds.
 #ifdef TCP_USER_TIMEOUT
   int timeout = 10000;
-  setsockopt(fd, SOL_TCP, TCP_USER_TIMEOUT, reinterpret_cast<char*>(&timeout), sizeof(timeout));
+  setsockopt(socketFd(), SOL_TCP, TCP_USER_TIMEOUT, reinterpret_cast<char*>(&timeout), sizeof(timeout));
 #endif
 
   // Set TCP_NODELAY on socket.
-  setsockopt(_fd, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<char*>(&flag), sizeof(int));
+  setsockopt(socketFd(), IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<char*>(&flag), sizeof(int));
 
   LOG->trace("Client {} connected.", getIP());
 
@@ -76,11 +73,8 @@ Connection::Connection(int fd, struct sockaddr_in* csin, Worker* worker, Config&
       _callbacks.onWebSocketError(*this, error);
     }
   };
-  _websocket_parser = std::make_unique<websocket::Parser>(MAX_DATA_FRAME_SIZE, std::move(websocketCallbacks));
+  _websocket_parser  = std::make_unique<websocket::Parser>(MAX_DATA_FRAME_SIZE, std::move(websocketCallbacks));
   _access_controller = std::make_unique<AccessController>(cfg);
-
-  // Set initial state.
-  setState(ConnectionState::HTTP);
 
   _read_buffer.resize(NET_READ_BUFFER_SIZE);
 }
@@ -88,8 +82,23 @@ Connection::Connection(int fd, struct sockaddr_in* csin, Worker* worker, Config&
 Connection::~Connection() {
   LOG->trace("Client {} disconnected.", getIP());
 
-  close(_fd);
+  if (_queued_bytes != 0) {
+    _worker->removeQueuedOutputBytes(_queued_bytes);
+  }
+  if (_congested) {
+    _worker->setConnectionCongested(false);
+  }
   unsubscribeAll();
+}
+
+void Connection::_updateCongestion() {
+  if (!_congested && _queued_bytes >= NET_WRITE_BUFFER_HIGH) {
+    _congested = true;
+    _worker->setConnectionCongested(true);
+  } else if (_congested && _queued_bytes <= NET_WRITE_BUFFER_LOW) {
+    _congested = false;
+    _worker->setConnectionCongested(false);
+  }
 }
 
 /**
@@ -98,7 +107,7 @@ Connection::~Connection() {
 void Connection::_enableEpollOut() {
   if (_worker->getEpollFileDescriptor() != -1 && !(_epoll_event.events & EPOLLOUT)) {
     _epoll_event.events |= EPOLLOUT;
-    epoll_ctl(_worker->getEpollFileDescriptor(), EPOLL_CTL_MOD, _fd, &_epoll_event);
+    epoll_ctl(_worker->getEpollFileDescriptor(), EPOLL_CTL_MOD, socketFd(), &_epoll_event);
   }
 }
 
@@ -108,25 +117,75 @@ void Connection::_enableEpollOut() {
 void Connection::_disableEpollOut() {
   if (_worker->getEpollFileDescriptor() != -1 && (_epoll_event.events & EPOLLOUT)) {
     _epoll_event.events &= ~EPOLLOUT;
-    epoll_ctl(_worker->getEpollFileDescriptor(), EPOLL_CTL_MOD, _fd, &_epoll_event);
+    epoll_ctl(_worker->getEpollFileDescriptor(), EPOLL_CTL_MOD, socketFd(), &_epoll_event);
   }
 }
 
-/**
- * Remove n bytes from the beginning og the write buffer.
- */
-std::size_t Connection::_pruneWriteBuffer(std::size_t bytes) {
-  if (_write_buffer.length() < 1) {
-    return 0;
+void Connection::_setTransportWait(IoWait wait, PendingIo operation) {
+  _pending_io   = wait == IoWait::NONE ? PendingIo::NONE : operation;
+  _pending_wait = wait;
+  if (wait == IoWait::WRITE) {
+    _enableEpollOut();
+  } else if (wait == IoWait::READ) {
+    _disableEpollOut();
+  }
+}
+
+bool Connection::_advanceHandshake() {
+  if (_transport->ready()) {
+    if (_pending_io == PendingIo::HANDSHAKE) {
+      _pending_io   = PendingIo::NONE;
+      _pending_wait = IoWait::NONE;
+    }
+    return true;
+  }
+  const auto result = _transport->handshake();
+  if (result.status == IoStatus::ERROR || result.status == IoStatus::EOF_REACHED) {
+    close();
+    return false;
+  }
+  _setTransportWait(result.wait, PendingIo::HANDSHAKE);
+  if (_transport->ready()) {
+    _pending_io   = PendingIo::NONE;
+    _pending_wait = IoWait::NONE;
+  }
+  return _transport->ready();
+}
+
+void Connection::handleEvents(std::uint32_t events) {
+  if (isShutdown()) {
+    return;
   }
 
-  if (bytes >= _write_buffer.length()) {
-    _write_buffer.clear();
-    return 0;
+  bool handledRead  = false;
+  bool handledWrite = false;
+  if (_pending_io == PendingIo::HANDSHAKE && (events & (EPOLLIN | EPOLLOUT))) {
+    if (!_advanceHandshake()) {
+      return;
+    }
+  } else if (_pending_io == PendingIo::WRITE &&
+             ((_pending_wait == IoWait::READ && (events & EPOLLIN)) ||
+              (_pending_wait == IoWait::WRITE && (events & EPOLLOUT)))) {
+    flushSendBuffer();
+    handledWrite = true;
+  } else if (_pending_io == PendingIo::READ &&
+             ((_pending_wait == IoWait::READ && (events & EPOLLIN)) ||
+              (_pending_wait == IoWait::WRITE && (events & EPOLLOUT)))) {
+    read();
+    handledRead = true;
   }
 
-  _write_buffer = _write_buffer.substr(bytes, std::string::npos);
-  return _write_buffer.length();
+  if (_pending_io == PendingIo::WRITE || _pending_io == PendingIo::READ ||
+      _pending_io == PendingIo::HANDSHAKE) {
+    return;
+  }
+
+  if (!isShutdown() && (events & EPOLLOUT) && !handledWrite) {
+    flushSendBuffer();
+  }
+  if (!isShutdown() && (events & EPOLLIN) && !handledRead) {
+    read();
+  }
 }
 
 /**
@@ -140,67 +199,97 @@ void Connection::read() {
   // Keep the backing storage intact so _read_buffer.data() never dangles; we
   // previously cleared the vector here, which left ::read() writing through a
   // null pointer on some STL implementations.
-  ssize_t bytesRead = ::read(_fd, _read_buffer.data(), _read_buffer.size());
-
-  if (bytesRead <= 0) {
-    if (errno != EAGAIN) {
-      shutdown();
-    }
-
+  if (!_advanceHandshake()) {
     return;
   }
-
-  _parseRequest(bytesRead);
+  do {
+    const auto result = _transport->read(_read_buffer.data(), _read_buffer.size());
+    if (result.status == IoStatus::PROGRESS) {
+      _pending_io   = PendingIo::NONE;
+      _pending_wait = IoWait::NONE;
+      _parseRequest(result.bytes);
+    } else if (result.status == IoStatus::WOULD_BLOCK) {
+      _setTransportWait(result.wait, PendingIo::READ);
+      return;
+    } else {
+      close();
+      return;
+    }
+  } while (!isShutdown() && _transport->hasPendingRead());
 }
 
 /**
  * Parse the request present in our read buffer and call the correct handler.
  */
 void Connection::_parseRequest(std::size_t bytesRead) {
-  // Redirect request to either HTTP handler or websocket handler
-  // based on which state the client is in.
-  switch (getState()) {
-    case ConnectionState::HTTP:
-      _http_parser->parse(_read_buffer.data(), bytesRead);
-      // A request callback may upgrade the protocol. Keep the parser alive
-      // until that callback and parse() have both returned.
-      if (getState() != ConnectionState::HTTP) {
-        _http_parser.reset();
+  std::string_view input(_read_buffer.data(), bytesRead);
+  while (!input.empty() && !isShutdown()) {
+    if (_protocol == ConnectionProtocol::HTTP) {
+      const auto result = _http_parser->parse(input.data(), input.size());
+      input.remove_prefix(result.consumed);
+      _applyPendingProtocol();
+      if (_protocol == ConnectionProtocol::HTTP || result.status != http::ParseStatus::COMPLETE) {
+        break;
       }
-      break;
+      continue;
+    }
 
-    case ConnectionState::WEBSOCKET:
-      _websocket_parser->parse(std::string_view(_read_buffer.data(), bytesRead));
-      break;
+    if (_protocol == ConnectionProtocol::WEBSOCKET) {
+      const auto result = _websocket_parser->parse(input);
+      input.remove_prefix(result.consumed);
+      if (result.status != websocket::ParseStatus::ACTIVE || result.consumed == 0) {
+        break;
+      }
+      continue;
+    }
 
-    default:
-      LOG->debug("Connection {} has invalid state, disconnecting.", getIP());
-      shutdown();
+    // SSE is server-to-client only. Client application bytes are unsupported.
+    LOG->debug("SSE connection {} sent unexpected input, disconnecting.", getIP());
+    close();
+    break;
   }
+}
+
+void Connection::_applyPendingProtocol() {
+  if (!_pending_protocol) {
+    return;
+  }
+  _protocol = *_pending_protocol;
+  _pending_protocol.reset();
+  _http_parser.reset();
 }
 
 /**
  * Add data to send buffer and enable EPOLLOUT on the socket.
  */
-void Connection::write(const std::string& data) {
+bool Connection::write(const std::string& data) {
   std::lock_guard<std::mutex> lock(_write_lock);
 
   if (isShutdown()) {
-    return;
+    return false;
   }
 
-  if ((_write_buffer.length() + data.length()) > NET_WRITE_BUFFER_MAX) {
-    _write_buffer.clear();
-    shutdown();
+  if (data.length() > NET_WRITE_BUFFER_MAX - _queued_bytes) {
+    _worker->removeQueuedOutputBytes(_queued_bytes);
+    _write_queue.clear();
+    _write_offset = 0;
+    _queued_bytes = 0;
+    _updateCongestion();
+    _worker->recordSlowConsumerClose();
+    close();
     LOG->error("Client {} exceeded max write buffer size of {}.", getIP(), NET_WRITE_BUFFER_MAX);
-    return;
+    return false;
   }
 
-  _write_buffer.append(data);
+  _write_queue.push_back(data);
+  _queued_bytes += data.size();
+  _worker->addQueuedOutputBytes(data.size());
+  _updateCongestion();
 
-  if (!_write_buffer.empty()) {
+  if (!_write_queue.empty()) {
     flushSendBuffer();
   }
+  return true;
 }
 
 /**
@@ -208,43 +297,65 @@ void Connection::write(const std::string& data) {
  * This function is only called when we have an EPOLLOUT event.
  **/
 ssize_t Connection::flushSendBuffer() {
-  if (_write_buffer.empty() || isShutdown()) {
+  if (isShutdown()) {
     _disableEpollOut();
     return 0;
   }
 
-  ssize_t ret = ::write(_fd, _write_buffer.c_str(), _write_buffer.length());
-
-  if (ret <= 0) {
-    if (errno != EAGAIN && errno != EWOULDBLOCK) {
-      LOG->trace("Client {} write error: {}.", getIP(), strerror(errno));
-      shutdown();
-    } else {
-      _enableEpollOut();
-    }
-  } else if ((std::size_t)ret < _write_buffer.length()) {
-    LOG->trace("Client {} could not write() entire buffer, wrote {} of {} bytes.", getIP(), ret, _write_buffer.length());
-    _pruneWriteBuffer(ret);
-    _enableEpollOut();
-  } else {
+  if (!_advanceHandshake()) {
+    return 0;
+  }
+  if (_write_queue.empty()) {
     _disableEpollOut();
-    _write_buffer.clear();
+    return 0;
   }
 
-  if (_write_buffer.empty() && _is_shutdown_after_flush) {
-    shutdown();
+  ssize_t total = 0;
+  for (unsigned writes = 0; writes < 16 && !_write_queue.empty(); ++writes) {
+    auto& chunk       = _write_queue.front();
+    const auto result = _transport->write(chunk.data() + _write_offset,
+                                          chunk.size() - _write_offset);
+    if (result.status == IoStatus::PROGRESS) {
+      _pending_io   = PendingIo::NONE;
+      _pending_wait = IoWait::NONE;
+      _write_offset += result.bytes;
+      _queued_bytes -= result.bytes;
+      _worker->removeQueuedOutputBytes(result.bytes);
+      _updateCongestion();
+      total += static_cast<ssize_t>(result.bytes);
+      if (_write_offset == chunk.size()) {
+        _write_queue.pop_front();
+        _write_offset = 0;
+      }
+      continue;
+    }
+    if (result.status == IoStatus::WOULD_BLOCK) {
+      _setTransportWait(result.wait, PendingIo::WRITE);
+      break;
+    }
+    close();
+    break;
   }
 
-  return ret;
+  if (_write_queue.empty()) {
+    _disableEpollOut();
+  } else if (_pending_io != PendingIo::WRITE || _pending_wait == IoWait::WRITE) {
+    _enableEpollOut();
+  }
+  if (_write_queue.empty() && _is_shutdown_after_flush) {
+    close();
+  }
+
+  return total;
 }
 
 /**
  * Shut down the connection.
  */
-void Connection::shutdown() {
-  if (!_is_shutdown) {
-    ::shutdown(_fd, SHUT_RDWR);
-    _is_shutdown = true;
+void Connection::close() {
+  if (_lifecycle != ConnectionLifecycle::CLOSED) {
+    _transport->close();
+    _lifecycle = ConnectionLifecycle::CLOSED;
   }
 }
 
@@ -252,9 +363,23 @@ void Connection::shutdown() {
  * Shut down the client after all data in our send buffer is succesfully
  * written to the client.
  */
-void Connection::shutdownAfterFlush() {
-  if (_write_buffer.empty()) {
-    shutdown();
+void Connection::closeAfterFlush() {
+  if (_lifecycle == ConnectionLifecycle::CLOSED) {
+    return;
+  }
+  _lifecycle = ConnectionLifecycle::DRAINING;
+  if (!_drain_timer_started) {
+    _drain_timer_started                     = true;
+    std::weak_ptr<Connection> weakConnection = getSharedPtr();
+    _worker->addTimer(CONNECTION_DRAIN_TIMEOUT_MS, [weakConnection](TimerCtx*) {
+      if (auto connection = weakConnection.lock();
+          connection && connection->lifecycle() == ConnectionLifecycle::DRAINING) {
+        connection->close();
+      }
+    });
+  }
+  if (_write_queue.empty()) {
+    close();
     return;
   }
 
@@ -268,27 +393,37 @@ const std::string Connection::getIP() {
   return ip;
 }
 
-int Connection::addToEpoll(uint32_t epollEvents) {
+int Connection::addToEpoll(uint32_t epollEvents, std::uint64_t token) {
   _epoll_event.events   = epollEvents;
-  _epoll_event.data.fd  = _fd;
-  _epoll_event.data.ptr = static_cast<void*>(this);
+  _epoll_event.data.u64 = token;
 
-  int ret = epoll_ctl(_worker->getEpollFileDescriptor(), EPOLL_CTL_ADD, _fd, &_epoll_event);
+  int ret = epoll_ctl(_worker->getEpollFileDescriptor(), EPOLL_CTL_ADD, socketFd(), &_epoll_event);
 
   return ret;
 }
 
 int Connection::removeFromEpoll() {
   if (_worker->getEpollFileDescriptor() != -1) {
-    return epoll_ctl(_worker->getEpollFileDescriptor(), EPOLL_CTL_DEL, _fd, 0);
+    return epoll_ctl(_worker->getEpollFileDescriptor(), EPOLL_CTL_DEL, socketFd(), 0);
   }
 
   return 0;
 }
 
-ConnectionState Connection::setState(ConnectionState newState) {
-  _state = newState;
-  return newState;
+bool Connection::upgradeToWebSocket() {
+  if (_lifecycle != ConnectionLifecycle::OPEN || _protocol != ConnectionProtocol::HTTP || _pending_protocol) {
+    return false;
+  }
+  _pending_protocol = ConnectionProtocol::WEBSOCKET;
+  return true;
+}
+
+bool Connection::startEventStream() {
+  if (_lifecycle != ConnectionLifecycle::OPEN || _protocol != ConnectionProtocol::HTTP || _pending_protocol) {
+    return false;
+  }
+  _pending_protocol = ConnectionProtocol::SSE;
+  return true;
 }
 
 void Connection::subscribe(const std::string& topicPattern, const jsonrpcpp::Id subscriptionRequestId) {
@@ -303,20 +438,8 @@ void Connection::subscribe(const std::string& topicPattern, const jsonrpcpp::Id 
   _subscribedTopics.insert(std::make_pair(topicPattern, TopicSubscription{topicSubscription.first, topicSubscription.second, subscriptionRequestId}));
 }
 
-ConnectionState Connection::getState() {
-  return _state;
-}
-
 AccessController* Connection::getAccessController() {
   return _access_controller.get();
-}
-
-void Connection::assignConnectionListIterator(std::list<ConnectionPtr>::iterator connectionIterator) {
-  _connection_list_iterator = connectionIterator;
-}
-
-ConnectionListIterator Connection::getConnectionListIterator() {
-  return _connection_list_iterator;
 }
 
 ConnectionPtr Connection::getSharedPtr() {
@@ -334,10 +457,10 @@ bool Connection::unsubscribe(const std::string& topicPattern) {
   auto it            = _subscribedTopics.find(topicPattern);
   auto& subscription = it->second;
 
-  subscription.topic->deleteSubscriberByIterator(subscription.topicListIterator);
+  subscription.topic->deleteSubscriber(subscription.subscriptionId);
 
   if (subscription.topic->getSubscriberCount() == 0) {
-    tm->deleteTopic(topicPattern);
+    tm->deleteTopic(topicPattern, subscription.topic);
   }
 
   _subscribedTopics.erase(it);
@@ -352,10 +475,10 @@ std::size_t Connection::unsubscribeAll() {
 
   for (auto it = _subscribedTopics.begin(); it != _subscribedTopics.end();) {
     auto& subscription = it->second;
-    subscription.topic->deleteSubscriberByIterator(subscription.topicListIterator);
+    subscription.topic->deleteSubscriber(subscription.subscriptionId);
 
     if (subscription.topic->getSubscriberCount() == 0) {
-      tm->deleteTopic(it->first);
+      tm->deleteTopic(it->first, subscription.topic);
     }
 
     it = _subscribedTopics.erase(it);

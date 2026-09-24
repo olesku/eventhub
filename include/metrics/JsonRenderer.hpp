@@ -10,10 +10,8 @@ namespace metrics {
 
 class JsonRenderer final {
 public:
-  static const std::string RenderMetrics(Server* server);
+  static const std::string RenderMetrics(const AggregatedMetrics& metrics);
 };
 
 } // namespace metrics
 } // namespace eventhub
-
-

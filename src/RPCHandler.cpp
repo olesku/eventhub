@@ -1,25 +1,25 @@
+#include <cmath>
+#include <cstdint>
+#include <exception>
 #include <fmt/format.h>
+#include <initializer_list>
+#include <memory>
 #include <spdlog/logger.h>
 #include <sstream>
 #include <string>
-#include <cstdint>
-#include <exception>
-#include <initializer_list>
-#include <memory>
-#include <cmath>
 
-#include "RPCHandler.hpp"
+#include "AccessController.hpp"
 #include "Config.hpp"
 #include "Connection.hpp"
 #include "HandlerContext.hpp"
+#include "KVStore.hpp"
+#include "Logger.hpp"
+#include "RPCHandler.hpp"
 #include "Redis.hpp"
 #include "Server.hpp"
 #include "TopicManager.hpp"
 #include "Util.hpp"
 #include "websocket/Response.hpp"
-#include "AccessController.hpp"
-#include "KVStore.hpp"
-#include "Logger.hpp"
 #include "websocket/Types.hpp"
 
 namespace eventhub {
@@ -86,7 +86,7 @@ unsigned long long RPCHandler::_calculateRelativeSince(long long since) {
 /**
  * Helper function for sending cached events to client if requested.
  */
-void RPCHandler::_sendCacheToClient(HandlerContext &ctx, jsonrpcpp::request_ptr req, const std::string& topic) {
+void RPCHandler::_sendCacheToClient(HandlerContext& ctx, jsonrpcpp::request_ptr req, const std::string& topic) {
   // Return early if cache is not enabled.
   if (!ctx.config().get<bool>("enable_cache")) {
     return;
@@ -123,7 +123,7 @@ void RPCHandler::_sendCacheToClient(HandlerContext &ctx, jsonrpcpp::request_ptr 
 
   try {
     nlohmann::json result;
-    auto& redis = ctx.server()->getRedis();
+    auto& redis = ctx.redis();
     if (!sinceEventId.empty())
       redis.getCacheSinceId(topic, sinceEventId, limit, TopicManager::isValidTopicFilter(topic), result);
     else
@@ -150,7 +150,7 @@ void RPCHandler::_handleSubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr re
   std::stringstream msg;
 
   try {
-    topicName    = params.get("topic").get<std::string>();
+    topicName = params.get("topic").get<std::string>();
   } catch (...) {}
 
   if (topicName.empty()) {
@@ -194,7 +194,7 @@ void RPCHandler::_handleUnsubscribe(HandlerContext& ctx, jsonrpcpp::request_ptr 
     return _sendInvalidParamsError(ctx, req, "Parameter is not array of topics to unsubscribe from.");
   }
 
-  auto topics        = req->params().to_json();
+  auto topics       = req->params().to_json();
   std::size_t count = 0;
   for (auto topic : topics) {
     if (!TopicManager::isValidTopicOrFilter(topic) || !accessController->allowSubscribe(topic)) {
@@ -274,7 +274,7 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
   }
 
   try {
-    auto& redis = ctx.server()->getRedis();
+    auto& redis         = ctx.redis();
     const auto& subject = accessController->subject();
 
     if (!subject.empty()) {
@@ -292,10 +292,10 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
         } else {
           redis.incrementLimitCount(limits.topic, subject, limits.interval);
         }
-      } catch (NoRateLimitForTopic) {}
+      } catch (const NoRateLimitForTopic&) {}
     }
 
-    auto id     = redis.cacheMessage(topicName, message, accessController->subject(), timestamp, ttl);
+    auto id = redis.cacheMessage(topicName, message, accessController->subject(), timestamp, ttl);
 
     if (id.length() == 0) {
       msg << "Failed to cache message in Redis, discarding.";
@@ -400,7 +400,7 @@ void RPCHandler::_handleEventlog(HandlerContext& ctx, jsonrpcpp::request_ptr req
 
   nlohmann::json items;
   try {
-    auto& redis = ctx.server()->getRedis();
+    auto& redis = ctx.redis();
     if (!sinceEventId.empty())
       redis.getCacheSinceId(topicName, sinceEventId, limit, TopicManager::isValidTopicFilter(topicName), items);
     else
@@ -411,12 +411,7 @@ void RPCHandler::_handleEventlog(HandlerContext& ctx, jsonrpcpp::request_ptr req
     return _sendInvalidParamsError(ctx, req, msg.str());
   }
 
-  _sendSuccessResponse(ctx, req,{
-      {"action", "eventlog"},
-      {"topic", topicName},
-      {"status", "ok"},
-      {"items", items}
-  });
+  _sendSuccessResponse(ctx, req, {{"action", "eventlog"}, {"topic", topicName}, {"status", "ok"}, {"items", items}});
 }
 
 /**
@@ -425,12 +420,12 @@ void RPCHandler::_handleEventlog(HandlerContext& ctx, jsonrpcpp::request_ptr req
  * @param req RPC request.
  */
 void RPCHandler::_handleGet(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
-  if (!ctx.server()->getKVStore()->is_enabled())
-     return _sendInvalidParamsError(ctx, req, "KVStore is not enabled.");
+  if (!ctx.kvStore().is_enabled())
+    return _sendInvalidParamsError(ctx, req, "KVStore is not enabled.");
 
   auto accessController = ctx.connection()->getAccessController();
-  auto kvStore = ctx.server()->getKVStore();
-  auto params   = req->params();
+  auto* kvStore         = &ctx.kvStore();
+  auto params           = req->params();
 
   try {
     const auto key = params.get("key").get<std::string>();
@@ -441,12 +436,8 @@ void RPCHandler::_handleGet(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
 
     const auto val = kvStore->get(key);
 
-    _sendSuccessResponse(ctx, req, {
-      {"action", "get"},
-      {"key", key},
-      {"value", val}
-    });
-  } catch(const std::exception& e) {
+    _sendSuccessResponse(ctx, req, {{"action", "get"}, {"key", key}, {"value", val}});
+  } catch (const std::exception& e) {
     _sendInvalidParamsError(ctx, req, e.what());
   }
 }
@@ -457,20 +448,20 @@ void RPCHandler::_handleGet(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
  * @param req RPC request.
  */
 void RPCHandler::_handleSet(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
-  if (!ctx.server()->getKVStore()->is_enabled())
-     return _sendInvalidParamsError(ctx, req, "KVStore is not enabled.");
+  if (!ctx.kvStore().is_enabled())
+    return _sendInvalidParamsError(ctx, req, "KVStore is not enabled.");
 
   auto accessController = ctx.connection()->getAccessController();
-  auto kvStore = ctx.server()->getKVStore();
-  auto params   = req->params();
-  unsigned long ttl = 0;
+  auto* kvStore         = &ctx.kvStore();
+  auto params           = req->params();
+  unsigned long ttl     = 0;
 
   try {
     ttl = params.get("ttl").get<unsigned long>();
   } catch (...) {}
 
   try {
-    const auto key = params.get("key").get<std::string>();
+    const auto key   = params.get("key").get<std::string>();
     const auto value = params.get("value").get<std::string>();
 
     if (!accessController->allowPublish(key)) {
@@ -479,12 +470,8 @@ void RPCHandler::_handleSet(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
 
     auto ret = kvStore->set(key, value, ttl);
 
-    _sendSuccessResponse(ctx, req, {
-      {"action", "set"},
-      {"key", key},
-      {"success", ret}
-    });
-  } catch(const std::exception& e) {
+    _sendSuccessResponse(ctx, req, {{"action", "set"}, {"key", key}, {"success", ret}});
+  } catch (const std::exception& e) {
     _sendInvalidParamsError(ctx, req, e.what());
   }
 }
@@ -495,12 +482,12 @@ void RPCHandler::_handleSet(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
  * @param req RPC request.
  */
 void RPCHandler::_handleDelete(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
-  if (!ctx.server()->getKVStore()->is_enabled())
-     return _sendInvalidParamsError(ctx, req, "KVStore is not enabled.");
+  if (!ctx.kvStore().is_enabled())
+    return _sendInvalidParamsError(ctx, req, "KVStore is not enabled.");
 
   auto accessController = ctx.connection()->getAccessController();
-  auto kvStore = ctx.server()->getKVStore();
-  auto params   = req->params();
+  auto* kvStore         = &ctx.kvStore();
+  auto params           = req->params();
 
   try {
     const auto key = params.get("key").get<std::string>();
@@ -511,12 +498,8 @@ void RPCHandler::_handleDelete(HandlerContext& ctx, jsonrpcpp::request_ptr req) 
 
     auto ret = kvStore->del(key);
 
-    _sendSuccessResponse(ctx, req, {
-      {"action", "del"},
-      {"key", key},
-      {"success", ret > 0 ? true : false}
-    });
-  } catch(const std::exception& e) {
+    _sendSuccessResponse(ctx, req, {{"action", "del"}, {"key", key}, {"success", ret > 0 ? true : false}});
+  } catch (const std::exception& e) {
     _sendInvalidParamsError(ctx, req, e.what());
   }
 }
@@ -540,7 +523,7 @@ void RPCHandler::_handlePing(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
  */
 void RPCHandler::_handleDisconnect(HandlerContext& ctx, jsonrpcpp::request_ptr req) {
   websocket::Response::sendData(ctx.connection(), "", websocket::FrameType::CLOSE_FRAME);
-  ctx.connection()->shutdown();
+  ctx.connection()->close();
 }
 
 } // namespace eventhub

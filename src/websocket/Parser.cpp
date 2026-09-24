@@ -95,7 +95,8 @@ void Parser::setCallbacks(ParserCallbacks callbacks) {
   _callbacks = std::move(callbacks);
 }
 
-void Parser::parse(std::string_view input) {
+ParseResult Parser::parse(std::string_view input) {
+  const auto inputSize = input.size();
   try {
     while (!input.empty()) {
       switch (_state) {
@@ -135,7 +136,8 @@ void Parser::parse(std::string_view input) {
           break;
         case State::CLOSED:
         case State::FAILED:
-          return;
+          return {inputSize - input.size(),
+                  _state == State::CLOSED ? ParseStatus::CLOSED : ParseStatus::FAILED};
       }
     }
   } catch (...) {
@@ -144,6 +146,10 @@ void Parser::parse(std::string_view input) {
     _state = State::FAILED;
     throw;
   }
+  const auto status = _state == State::CLOSED   ? ParseStatus::CLOSED
+                      : _state == State::FAILED ? ParseStatus::FAILED
+                                                : ParseStatus::ACTIVE;
+  return {inputSize - input.size(), status};
 }
 
 void Parser::_readOpcode(std::uint8_t byte) {

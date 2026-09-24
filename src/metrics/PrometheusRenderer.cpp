@@ -5,18 +5,15 @@
 #include <utility>
 #include <vector>
 
-#include "Server.hpp"
 #include "Config.hpp"
+#include "Server.hpp"
 #include "metrics/PrometheusRenderer.hpp"
 #include "metrics/Types.hpp"
 
 namespace eventhub {
 namespace metrics {
 
-const std::string PrometheusRenderer::RenderMetrics(Server* server) {
-  auto  metrics = server->getAggregatedMetrics();
-  auto& config  = server->config();
-
+const std::string PrometheusRenderer::RenderMetrics(const AggregatedMetrics& metrics, const Config& config) {
   std::vector<std::tuple<std::string, std::string, long long>> metricList = {
       {"worker_count", "gauge", metrics.worker_count},
       {"publish_count", "counter", metrics.publish_count},
@@ -26,7 +23,10 @@ const std::string PrometheusRenderer::RenderMetrics(Server* server) {
       {"current_connections_count", "gauge", metrics.current_connections_count},
       {"total_connect_count", "counter", metrics.total_connect_count},
       {"total_disconnect_count", "counter", metrics.total_disconnect_count},
-      {"eventloop_delay_ms", "gauge", metrics.eventloop_delay_ms}};
+      {"eventloop_delay_ms", "gauge", metrics.eventloop_delay_ms},
+      {"queued_output_bytes", "gauge", metrics.queued_output_bytes},
+      {"congested_connections", "gauge", metrics.congested_connections},
+      {"slow_consumer_closes", "counter", metrics.slow_consumer_closes}};
 
   char h_buf[128] = {0};
   std::stringstream ss;
@@ -37,7 +37,7 @@ const std::string PrometheusRenderer::RenderMetrics(Server* server) {
     // Add prefix provided in configuration to metric name
     const std::string& metricName = config.get<std::string>("prometheus_metric_prefix") + "_" + std::get<0>(metric);
     const std::string& metricType = std::get<1>(metric);
-    const long long& metricValue   = std::get<2>(metric);
+    const long long& metricValue  = std::get<2>(metric);
 
     // Output the type of each metric
     ss << "# TYPE " << metricName << " " << metricType << "\n";

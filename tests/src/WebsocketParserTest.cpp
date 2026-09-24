@@ -173,6 +173,18 @@ TEST_CASE("WebSocket delivers coalesced messages without retaining input", "[web
   REQUIRE(recorder.errors.empty());
 }
 
+TEST_CASE("WebSocket reports bytes consumed before a terminal close", "[websocket]") {
+  Recorder recorder;
+  Parser parser(100, recorder.callbacks());
+  const auto closing  = frame(FrameType::CLOSE_FRAME);
+  const auto trailing = frame(FrameType::TEXT_FRAME, "ignored");
+  const auto result   = parser.parse(closing + trailing);
+
+  REQUIRE(result.status == ParseStatus::CLOSED);
+  REQUIRE(result.consumed == closing.size());
+  REQUIRE(recorder.messages == std::vector<Message>{{FrameType::CLOSE_FRAME, ""}});
+}
+
 TEST_CASE("WebSocket accepts empty messages and maximum sized control frames", "[websocket]") {
   for (auto type : {FrameType::TEXT_FRAME, FrameType::BINARY_FRAME, FrameType::PING_FRAME,
                     FrameType::PONG_FRAME, FrameType::CLOSE_FRAME}) {

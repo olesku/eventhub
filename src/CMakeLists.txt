@@ -18,8 +18,8 @@ set (SOURCES
   Topic.cpp
   TopicManager.cpp
   Server.cpp
+  Transport.cpp
   Connection.cpp
-  SSLConnection.cpp
   ConnectionWorker.cpp
   AccessController.cpp
 )

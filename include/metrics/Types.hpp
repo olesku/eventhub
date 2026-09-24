@@ -12,6 +12,9 @@ struct WorkerMetrics {
   std::atomic<unsigned long long> total_connect_count{0};
   std::atomic<unsigned long long> total_disconnect_count{0};
   std::atomic<unsigned long> eventloop_delay_ms{0};
+  std::atomic<unsigned long long> queued_output_bytes{0};
+  std::atomic<unsigned long> congested_connections{0};
+  std::atomic<unsigned long long> slow_consumer_closes{0};
 };
 
 struct ServerMetrics {
@@ -31,7 +34,10 @@ struct AggregatedMetrics {
                         current_connections_count(0),
                         total_connect_count(0),
                         total_disconnect_count(0),
-                        eventloop_delay_ms(0){};
+                        eventloop_delay_ms(0),
+                        queued_output_bytes(0),
+                        congested_connections(0),
+                        slow_consumer_closes(0) {};
 
   unsigned long server_start_unixtime;
   unsigned int worker_count;
@@ -43,9 +49,10 @@ struct AggregatedMetrics {
   unsigned long long total_connect_count;
   unsigned long long total_disconnect_count;
   unsigned long eventloop_delay_ms;
+  unsigned long long queued_output_bytes;
+  unsigned long congested_connections;
+  unsigned long long slow_consumer_closes;
 };
 
 } // namespace metrics
 } // namespace eventhub
-
-

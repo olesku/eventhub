@@ -3,8 +3,8 @@
 #include <string>
 
 #include "http/Request.hpp"
-#include "http/picohttpparser.h"
 #include "http/Types.hpp"
+#include "http/picohttpparser.h"
 
 namespace eventhub::http {
 
@@ -14,7 +14,7 @@ class Parser final {
 
 public:
   explicit Parser(ParserCallbacks callbacks = {});
-  void parse(const char* data, std::size_t len);
+  ParseResult parse(const char* data, std::size_t len);
 
 private:
   std::string _buf;

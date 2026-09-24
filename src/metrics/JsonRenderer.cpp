@@ -1,19 +1,17 @@
+#include <initializer_list>
 #include <stdint.h>
 #include <string>
-#include <initializer_list>
 #include <vector>
 
+#include "Server.hpp"
 #include "jwt/json/json.hpp"
 #include "metrics/JsonRenderer.hpp"
 #include "metrics/Types.hpp"
-#include "Server.hpp"
 
 namespace eventhub {
 namespace metrics {
 
-const std::string JsonRenderer::RenderMetrics(Server* server) {
-  auto metrics = server->getAggregatedMetrics();
-
+const std::string JsonRenderer::RenderMetrics(const AggregatedMetrics& metrics) {
   nlohmann::json j;
 
   j["worker_count"]                = metrics.worker_count;
@@ -25,6 +23,9 @@ const std::string JsonRenderer::RenderMetrics(Server* server) {
   j["total_connect_count"]       = metrics.total_connect_count;
   j["total_disconnect_count"]    = metrics.total_disconnect_count;
   j["eventloop_delay_ms"]        = metrics.eventloop_delay_ms;
+  j["queued_output_bytes"]       = metrics.queued_output_bytes;
+  j["congested_connections"]     = metrics.congested_connections;
+  j["slow_consumer_closes"]      = metrics.slow_consumer_closes;
 
   return j.dump(4) + "\r\n";
 }

@@ -1,18 +1,19 @@
 #pragma once
 
-#include <openssl/ssl.h>
 #include <assert.h>
-#include <openssl/ossl_typ.h>
+#include <atomic>
 #include <memory>
 #include <mutex>
+#include <openssl/ossl_typ.h>
+#include <openssl/ssl.h>
 #include <string>
 
+#include "EventLoop.hpp"
 #include "Forward.hpp"
 #include "KVStore.hpp"
+#include "Redis.hpp"
 #include "Worker.hpp"
 #include "metrics/Types.hpp"
-#include "EventLoop.hpp"
-#include "Redis.hpp"
 
 namespace eventhub {
 
@@ -57,6 +58,7 @@ private:
   std::unique_ptr<KVStore> _kv_store;
   metrics::ServerMetrics _metrics;
   EventLoop _ev;
+  std::atomic<bool> _stopped{false};
 
   void _listenerInit();
 

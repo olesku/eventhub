@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 3.13)
 project (eventhub)
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
-set(CMAKE_C_COMPILER "clang")
-set(CMAKE_CXX_COMPILER "clang++")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 

@@ -13,7 +13,10 @@ static constexpr unsigned int MAXEVENTS = 1024;
 static constexpr std::size_t NET_READ_BUFFER_SIZE = 512;
 
 // Max write buffer size.
-static constexpr std::size_t NET_WRITE_BUFFER_MAX = (1024 * 1000) * 8;
+static constexpr std::size_t NET_WRITE_BUFFER_MAX         = (1024 * 1000) * 8;
+static constexpr std::size_t NET_WRITE_BUFFER_HIGH        = NET_WRITE_BUFFER_MAX * 3 / 4;
+static constexpr std::size_t NET_WRITE_BUFFER_LOW         = NET_WRITE_BUFFER_MAX / 2;
+static constexpr unsigned int CONNECTION_DRAIN_TIMEOUT_MS = 5000;
 
 // Maximum size of a complete WebSocket data message, including all fragments.
 static constexpr std::size_t MAX_DATA_FRAME_SIZE = (1024 * 1000) * 8;

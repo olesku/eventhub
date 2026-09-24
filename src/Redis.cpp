@@ -119,7 +119,7 @@ std::size_t Redis::getCacheSince(const std::string& topicPattern, long long sinc
     return 0;
   }
 
-  auto now = Util::getTimeSinceEpoch();
+  const auto now = static_cast<unsigned long>(Util::getTimeSinceEpoch());
 
   // Look up all matching topics in redis we get a request for a topic pattern
   // and request the eventlog for each of them.
@@ -296,7 +296,7 @@ std::size_t Redis::getCacheSinceId(const std::string& topicPattern, const std::s
 std::size_t Redis::purgeExpiredCacheItems() {
   std::vector<std::string> allTopics;
   std::vector<std::pair<std::string, std::string>> expiredItems;
-  auto now = Util::getTimeSinceEpoch();
+  const auto now = static_cast<unsigned long>(Util::getTimeSinceEpoch());
 
   _redisInstance->hkeys(REDIS_PREFIX("pub_count"), std::back_inserter(allTopics));
 
@@ -309,10 +309,10 @@ std::size_t Redis::purgeExpiredCacheItems() {
         try {
           auto p = CacheItemMeta{key};
 
-          if (p.expireAt()< now) {
+          if (p.expireAt() < now) {
             expiredItems.push_back({topic, key});
           }
-        } catch(...) {
+        } catch (...) {
           continue;
         }
       }

@@ -26,7 +26,7 @@ public:
   // or destroy the parser from a callback, or use it concurrently. Exceptions
   // propagate to the caller and permanently stop parsing. After an error or a
   // close frame, further input is ignored.
-  void parse(std::string_view input);
+  ParseResult parse(std::string_view input);
 
 private:
   enum class State {

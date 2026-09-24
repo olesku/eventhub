@@ -36,12 +36,12 @@ void Request::_parseQueryString(const std::string& query) {
     }
 
     const auto ampersand = query.find('&', equals + 1);
-    auto name = query.substr(position, equals - position);
-    auto value = query.substr(equals + 1,
+    auto name            = query.substr(position, equals - position);
+    auto value           = query.substr(equals + 1,
                               ampersand == std::string::npos
-                                  ? std::string::npos
-                                  : ampersand - (equals + 1));
-    position = ampersand == std::string::npos ? query.size() : ampersand + 1;
+                                            ? std::string::npos
+                                            : ampersand - (equals + 1));
+    position             = ampersand == std::string::npos ? query.size() : ampersand + 1;
 
     if (!name.empty() && !value.empty()) {
       Util::strToLower(name);
@@ -54,26 +54,19 @@ Parser::Parser(ParserCallbacks callbacks) : _callbacks(std::move(callbacks)) {
   _resetState();
 }
 
-void Parser::parse(const char* data, std::size_t len) {
+ParseResult Parser::parse(const char* data, std::size_t len) {
   if (_failed) {
-    return;
+    return {0, ParseStatus::FAILED};
   }
 
   if (_is_complete) {
     _resetState();
   }
 
-  _bytes_read_prev = _bytes_read;
-  if ((_bytes_read + len) > HTTP_BUFSIZ) {
-    _failed = true;
-    if (_callbacks.onError) {
-      _callbacks.onError(ParseError::REQUEST_TOO_LARGE);
-    }
-    return;
-  }
-
-  _bytes_read += len;
+  const std::size_t previousSize = _buf.size();
+  _bytes_read_prev               = static_cast<int>(previousSize);
   _buf.append(data, len);
+  _bytes_read      = static_cast<int>(_buf.size());
   _phr_num_headers = sizeof(_phr_headers) / sizeof(_phr_headers[0]);
 
   const int result = phr_parse_request(
@@ -86,13 +79,34 @@ void Parser::parse(const char* data, std::size_t len) {
     if (_callbacks.onError) {
       _callbacks.onError(ParseError::INVALID_REQUEST);
     }
-    return;
+    return {len, ParseStatus::FAILED};
   }
 
   // Incomplete input is internal parser state, not an application event.
   if (result == -2) {
-    return;
+    if (_buf.size() > HTTP_BUFSIZ) {
+      _failed = true;
+      if (_callbacks.onError) {
+        _callbacks.onError(ParseError::REQUEST_TOO_LARGE);
+      }
+      return {len, ParseStatus::FAILED};
+    }
+    return {len, ParseStatus::NEED_MORE};
   }
+
+  const auto headerSize = static_cast<std::size_t>(result);
+  const auto consumed   = headerSize > previousSize
+                              ? std::min(len, headerSize - previousSize)
+                              : std::size_t{0};
+  if (headerSize > HTTP_BUFSIZ) {
+    _failed = true;
+    if (_callbacks.onError) {
+      _callbacks.onError(ParseError::REQUEST_TOO_LARGE);
+    }
+    return {consumed, ParseStatus::FAILED};
+  }
+  _buf.resize(headerSize);
+  _bytes_read = static_cast<int>(headerSize);
 
   if (_phr_method_len > 0) {
     _request._method.assign(_phr_method, _phr_method_len);
@@ -120,6 +134,7 @@ void Parser::parse(const char* data, std::size_t len) {
   if (_callbacks.onRequest) {
     _callbacks.onRequest(_request);
   }
+  return {consumed, ParseStatus::COMPLETE};
 }
 
 void Parser::_resetState() {

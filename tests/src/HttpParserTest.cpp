@@ -49,7 +49,7 @@ TEST_CASE("HTTP parser separates parse errors from requests", "[http]") {
 
   ParserCallbacks callbacks;
   callbacks.onRequest = [&](const Request&) { ++requestCount; };
-  callbacks.onError = [&](ParseError error) { errors.push_back(error); };
+  callbacks.onError   = [&](ParseError error) { errors.push_back(error); };
 
   SECTION("invalid request") {
     Parser parser(std::move(callbacks));
@@ -81,13 +81,40 @@ TEST_CASE("HTTP parser resets request data between messages", "[http]") {
   };
   Parser parser(std::move(callbacks));
 
-  const std::string first = "GET /first HTTP/1.1\r\nX-First: value\r\n\r\n";
+  const std::string first  = "GET /first HTTP/1.1\r\nX-First: value\r\n\r\n";
   const std::string second = "GET /second HTTP/1.1\r\nHost: example.test\r\n\r\n";
   parser.parse(first.data(), first.size());
   parser.parse(second.data(), second.size());
 
   REQUIRE(paths == std::vector<std::string>{"/first", "/second"});
   REQUIRE(staleHeaders == std::vector<std::string>{"value", ""});
+}
+
+TEST_CASE("HTTP parser reports the exact header boundary", "[http]") {
+  std::size_t requests = 0;
+  Parser parser({[&](const Request&) { ++requests; }, {}});
+  const std::string header = "GeT /events HTTP/1.1\r\nHost: example.test\r\n\r\n";
+  const std::string suffix(9000, 'x');
+  const auto result = parser.parse((header + suffix).data(), header.size() + suffix.size());
+
+  REQUIRE(result.status == ParseStatus::COMPLETE);
+  REQUIRE(result.consumed == header.size());
+  REQUIRE(requests == 1);
+}
+
+TEST_CASE("HTTP parser counts fragmented headers but not trailing protocol bytes", "[http]") {
+  std::size_t requests = 0;
+  Parser parser({[&](const Request&) { ++requests; }, {}});
+  const std::string first  = "GET /events HTTP/1.1\r\nX-Long: " + std::string(8000, 'a');
+  const std::string second = "\r\n\r\n" + std::string(1000, 'b');
+
+  const auto incomplete = parser.parse(first.data(), first.size());
+  REQUIRE(incomplete.status == ParseStatus::NEED_MORE);
+  REQUIRE(incomplete.consumed == first.size());
+  const auto complete = parser.parse(second.data(), second.size());
+  REQUIRE(complete.status == ParseStatus::COMPLETE);
+  REQUIRE(complete.consumed == 4);
+  REQUIRE(requests == 1);
 }
 
 } // namespace eventhub::http

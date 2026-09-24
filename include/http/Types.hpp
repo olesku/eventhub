@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <functional>
 
 namespace eventhub::http {
@@ -7,6 +8,17 @@ namespace eventhub::http {
 enum class ParseError {
   INVALID_REQUEST,
   REQUEST_TOO_LARGE
+};
+
+enum class ParseStatus {
+  NEED_MORE,
+  COMPLETE,
+  FAILED
+};
+
+struct ParseResult {
+  std::size_t consumed;
+  ParseStatus status;
 };
 
 class Request;

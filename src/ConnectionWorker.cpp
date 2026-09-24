@@ -1,7 +1,7 @@
 #include <errno.h>
 #include <netinet/in.h>
-#include <string.h>
 #include <spdlog/logger.h>
+#include <string.h>
 
 #include "ConnectionWorker.hpp"
 #include "Logger.hpp"
@@ -13,15 +13,15 @@
 #else
 #error "eventhub worker requires Linux (epoll/eventfd/timerfd)"
 #endif
-#include <stdlib.h>
-#include <sys/socket.h>
-#include <unistd.h>
+#include <atomic>
 #include <chrono>
 #include <memory>
 #include <mutex>
+#include <stdlib.h>
 #include <string>
-#include <atomic>
+#include <sys/socket.h>
 #include <type_traits>
+#include <unistd.h>
 #include <utility>
 
 #include "Common.hpp"
@@ -29,9 +29,9 @@
 #include "Connection.hpp"
 #include "EventLoop.hpp"
 #include "HandlerContext.hpp"
-#include "SSLConnection.hpp"
 #include "Server.hpp"
 #include "TopicManager.hpp"
+#include "Transport.hpp"
 #include "Util.hpp"
 #include "http/Handler.hpp"
 #include "sse/Response.hpp"
@@ -46,7 +46,7 @@ Worker::Worker(Server* srv, unsigned int workerId) : EventhubBase(srv->config())
   _event_fd = -1;
   _timer_fd = -1;
 
-  _ev = std::make_unique<EventLoop>();
+  _ev            = std::make_unique<EventLoop>();
   _topic_manager = std::make_unique<TopicManager>();
 
   _initEventFd();
@@ -54,24 +54,48 @@ Worker::Worker(Server* srv, unsigned int workerId) : EventhubBase(srv->config())
 }
 
 Worker::~Worker() {
+  _accepting_commands.store(false, std::memory_order_release);
+  _connections.clear();
+  {
+    std::lock_guard<std::mutex> lock(_pending_connections_mutex);
+    _pending_connections.clear();
+  }
   if (_epoll_fd != -1) {
     close(_epoll_fd);
   }
   _closeEventFd();
   _closeTimerFd();
 
-  std::lock_guard<std::mutex> lock(_connection_list_mutex);
-
-  for (auto it = _connection_list.begin(); it != _connection_list.end();) {
-    it = _connection_list.erase(it);
-  }
-
   LOG->debug("Connection worker {} shutting down.", getWorkerId());
 }
 
 void Worker::addTimer(int64_t delay, std::function<void(TimerCtx* ctx)> callback, bool repeat) {
   _ev->addTimer(delay, callback, repeat);
-  _armTimerFd();
+  _signalWork();
+}
+
+bool Worker::enqueueAcceptedSocket(SocketHandle socket, const struct sockaddr_in& address, bool ssl) {
+  if (!_accepting_commands.load(std::memory_order_acquire)) {
+    return false;
+  }
+  {
+    std::lock_guard<std::mutex> lock(_pending_connections_mutex);
+    if (!_accepting_commands.load(std::memory_order_relaxed)) {
+      return false;
+    }
+    _pending_connections.push_back(PendingConnection{std::move(socket), address, ssl});
+  }
+  _signalWork();
+  return true;
+}
+
+void Worker::_assertOwnerThread() const {
+  assert(_owner_thread == std::this_thread::get_id());
+}
+
+void Worker::_wakeForStop() {
+  _accepting_commands.store(false, std::memory_order_release);
+  _signalWork();
 }
 
 void Worker::_initEventFd() {
@@ -110,8 +134,11 @@ void Worker::_signalWork() {
   }
 
   uint64_t inc = 1;
-  ssize_t ret = ::write(_event_fd, &inc, sizeof(inc));
-  if (ret == -1 && errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
+  ssize_t ret;
+  do {
+    ret = ::write(_event_fd, &inc, sizeof(inc));
+  } while (ret == -1 && errno == EINTR);
+  if (ret == -1 && errno != EAGAIN && errno != EWOULDBLOCK) {
     LOG->trace("Worker {} failed to signal eventfd: {}.", getWorkerId(), strerror(errno));
   }
 }
@@ -164,7 +191,7 @@ void Worker::_armTimerFd() {
   }
 
   const auto nextFire = _ev->getNextTimerFireTime();
-  struct itimerspec spec {};
+  struct itimerspec spec{};
 
   if (nextFire != std::chrono::milliseconds::zero()) {
     const auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -175,13 +202,13 @@ void Worker::_armTimerFd() {
     }
 
     const auto delay_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(delay);
-    time_t secs = static_cast<time_t>(delay_ns.count() / 1000000000LL);
-    long nsecs = static_cast<long>(delay_ns.count() % 1000000000LL);
+    time_t secs         = static_cast<time_t>(delay_ns.count() / 1000000000LL);
+    long nsecs          = static_cast<long>(delay_ns.count() % 1000000000LL);
     if (secs == 0 && nsecs == 0) {
       nsecs = 1;
     }
 
-    spec.it_value.tv_sec = secs;
+    spec.it_value.tv_sec  = secs;
     spec.it_value.tv_nsec = nsecs;
   }
 
@@ -208,7 +235,7 @@ void Worker::_acceptConnection(bool ssl) {
     // On non-Linux platforms we fall back to accept(), and the Connection
     // constructor sets O_NONBLOCK.
 #ifdef __linux__
-    const int connectionFd = accept4(listenFd, (struct sockaddr*)&csin, &clen, SOCK_NONBLOCK);
+    const int connectionFd = accept4(listenFd, (struct sockaddr*)&csin, &clen, SOCK_NONBLOCK | SOCK_CLOEXEC);
 #else
     const int connectionFd = accept(listenFd, (struct sockaddr*)&csin, &clen);
 #endif
@@ -234,7 +261,11 @@ void Worker::_acceptConnection(bool ssl) {
       break;
     }
 
-    _server->getWorker()->_addConnection(connectionFd, &csin, ssl);
+    auto* target = _server->getWorker();
+    SocketHandle socket(connectionFd);
+    if (target == nullptr || !target->enqueueAcceptedSocket(std::move(socket), csin, ssl)) {
+      LOG->debug("Rejected accepted connection while workers are stopping.");
+    }
   }
 }
 
@@ -243,63 +274,72 @@ void Worker::_acceptConnection(bool ssl) {
  * @param fd Filedescriptor of connection.
  * @param csin sockaddr_in for the connection.
  */
-ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin, bool ssl) {
-  std::lock_guard<std::mutex> lock(_connection_list_mutex);
-  ConnectionListIterator connectionIterator;
+ConnectionPtr Worker::_addConnection(PendingConnection pending) {
+  _assertOwnerThread();
+  if (_next_connection_id > TOKEN_ID_MASK) {
+    LOG->critical("Worker {} exhausted connection identifiers.", getWorkerId());
+    return nullptr;
+  }
+  const ConnectionId connectionId = _next_connection_id++;
+  ConnectionPtr connection;
 
   ConnectionCallbacks callbacks;
   callbacks.onHttpRequest = [this](Connection& connection, const http::Request& request) {
     if (connection.isShutdown()) {
       return;
     }
-    http::Handler::handleRequest(
-        HandlerContext(_config, _server, this, connection.getSharedPtr()), request);
+    http::Handler::handleRequest(HandlerContext(
+                                     _config, _server->getRedis(), *_server->getKVStore(),
+                                     [this]() { return _server->getAggregatedMetrics(); }, connection.getSharedPtr()),
+                                 request);
   };
   callbacks.onHttpError = [this](Connection& connection, http::ParseError error) {
     if (connection.isShutdown()) {
       return;
     }
-    http::Handler::handleError(
-        HandlerContext(_config, _server, this, connection.getSharedPtr()), error);
+    http::Handler::handleError(HandlerContext(
+                                   _config, _server->getRedis(), *_server->getKVStore(),
+                                   [this]() { return _server->getAggregatedMetrics(); }, connection.getSharedPtr()),
+                               error);
   };
   callbacks.onWebSocketMessage = [this](Connection& connection, websocket::FrameType frameType,
                                         const std::string& data) {
     if (connection.isShutdown()) {
       return;
     }
-    websocket::Handler::handleMessage(
-        HandlerContext(_config, _server, this, connection.getSharedPtr()), frameType, data);
+    websocket::Handler::handleMessage(HandlerContext(
+                                          _config, _server->getRedis(), *_server->getKVStore(),
+                                          [this]() { return _server->getAggregatedMetrics(); }, connection.getSharedPtr()),
+                                      frameType, data);
   };
   callbacks.onWebSocketError = [this](Connection& connection, websocket::ParserError error) {
     if (connection.isShutdown()) {
       return;
     }
-    websocket::Handler::handleError(
-        HandlerContext(_config, _server, this, connection.getSharedPtr()), error);
+    websocket::Handler::handleError(HandlerContext(
+                                        _config, _server->getRedis(), *_server->getKVStore(),
+                                        [this]() { return _server->getAggregatedMetrics(); }, connection.getSharedPtr()),
+                                    error);
   };
 
-  if (ssl) {
-    connectionIterator = _connection_list.insert(
-        _connection_list.end(),
-        std::make_shared<SSLConnection>(fd, csin, this, config(), std::move(callbacks),
-                                        _server->getSSLContext()));
-  } else {
-    connectionIterator = _connection_list.insert(
-        _connection_list.end(),
-        std::make_shared<Connection>(fd, csin, this, config(), std::move(callbacks)));
-  }
+  auto transport = pending.ssl
+                       ? makeTlsTransport(std::move(pending.socket), _server->getSSLContext())
+                       : makeTcpTransport(std::move(pending.socket));
+  connection     = std::make_shared<Connection>(connectionId, std::move(transport),
+                                                pending.address, this, config(),
+                                                std::move(callbacks));
 
-  auto connection = *connectionIterator;
   std::weak_ptr<Connection> weakConnection(connection);
 
-  connection->assignConnectionListIterator(connectionIterator);
-  int ret = connection->addToEpoll((EPOLLIN | EPOLLRDHUP | EPOLLHUP | EPOLLERR));
+  int ret = connection->addToEpoll((EPOLLIN | EPOLLRDHUP | EPOLLHUP | EPOLLERR),
+                                   _connectionToken(connectionId));
 
   if (ret == -1) {
     LOG->warn("Could not add connection to epoll: {}.", strerror(errno));
-    _connection_list.erase(connectionIterator);
     return nullptr;
   }
+
+  _connections.emplace(connectionId, connection);
 
   LOG->trace("Connection {} accepted in worker {}", connection->getIP(), getWorkerId());
 
@@ -307,9 +347,9 @@ ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin, bool ssl)
   addTimer(config().get<int>("handshake_timeout") * 1000, [weakConnection, this](TimerCtx* ctx) {
     auto connection = weakConnection.lock();
 
-    if (connection && connection->getState() != ConnectionState::WEBSOCKET && connection->getState() != ConnectionState::SSE) {
+    if (connection && connection->protocol() == ConnectionProtocol::HTTP) {
       LOG->debug("Connection {} failed to handshake in {} seconds. Removing.", connection->getIP(), config().get<int>("handshake_timeout"));
-      connection->shutdown();
+      connection->close();
     }
   });
 
@@ -323,9 +363,9 @@ ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin, bool ssl)
           return;
         }
 
-        if (connection->getState() == ConnectionState::WEBSOCKET) {
+        if (connection->protocol() == ConnectionProtocol::WEBSOCKET) {
           websocket::Response::sendData(connection, "", websocket::FrameType::PING_FRAME);
-        } else if (connection->getState() == ConnectionState::SSE) {
+        } else if (connection->protocol() == ConnectionProtocol::SSE) {
           sse::Response::sendPing(connection);
         }
 
@@ -344,13 +384,43 @@ ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin, bool ssl)
  * @param conn Connection to remove.
  */
 void Worker::_removeConnection(ConnectionPtr conn) {
-  std::lock_guard<std::mutex> lock(_connection_list_mutex);
+  _assertOwnerThread();
 
   conn->removeFromEpoll();
-  _connection_list.erase(conn->getConnectionListIterator());
+  if (_connections.erase(conn->id()) == 0) {
+    return;
+  }
 
   _metrics.current_connections_count--;
   _metrics.total_disconnect_count++;
+}
+
+void Worker::_drainPendingConnections() {
+  _assertOwnerThread();
+  std::deque<PendingConnection> pending;
+  {
+    std::lock_guard<std::mutex> lock(_pending_connections_mutex);
+    pending.swap(_pending_connections);
+  }
+  if (stopRequested()) {
+    return;
+  }
+  while (!pending.empty()) {
+    auto connection = std::move(pending.front());
+    pending.pop_front();
+    _addConnection(std::move(connection));
+  }
+}
+
+void Worker::_closeConnections() {
+  _assertOwnerThread();
+  for (auto& entry : _connections) {
+    entry.second->removeFromEpoll();
+    entry.second->close();
+  }
+  _metrics.total_disconnect_count += _connections.size();
+  _metrics.current_connections_count = 0;
+  _connections.clear();
 }
 
 void Worker::publish(const std::string& topicName, const std::string& data) {
@@ -368,7 +438,8 @@ void Worker::_workerMain() {
   struct epoll_event serverSocketEvent;
   struct epoll_event serverSocketEventSSL;
 
-  LOG->debug("Worker {} started.", getWorkerId());
+  _owner_thread = std::this_thread::get_id();
+  LOG->debug("Worker {} started.", getWorkerId());
 
   // Set initial eventloop delay sample start time.
   _ev_delay_sample_start = Util::getTimeSinceEpoch();
@@ -392,8 +463,8 @@ void Worker::_workerMain() {
 
   if (_event_fd != -1) {
     struct epoll_event eventfdEvent;
-    eventfdEvent.events = EPOLLIN;
-    eventfdEvent.data.fd = _event_fd;
+    eventfdEvent.events   = EPOLLIN;
+    eventfdEvent.data.u64 = TOKEN_EVENT;
     if (epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, _event_fd, &eventfdEvent) == -1) {
       LOG->critical("Failed to add eventfd to epoll in worker {}: {}.", getWorkerId(), strerror(errno));
       exit(1);
@@ -402,8 +473,8 @@ void Worker::_workerMain() {
 
   if (_timer_fd != -1) {
     struct epoll_event timerEvent;
-    timerEvent.events = EPOLLIN;
-    timerEvent.data.fd = _timer_fd;
+    timerEvent.events   = EPOLLIN;
+    timerEvent.data.u64 = TOKEN_TIMER;
     if (epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, _timer_fd, &timerEvent) == -1) {
       LOG->critical("Failed to add timerfd to epoll in worker {}: {}.", getWorkerId(), strerror(errno));
       exit(1);
@@ -411,8 +482,8 @@ void Worker::_workerMain() {
   }
 
   // Add server listening socket to epoll.
-  serverSocketEvent.events  = EPOLLIN | EPOLLEXCLUSIVE;
-  serverSocketEvent.data.fd = _server->getServerSocket();
+  serverSocketEvent.events   = EPOLLIN | EPOLLEXCLUSIVE;
+  serverSocketEvent.data.u64 = TOKEN_LISTENER;
 
   if (!config().get<bool>("disable_unsecure_listener")) {
     if (epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, _server->getServerSocket(), &serverSocketEvent) == -1) {
@@ -423,8 +494,8 @@ void Worker::_workerMain() {
 
   // Add server listening socket to epoll.
   if (_server->isSSL()) {
-    serverSocketEventSSL.events  = EPOLLIN | EPOLLEXCLUSIVE;
-    serverSocketEventSSL.data.fd = _server->getSSLServerSocket();
+    serverSocketEventSSL.events   = EPOLLIN | EPOLLEXCLUSIVE;
+    serverSocketEventSSL.data.u64 = TOKEN_TLS_LISTENER;
 
     if (epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, _server->getSSLServerSocket(), &serverSocketEventSSL) == -1) {
       LOG->critical("Failed to add SSL serversocket to epoll in AcceptWorker {}: {}", getWorkerId(), strerror(errno));
@@ -436,52 +507,63 @@ void Worker::_workerMain() {
     int n = epoll_wait(_epoll_fd, eventConnectionList, MAXEVENTS, -1);
 
     for (int i = 0; i < n; i++) {
-      if (_event_fd != -1 && eventConnectionList[i].data.fd == _event_fd) {
+      const auto token = eventConnectionList[i].data.u64;
+      if (token == TOKEN_EVENT) {
         _drainEventFd();
+        _drainPendingConnections();
         continue;
       }
-      if (_timer_fd != -1 && eventConnectionList[i].data.fd == _timer_fd) {
+      if (token == TOKEN_TIMER) {
         _drainTimerFd();
         continue;
       }
       // Handle new connections.
-      if (eventConnectionList[i].data.fd == _server->getServerSocket() || eventConnectionList[i].data.fd == _server->getSSLServerSocket()) {
+      if (token == TOKEN_LISTENER || token == TOKEN_TLS_LISTENER) {
         if (eventConnectionList[i].events & EPOLLIN) {
-          bool isSSL = eventConnectionList[i].data.fd == _server->getSSLServerSocket();
+          bool isSSL = token == TOKEN_TLS_LISTENER;
           _acceptConnection(isSSL);
         }
 
         continue;
       }
 
-      auto connection = static_cast<Connection*>(eventConnectionList[i].data.ptr)->getSharedPtr();
+      if ((token & TOKEN_KIND_MASK) != 0) {
+        continue;
+      }
+      const auto found = _connections.find(token & TOKEN_ID_MASK);
+      if (found == _connections.end()) {
+        continue;
+      }
+      auto connection = found->second;
 
-      // Mark the connection for shutdown on disconnect or error.
-      if ((eventConnectionList[i].events & EPOLLERR) || (eventConnectionList[i].events & EPOLLHUP) || (eventConnectionList[i].events & EPOLLRDHUP)) {
-        connection->shutdown();
+      connection->handleEvents(eventConnectionList[i].events);
+
+      // Read any final bytes before honoring a peer half-close. Fatal epoll
+      // errors remain terminal, and close/removal is idempotent.
+      if ((eventConnectionList[i].events & EPOLLERR) ||
+          (eventConnectionList[i].events & EPOLLHUP) ||
+          (eventConnectionList[i].events & EPOLLRDHUP)) {
+        connection->close();
       }
 
-      // Remove connections marked for shutdown.
       if (connection->isShutdown()) {
         _removeConnection(connection);
-        continue;
-      }
-
-      // Flush send buffer if socket is ready for write.
-      if (eventConnectionList[i].events & EPOLLOUT) {
-        connection->flushSendBuffer();
-        continue;
-      }
-
-      // Read data when the connection is ready.
-      if (eventConnectionList[i].events & EPOLLIN) {
-        connection->read();
       }
     }
 
     // Process timers and jobs.
-    _ev->process();
+    try {
+      _ev->process();
+    } catch (const std::exception& error) {
+      LOG->error("Worker {} callback failed: {}", getWorkerId(), error.what());
+    } catch (...) {
+      LOG->error("Worker {} callback failed with an unknown exception", getWorkerId());
+    }
     _armTimerFd();
   }
+
+  _accepting_commands.store(false, std::memory_order_release);
+  _drainPendingConnections();
+  _closeConnections();
 }
 } // namespace eventhub

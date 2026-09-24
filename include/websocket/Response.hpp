@@ -1,7 +1,7 @@
 #pragma once
 
-#include <stdint.h>
 #include <memory>
+#include <stdint.h>
 #include <string>
 
 #include "Connection.hpp"
@@ -11,14 +11,13 @@ namespace eventhub {
 namespace websocket {
 
 class Response final {
-  public:
-    static void sendData(ConnectionPtr conn, const std::string& data, FrameType frameType);
+public:
+  static bool sendData(ConnectionPtr connection, const std::string& data, FrameType frameType);
 
-  private:
-    static void _sendFragment(ConnectionPtr conn, const std::string& fragment, uint8_t frameType, bool fin);
+private:
+  static void _appendFragment(std::string& output, std::string_view fragment,
+                              std::uint8_t frameType, bool final);
 };
 
 } // namespace websocket
 } // namespace eventhub
-
-

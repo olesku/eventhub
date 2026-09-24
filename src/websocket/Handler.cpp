@@ -1,17 +1,17 @@
-#include <spdlog/logger.h>
-#include <functional>
-#include <string>
 #include <exception>
+#include <functional>
 #include <memory>
+#include <spdlog/logger.h>
+#include <string>
 
-#include "websocket/Handler.hpp"
 #include "Connection.hpp"
 #include "HandlerContext.hpp"
+#include "Logger.hpp"
 #include "RPCHandler.hpp"
 #include "jsonrpc/jsonrpcpp.hpp"
+#include "websocket/Handler.hpp"
 #include "websocket/Response.hpp"
 #include "websocket/Types.hpp"
-#include "Logger.hpp"
 
 namespace eventhub {
 namespace websocket {
@@ -41,7 +41,7 @@ void Handler::handleMessage(HandlerContext&& ctx, FrameType frameType, const std
 
     case FrameType::CLOSE_FRAME:
       Response::sendData(ctx.connection(), data, FrameType::CLOSE_FRAME);
-      ctx.connection()->shutdownAfterFlush();
+      ctx.connection()->closeAfterFlush();
       break;
 
     case FrameType::CONTINUATION_FRAME:
@@ -59,7 +59,7 @@ void Handler::handleError(HandlerContext&& ctx, ParserError error) {
   }
   const std::string payload{static_cast<char>(closeCode >> 8), static_cast<char>(closeCode & 0xff)};
   Response::sendData(ctx.connection(), payload, FrameType::CLOSE_FRAME);
-  ctx.connection()->shutdownAfterFlush();
+  ctx.connection()->closeAfterFlush();
 }
 
 /**

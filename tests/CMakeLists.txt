@@ -11,6 +11,7 @@ set(SOURCES
   src/UtilTest.cpp
   src/WebsocketParserTest.cpp
   src/KVStoreTest.cpp
+  src/TransportTest.cpp
   src/main.cpp
 )
 
