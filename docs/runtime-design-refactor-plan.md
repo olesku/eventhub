@@ -1,6 +1,6 @@
 # Eventhub runtime design refactor: autonomous execution plan
 
-Status: **planned; implementation has not started**.
+Status: **implemented and locally validated; CI awaits a pull request**.
 
 - Prepared: 2026-09-24.
 - Repository: `eventhub` (original checkout: `/home/oles/code/eventhub`).
@@ -621,26 +621,26 @@ the exact last code revision tested.
 
 Before declaring completion, answer each item with a code/test reference:
 
-- [ ] A callback can add work, unsubscribe and close without holding a container
+- [x] A callback can add work, unsubscribe and close without holding a container
       lock or invalidating its active traversal.
-- [ ] Every connection mutation/destruction path has a defined owner thread;
+- [x] Every connection mutation/destruction path has a defined owner thread;
       every foreign-thread command owns its data and has a shutdown outcome.
-- [ ] Socket handoff and registry failure paths release resources exactly once.
-- [ ] Epoll events, timers and subscription snapshots cannot target a different
+- [x] Socket handoff and registry failure paths release resources exactly once.
+- [x] Epoll events, timers and subscription snapshots cannot target a different
       connection/subscription after identity reuse or fd reuse.
-- [ ] Stop wakes idle workers, stops admission/producers, and cleans up dependent
+- [x] Stop wakes idle workers, stops admission/producers, and cleans up dependent
       objects before owners; all joins and drains have a bounded outcome.
-- [ ] HTTP transition applies after parser return; exact suffix bytes reach the
+- [x] HTTP transition applies after parser return; exact suffix bytes reach the
       selected protocol and invalid/body-framed input cannot bypass validation.
-- [ ] TCP and TLS share output and close policy; OpenSSL retry buffers remain
+- [x] TCP and TLS share output and close policy; OpenSSL retry buffers remain
       valid, readiness directions are honored, and zero progress never spins.
-- [ ] Backpressure admits whole messages, measures actual queue state and isolates
+- [x] Backpressure admits whole messages, measures actual queue state and isolates
       a slow connection; no global memory-bound guarantee is falsely implied.
-- [ ] Handler dependencies are explicit; auth/wire/config contracts remain intact.
+- [x] Handler dependencies are explicit; auth/wire/config contracts remain intact.
 - [ ] Required validation is executed and recorded; sanitizer instrumentation and
       server exit/log checks are effective. Unresolved required gates are reported
       as incomplete, even if implementation and commits are otherwise ready.
-- [ ] Documentation, final review, clean worktree, ordinary push and remote SHA
+- [x] Documentation, final review, clean worktree, ordinary push and remote SHA
       verification are complete. Parent branch is unchanged.
 
 ## Progress and verification ledger
@@ -652,15 +652,15 @@ test. Do not depend on earlier chat messages to explain unfinished work.
 | Phase | State | Implementation commits | Evidence / next action |
 | --- | --- | --- | --- |
 | Planning handoff | Complete | Plan commit on this branch | Parent was clean and already pushed; new branch created from `fee4daf`; implementation not started. |
-| 0 Baseline/tooling | Not started | — | Establish isolated reproducible baseline and effective sanitizers. |
-| 1 Scheduler | Not started | — | Depends on phase 0. |
-| 2 Worker ownership | Not started | — | Depends on phase 1. |
-| 3 Topic delivery | Not started | — | Depends on phase 2. |
-| 4 Protocol/input | Not started | — | Depends on phase 3. |
-| 5 Transport/output | Not started | — | Depends on phase 4. |
-| 6 Backpressure | Not started | — | Depends on phase 5. |
-| 7 Handler dependencies | Not started | — | Depends on phase 6. |
-| 8 Final verification/docs | Not started | — | Depends on phases 0–7 and all required gates. |
+| 0 Baseline/tooling | Complete | `b70e2b5` | Target-scoped sanitizers, retained process logs, strict stress integrity and isolated backends. |
+| 1 Scheduler | Complete | `921c795` | Jobs and timers are extracted before callbacks; reentrant, concurrent and throwing callback tests pass. |
+| 2 Worker ownership | Complete | `69fdb65`, `5c0c89e` | RAII socket handoff, owner-thread registry, tagged IDs, eventfd stop and race-safe registry teardown. |
+| 3 Topic delivery | Complete | `69fdb65` | Stable subscription IDs and lock-free delivery from revalidated snapshots. |
+| 4 Protocol/input | Complete | `69fdb65` | Separate protocol/lifecycle state, staged transitions and exact parser consumption. |
+| 5 Transport/output | Complete | `69fdb65` | TCP/TLS composition, shared chunk queue, retry direction and real verified WSS coverage. |
+| 6 Backpressure | Complete | `69fdb65` | Atomic whole-message admission, hysteresis and aggregate metrics. |
+| 7 Handler dependencies | Complete | `69fdb65` | Handlers receive explicit config, Redis, KV, metrics snapshot and connection capabilities. |
+| 8 Final verification/docs | Complete with gaps below | `866d46f`, `5c0c89e`, final docs commit | Full diff review found and fixed a shutdown/metrics registry race; local matrix and documentation completed. |
 
 For each executed check, append:
 
@@ -674,8 +674,53 @@ Log/artifact location:
 Known limitations or follow-up:
 ```
 
-Current design deviations: none; implementation has not started.
+### Final execution record
 
-Current implementation verification: none. Preparing this document only required
-repository inspection, document review and Git checks; historical test results
-above have not been rerun for this planning-only change.
+Date and code revision: 2026-09-24, code through `5c0c89e` (documentation-only
+changes followed). GCC 14.2.0, CMake 3.31.6 and Ninja 1.12.1 were used. The
+local backend was Redis 8.0.2 with persistence disabled on a fresh ephemeral
+port for every run. The Python client was pinned to
+`2f82ee36c27a01c2038e6b0da8d1736ffac9e9ce`.
+
+The ordinary RelWithDebInfo suite passed 35 test cases and 1,372 assertions in
+1.14 seconds. Separate ASan+UBSan and TSan builds passed the same suite in 1.51
+and 1.39 seconds. `ldd` confirmed `libasan.so.8` plus `libubsan.so.1`, and
+`libtsan.so.2`, respectively. The instrumented builds used
+`-DEVENTHUB_SANITIZER=address` and `-DEVENTHUB_SANITIZER=thread`; no sanitizer
+diagnostic or unexpected child exit was reported.
+
+Repository-owned integration runs passed for plain WS without JWT, plain WS
+with JWT, and verified WSS with JWT under ASan+UBSan, all with data-integrity,
+wildcard, event-log, KV, HTTP/SSE compatibility, large-message and coalesced
+upgrade/frame checks. An untrusted WSS certificate was rejected. A TSan run
+with 20 subscribers, two publishers and 200 messages per publisher delivered
+8,000/8,000 expected messages with exact IDs and no race report.
+
+Three identical ordinary stress runs on this host each delivered 8,000/8,000.
+They measured 747–799 published messages/second, 14,946–15,971 deliveries/second
+and p95 latency of 4.47–4.97 ms. This records post-change repeatability; there is
+no trustworthy pre-change measurement or child-process peak-RSS sample, so it
+is not presented as a regression comparison.
+
+The complete diff was reviewed for locks, ownership, parser lifetime, epoll
+identity, TLS retry state, queue accounting and shutdown. That review found a
+race between `Server::stop()` clearing the worker registry and concurrent metric
+snapshots. `5c0c89e` now stops workers under the registry lock, joins without the
+lock, and reacquires it before clearing; the ordinary suite and TSan suite plus
+stress test passed after this correction. `git diff --check` also passed.
+
+Design adjustments: `HandlerContext` remains as a named composition bundle but
+no longer exposes `Server` or `Worker`; splitting it further would duplicate the
+same five explicit capabilities. Watermarks and the five-second drain deadline
+are constants because exposing new configuration was optional. TLS close sends
+one best-effort `SSL_shutdown` before the RAII socket closes; it never waits
+indefinitely for the peer.
+
+Remaining verification gaps are recorded rather than treated as passes. CI does
+not run on feature-branch pushes, so the new Redis 7 / Valkey 9, sanitizer and
+WS/WSS jobs await a pull request. Only Redis 8 was available locally. Real WSS
+exercised TLS behavior, but deterministic fake-transport tests do not force
+every OpenSSL WANT/close permutation. The nonreading-client overload matrix for
+WS, WSS and SSE, and individual failed-handoff/fd-reuse/stale-event lifecycle
+regressions are not automated. These gaps leave the required-validation checkbox
+open; they do not conceal a locally observed failure.

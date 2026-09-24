@@ -177,5 +177,10 @@ It's using Redis for intercommunication, so the only thing you have to do is to 
 Runtime metrics in [Prometheus](https://prometheus.io/) format is available at the `/metrics` endpoint.
 JSON is available at `/metrics?format=json`
 
+The runtime also reports `queued_output_bytes`, `congested_connections`, and
+`slow_consumer_closes`. A connection becomes congested at 75% of the 8,192,000
+byte output limit and leaves that state below 50%. A message that would cross
+the hard limit is rejected as a whole and that slow connection is closed.
+
 # License
 Eventhub is licensed under MIT. See [LICENSE](https://github.com/olesku/eventhub/blob/LICENSE).
