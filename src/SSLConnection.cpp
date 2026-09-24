@@ -5,6 +5,7 @@
 #include <spdlog/logger.h>
 #include <string.h>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "Forward.hpp"
@@ -15,8 +16,9 @@
 
 namespace eventhub {
 
-SSLConnection::SSLConnection(int fd, struct sockaddr_in* csin, Worker* worker, Config& cfg, SSL_CTX* ctx) :
-  Connection(fd, csin, worker, cfg), _ssl(nullptr, SSL_free), _ssl_ctx(ctx) {
+SSLConnection::SSLConnection(int fd, struct sockaddr_in* csin, Worker* worker, Config& cfg,
+                             ConnectionCallbacks callbacks, SSL_CTX* ctx) :
+  Connection(fd, csin, worker, cfg, std::move(callbacks)), _ssl(nullptr, SSL_free), _ssl_ctx(ctx) {
   _ssl_handshake_retries = 0;
   _init();
 }

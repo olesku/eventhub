@@ -1,51 +1,69 @@
 #pragma once
 
-#include <stddef.h>
-#include <functional>
+#include <array>
+#include <cstddef>
+#include <cstdint>
 #include <string>
+#include <string_view>
 
 #include "websocket/Types.hpp"
-#include "websocket/ws_parser.h"
 
-namespace eventhub {
-namespace websocket {
+namespace eventhub::websocket {
 
+// Incremental server-side RFC 6455 parser, without protocol extensions.
+// Client frames must be masked. Input can end anywhere in a header or payload;
+// it is never modified or retained. Only received payload bytes are buffered.
 class Parser final {
 public:
-  Parser();
-  ~Parser() {}
+  // The limit applies to the entire reassembled data message. Control frames
+  // have the separate protocol limit of 125 bytes.
+  explicit Parser(std::size_t maxMessageSize, ParserCallbacks callbacks = {});
 
-  void parse(char* buf, std::size_t len);
+  // Replace handlers between parse calls without resetting the stream state.
+  void setCallbacks(ParserCallbacks callbacks);
 
-  void clearDataPayload();
-  void clearControlPayload();
-
-  void appendDataPayload(const char* data, std::size_t len);
-  void appendControlPayload(const char* data, std::size_t len);
-
-  void setControlFrameType(FrameType frameType);
-  void setDataFrameType(FrameType frameType);
-
-  const std::string& getDataPayload();
-  const std::string& getControlPayload();
-
-  FrameType getControlFrameType();
-  FrameType getDataFrameType();
-
-  inline void callback(ParserStatus status, FrameType frameType, const std::string& data) { _callback(status, frameType, data); }
-  inline void setCallback(ParserCallback callback) { _callback = callback; }
+  // Callbacks are optional and run synchronously in wire order. Do not reenter
+  // or destroy the parser from a callback, or use it concurrently. Exceptions
+  // propagate to the caller and permanently stop parsing. After an error or a
+  // close frame, further input is ignored.
+  void parse(std::string_view input);
 
 private:
-  std::string _data_payload_buf;
-  std::string _control_payload_buf;
-  ws_parser_t _ws_parser;
-  ws_parser_callbacks_t _ws_parser_callbacks;
-  FrameType _data_frame_type;
-  FrameType _control_frame_type;
-  ParserCallback _callback;
+  enum class State {
+    OPCODE,
+    LENGTH,
+    EXTENDED_LENGTH,
+    MASK,
+    PAYLOAD,
+    CLOSED,
+    FAILED
+  };
+
+  void _readOpcode(std::uint8_t byte);
+  void _readLength(std::uint8_t byte);
+  void _finishLength();
+  void _readPayload(std::string_view& input);
+  void _finishFrame();
+  void _fail(ParserError error);
+
+  ParserCallbacks _callbacks;
+  std::size_t _max_message_size;
+  State _state                         = State::OPCODE;
+  FrameType _frame_type                = FrameType::CONTINUATION_FRAME;
+  FrameType _message_type              = FrameType::CONTINUATION_FRAME;
+  bool _final                          = false;
+  bool _control                        = false;
+  bool _fragmented                     = false;
+  std::uint64_t _bytes_remaining       = 0;
+  std::uint8_t _length_tag             = 0;
+  std::uint8_t _length_bytes_remaining = 0;
+  std::array<std::uint8_t, 4> _mask{};
+  std::size_t _mask_position = 0;
+
+  // A control frame may arrive between data fragments without disturbing the
+  // unfinished message. Keeping these separate also bounds control storage.
+  std::string _message;
+  std::string _control_payload;
 };
 
-} // namespace websocket
-} // namespace eventhub
-
-
+} // namespace eventhub::websocket

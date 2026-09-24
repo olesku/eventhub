@@ -10,7 +10,8 @@
 #include "Server.hpp"
 #include "Util.hpp"
 #include "http/Handler.hpp"
-#include "http/Parser.hpp"
+#include "http/Request.hpp"
+#include "http/Types.hpp"
 #include "http/Response.hpp"
 #include "metrics/JsonRenderer.hpp"
 #include "metrics/PrometheusRenderer.hpp"
@@ -20,80 +21,70 @@
 
 namespace eventhub {
 namespace http {
-void Handler::HandleRequest(HandlerContext&& ctx, Parser* req, RequestState reqState) {
-  switch (reqState) {
-    case RequestState::REQ_INCOMPLETE:
-      return;
-
-    case RequestState::REQ_TO_BIG:
-      ctx.connection()->shutdown();
-      return;
-      break;
-
-    case RequestState::REQ_OK:
-      _handlePath(ctx, req);
-      break;
-
-    default:
-      ctx.connection()->shutdown();
-  }
+void Handler::handleRequest(HandlerContext&& ctx, const Request& request) {
+  _handlePath(ctx, request);
 }
 
-void Handler::_handlePath(HandlerContext& ctx, Parser* req) {
-  std::string method = req->getMethod();
+void Handler::handleError(HandlerContext&& ctx, ParseError error) {
+  (void)error;
+  ctx.connection()->shutdown();
+}
+
+void Handler::_handlePath(HandlerContext& ctx, const Request& request) {
+  std::string method = request.method();
   Util::strToLower(method);
 
   // Only allow get and options requests.
   // Answer with CORS headers on options request.
   if (method == "options") {
-    Response resp(204);
-    _setCorsHeaders(req, resp);
-    resp.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-    resp.setHeader("Connection", "close");
+    Response response(204);
+    _setCorsHeaders(request, response);
+    response.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+    response.setHeader("Connection", "close");
 
-    ctx.connection()->write(resp.get());
+    ctx.connection()->write(response.get());
     ctx.connection()->shutdownAfterFlush();
     return;
   } else if (method != "get") {
-    Response resp(405, "<h1>405 Method not allowed</h1>\r\n");
-    resp.setHeader("Connection", "close");
+    Response response(405, "<h1>405 Method not allowed</h1>\r\n");
+    response.setHeader("Connection", "close");
 
-    ctx.connection()->write(resp.get());
+    ctx.connection()->write(response.get());
     ctx.connection()->shutdownAfterFlush();
     return;
   }
 
   // Healthcheck endpoint.
-  if (req->getPath() == "/healthz") {
-    Response resp(200);
-    _setCorsHeaders(req, resp);
-    resp.setHeader("Content-Type", "application/json");
-    resp.setHeader("Connection", "close");
-    resp.setBody("{ \"status\": \"ok\" }\r\n");
+  if (request.path() == "/healthz") {
+    Response response(200);
+    _setCorsHeaders(request, response);
+    response.setHeader("Content-Type", "application/json");
+    response.setHeader("Connection", "close");
+    response.setBody("{ \"status\": \"ok\" }\r\n");
 
-    ctx.connection()->write(resp.get());
+    ctx.connection()->write(response.get());
     ctx.connection()->shutdownAfterFlush();
     return;
   }
 
   // Metrics endpoint.
-  if (req->getPath() == "/metrics" || req->getPath() == "/metrics/") {
-    Response resp(200);
-    _setCorsHeaders(req, resp);
-    resp.setHeader("Connection", "close");
+  if (request.path() == "/metrics" || request.path() == "/metrics/") {
+    Response response(200);
+    _setCorsHeaders(request, response);
+    response.setHeader("Connection", "close");
 
     std::string m;
-    if (req->getQueryString("format") == "json") {
+    if (request.queryParameter("format") == "json") {
       m = metrics::JsonRenderer::RenderMetrics(ctx.server());
-      resp.setHeader("Content-Type", "application/json");
+      response.setHeader("Content-Type", "application/json");
     } else {
-      resp.setHeader("Content-Type", "text/plain");
+      response.setHeader("Content-Type", "text/plain");
       m = metrics::PrometheusRenderer::RenderMetrics(ctx.server());
     }
 
-    resp.setBody(m);
+    response.setBody(m);
 
-    ctx.connection()->write(resp.get());
+    ctx.connection()->write(response.get());
     ctx.connection()->shutdownAfterFlush();
     return;
   }
@@ -101,10 +92,10 @@ void Handler::_handlePath(HandlerContext& ctx, Parser* req) {
   // Check authorization.
   std::string authToken;
 
-  if (!req->getHeader("authorization").empty()) {
-    authToken = req->getHeader("authorization");
-  } else if (!req->getQueryString("auth").empty()) {
-    authToken = Util::uriDecode(req->getQueryString("auth"));
+  if (!request.header("authorization").empty()) {
+    authToken = request.header("authorization");
+  } else if (!request.queryParameter("auth").empty()) {
+    authToken = Util::uriDecode(request.queryParameter("auth"));
   } else if (!ctx.server()->config().get<bool>("disable_auth")) {
     _badRequest(ctx, "No authentication token was given.", 401);
     return;
@@ -115,24 +106,24 @@ void Handler::_handlePath(HandlerContext& ctx, Parser* req) {
     return;
   }
 
-  if (req->getHeader("accept") == "text/event-stream") {
+  if (request.header("accept") == "text/event-stream") {
     if (!ctx.server()->config().get<bool>("enable_sse")) {
       _badRequest(ctx, "SSE is not enabled in this setup.", 501);
       return;
     }
 
-    sse::Handler::HandleRequest(ctx, req);
-  } else if (req->getHeader("upgrade") == "websocket") {
-    _websocketHandshake(ctx, req);
+    sse::Handler::handleRequest(ctx, request);
+  } else if (request.header("upgrade") == "websocket") {
+    _websocketHandshake(ctx, request);
   } else {
     _badRequest(ctx, "Invalid request.");
     return;
   }
 }
 
-bool Handler::_websocketHandshake(HandlerContext& ctx, Parser* req) {
-  const auto secWsKey = req->getHeader("sec-websocket-key");
-  if (req->getHeader("upgrade").compare("websocket") != 0 || secWsKey.empty()) {
+bool Handler::_websocketHandshake(HandlerContext& ctx, const Request& request) {
+  const auto secWsKey = request.header("sec-websocket-key");
+  if (request.header("upgrade").compare("websocket") != 0 || secWsKey.empty()) {
     _badRequest(ctx, "Invalid websocket request.");
     return false;
   }
@@ -143,44 +134,44 @@ bool Handler::_websocketHandshake(HandlerContext& ctx, Parser* req) {
   SHA1(reinterpret_cast<const unsigned char*>(key.c_str()), key.length(), keySha1);
   const std::string secWsAccept = Util::base64Encode(keySha1, SHA_DIGEST_LENGTH);
 
-  Response resp;
-  resp.setStatus(101);
-  resp.setHeader("upgrade", "websocket");
-  resp.setHeader("connection", "upgrade");
-  resp.setHeader("sec-websocket-accept", secWsAccept);
+  Response response;
+  response.setStatus(101);
+  response.setHeader("upgrade", "websocket");
+  response.setHeader("connection", "upgrade");
+  response.setHeader("sec-websocket-accept", secWsAccept);
 
   // FIXME: We should check against a list of supported protocols here.
-  if (!req->getHeader("Sec-WebSocket-Protocol").empty()) {
-    resp.setHeader("Sec-WebSocket-Protocol", req->getHeader("Sec-WebSocket-Protocol"));
+  if (!request.header("Sec-WebSocket-Protocol").empty()) {
+    response.setHeader("Sec-WebSocket-Protocol", request.header("Sec-WebSocket-Protocol"));
   }
 
-  ctx.connection()->write(resp.get());
+  ctx.connection()->write(response.get());
   ctx.connection()->setState(ConnectionState::WEBSOCKET);
 
   return true;
 }
 
 void Handler::_badRequest(HandlerContext& ctx, const std::string& reason, int statusCode) {
-  Response resp;
+  Response response;
   std::stringstream body;
 
-  body << "<h1>" << statusCode << " " << resp.getStatusMsg(statusCode) << "</h1>\n";
+  body << "<h1>" << statusCode << " " << response.getStatusMsg(statusCode) << "</h1>\n";
   body << reason << "\r\n";
 
-  resp.setStatus(statusCode);
-  resp.setHeader("connection", "close");
-  resp.setBody(body.str());
-  ctx.connection()->write(resp.get());
+  response.setStatus(statusCode);
+  response.setHeader("connection", "close");
+  response.setBody(body.str());
+  ctx.connection()->write(response.get());
   ctx.connection()->shutdownAfterFlush();
 }
 
-void Handler::_setCorsHeaders(Parser* req, Response& resp) {
-  const auto& origin = req->getHeader("Origin");
+void Handler::_setCorsHeaders(const Request& request, Response& response) {
+  const auto origin = request.header("Origin");
 
   if (origin.empty()) {
-    resp.setHeader("Access-Control-Allow-Origin", "*");
+    response.setHeader("Access-Control-Allow-Origin", "*");
   } else {
-    resp.setHeader("Access-Control-Allow-Origin", origin);
+    response.setHeader("Access-Control-Allow-Origin", origin);
   }
 }
 

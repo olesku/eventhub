@@ -14,21 +14,21 @@
 #include "sse/Handler.hpp"
 #include "sse/Response.hpp"
 #include "AccessController.hpp"
-#include "http/Parser.hpp"
+#include "http/Request.hpp"
 #include "jwt/json/json.hpp"
 
 namespace eventhub {
 namespace sse {
 
-void Handler::HandleRequest(HandlerContext& ctx, http::Parser* req) {
+void Handler::handleRequest(HandlerContext& ctx, const http::Request& request) {
   auto conn               = ctx.connection();
   auto& redis             = ctx.server()->getRedis();
   auto accessController   = conn->getAccessController();
 
-  auto path        = Util::uriDecode(req->getPath());
-  auto lastEventId = req->getHeader("Last-Event-ID");
-  auto sinceStr    = req->getQueryString("since");
-  auto limitStr    = req->getQueryString("limit");
+  auto path        = Util::uriDecode(request.path());
+  auto lastEventId = request.header("Last-Event-ID");
+  auto sinceStr    = request.queryParameter("since");
+  auto limitStr    = request.queryParameter("limit");
   long long limit  = ctx.server()->config().get<int>("max_cache_request_limit");
 
   if (path.at(0) == '/') {
@@ -47,8 +47,8 @@ void Handler::HandleRequest(HandlerContext& ctx, http::Parser* req) {
   }
 
   // Get last-event-id.
-  if (!req->getQueryString("lastEventId").empty()) {
-    lastEventId = req->getQueryString("lastEventId");
+  if (!request.queryParameter("lastEventId").empty()) {
+    lastEventId = request.queryParameter("lastEventId");
   }
 
   // Parse limit parameter.

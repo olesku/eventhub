@@ -5,9 +5,11 @@ set(SOURCES
   src/ConfigTest.cpp
   src/TopicTest.cpp
   src/EventLoopTest.cpp
+  src/HttpParserTest.cpp
   src/RedisTest.cpp
   src/AccessControllerTest.cpp
   src/UtilTest.cpp
+  src/WebsocketParserTest.cpp
   src/KVStoreTest.cpp
   src/main.cpp
 )

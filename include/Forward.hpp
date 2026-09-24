@@ -12,8 +12,9 @@ class AccessController;
 
 namespace http {
 class Parser;
+class Request;
 class Response;
-enum class RequestState;
+enum class ParseError;
 }
 
 namespace websocket {

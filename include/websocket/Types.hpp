@@ -3,11 +3,11 @@
 #include <cstdint>
 #include <functional>
 #include <string>
+#include <string_view>
 
-namespace eventhub {
-namespace websocket {
+namespace eventhub::websocket {
 
-enum class FrameType : uint8_t {
+enum class FrameType : std::uint8_t {
   CONTINUATION_FRAME = 0x0,
   TEXT_FRAME         = 0x1,
   BINARY_FRAME       = 0x2,
@@ -16,15 +16,28 @@ enum class FrameType : uint8_t {
   PONG_FRAME         = 0xA
 };
 
-enum class ParserStatus {
-  PARSER_OK,
-  MAX_DATA_FRAME_SIZE_EXCEEDED,
-  MAX_CONTROL_FRAME_SIZE_EXCEEDED
+enum class ParserError {
+  RESERVED_BITS_SET,
+  INVALID_OPCODE,
+  INVALID_CONTINUATION,
+  FRAGMENTED_CONTROL,
+  CONTROL_TOO_LONG,
+  MASK_REQUIRED,
+  NON_CANONICAL_LENGTH,
+  INVALID_LENGTH,
+  MESSAGE_TOO_BIG,
+  INVALID_CLOSE_PAYLOAD,
+  INVALID_UTF8
 };
 
-using ParserCallback = std::function<void(ParserStatus status, FrameType frameType, const std::string& data)>;
+[[nodiscard]] std::string_view errorMessage(ParserError error) noexcept;
 
-} // namespace websocket
-} // namespace eventhub
+struct ParserCallbacks {
+  // Called once per complete text/binary message or control frame. The parser
+  // owns the payload; copy it if it must outlive this synchronous callback.
+  std::function<void(FrameType, const std::string&)> onMessage;
+  // Called at most once. A protocol error permanently stops this parser.
+  std::function<void(ParserError)> onError;
+};
 
-
+} // namespace eventhub::websocket
