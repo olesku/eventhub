@@ -5,8 +5,6 @@
 
 #include "ConnectionWorker.hpp"
 #include "Logger.hpp"
-#include "http/Parser.hpp"
-#include "websocket/Parser.hpp"
 #include "websocket/Types.hpp"
 #ifdef __linux__
 #include <sys/epoll.h>
@@ -210,12 +208,12 @@ void Worker::_acceptConnection(bool ssl) {
     // On non-Linux platforms we fall back to accept(), and the Connection
     // constructor sets O_NONBLOCK.
 #ifdef __linux__
-    const int clientFd = accept4(listenFd, (struct sockaddr*)&csin, &clen, SOCK_NONBLOCK);
+    const int connectionFd = accept4(listenFd, (struct sockaddr*)&csin, &clen, SOCK_NONBLOCK);
 #else
-    const int clientFd = accept(listenFd, (struct sockaddr*)&csin, &clen);
+    const int connectionFd = accept(listenFd, (struct sockaddr*)&csin, &clen);
 #endif
 
-    if (clientFd == -1) {
+    if (connectionFd == -1) {
       if (errno == EINTR) {
         // Interrupted by signal; retry accept().
         continue;
@@ -236,7 +234,7 @@ void Worker::_acceptConnection(bool ssl) {
       break;
     }
 
-    _server->getWorker()->_addConnection(clientFd, &csin, ssl);
+    _server->getWorker()->_addConnection(connectionFd, &csin, ssl);
   }
 }
 
@@ -249,86 +247,96 @@ ConnectionPtr Worker::_addConnection(int fd, struct sockaddr_in* csin, bool ssl)
   std::lock_guard<std::mutex> lock(_connection_list_mutex);
   ConnectionListIterator connectionIterator;
 
+  ConnectionCallbacks callbacks;
+  callbacks.onHttpRequest = [this](Connection& connection, const http::Request& request) {
+    if (connection.isShutdown()) {
+      return;
+    }
+    http::Handler::handleRequest(
+        HandlerContext(_config, _server, this, connection.getSharedPtr()), request);
+  };
+  callbacks.onHttpError = [this](Connection& connection, http::ParseError error) {
+    if (connection.isShutdown()) {
+      return;
+    }
+    http::Handler::handleError(
+        HandlerContext(_config, _server, this, connection.getSharedPtr()), error);
+  };
+  callbacks.onWebSocketMessage = [this](Connection& connection, websocket::FrameType frameType,
+                                        const std::string& data) {
+    if (connection.isShutdown()) {
+      return;
+    }
+    websocket::Handler::handleMessage(
+        HandlerContext(_config, _server, this, connection.getSharedPtr()), frameType, data);
+  };
+  callbacks.onWebSocketError = [this](Connection& connection, websocket::ParserError error) {
+    if (connection.isShutdown()) {
+      return;
+    }
+    websocket::Handler::handleError(
+        HandlerContext(_config, _server, this, connection.getSharedPtr()), error);
+  };
+
   if (ssl) {
-    connectionIterator = _connection_list.insert(_connection_list.end(), std::make_shared<SSLConnection>(fd, csin, this, config(), _server->getSSLContext()));
+    connectionIterator = _connection_list.insert(
+        _connection_list.end(),
+        std::make_shared<SSLConnection>(fd, csin, this, config(), std::move(callbacks),
+                                        _server->getSSLContext()));
   } else {
-    connectionIterator = _connection_list.insert(_connection_list.end(), std::make_shared<Connection>(fd, csin, this, config()));
+    connectionIterator = _connection_list.insert(
+        _connection_list.end(),
+        std::make_shared<Connection>(fd, csin, this, config(), std::move(callbacks)));
   }
 
-  auto client = connectionIterator->get()->getSharedPtr();
-  std::weak_ptr<Connection> wptrClient(client);
+  auto connection = *connectionIterator;
+  std::weak_ptr<Connection> weakConnection(connection);
 
-  // Set up HTTP request callback.
-  auto* httpParser = client->getHttpParser();
-  httpParser->setCallback([this, wptrClient](http::Parser* req, http::RequestState reqState) {
-    auto c = wptrClient.lock();
-    if (!c)
-      return;
-    http::Handler::HandleRequest(HandlerContext(_config, _server, this, c), req, reqState);
-  });
-
-  // Set up WebSocket message and protocol-error callbacks.
-  websocket::ParserCallbacks callbacks;
-  callbacks.onMessage = [this, wptrClient](websocket::FrameType frameType, const std::string& data) {
-    auto c = wptrClient.lock();
-    if (!c || c->isShutdown())
-      return;
-    websocket::Handler::HandleRequest(HandlerContext(_config, _server, this, c), frameType, data);
-  };
-  callbacks.onError = [this, wptrClient](websocket::ParserError error) {
-    auto c = wptrClient.lock();
-    if (!c || c->isShutdown())
-      return;
-    websocket::Handler::HandleError(HandlerContext(_config, _server, this, c), error);
-  };
-  auto* websocketParser = client->getWebSocketParser();
-  websocketParser->setCallbacks(std::move(callbacks));
-
-  client->assignConnectionListIterator(connectionIterator);
-  int ret = client->addToEpoll((EPOLLIN | EPOLLRDHUP | EPOLLHUP | EPOLLERR));
+  connection->assignConnectionListIterator(connectionIterator);
+  int ret = connection->addToEpoll((EPOLLIN | EPOLLRDHUP | EPOLLHUP | EPOLLERR));
 
   if (ret == -1) {
-    LOG->warn("Could not add client to epoll: {}.", strerror(errno));
+    LOG->warn("Could not add connection to epoll: {}.", strerror(errno));
     _connection_list.erase(connectionIterator);
     return nullptr;
   }
 
-  LOG->trace("Client {} accepted in worker {}", client->getIP(), getWorkerId());
+  LOG->trace("Connection {} accepted in worker {}", connection->getIP(), getWorkerId());
 
-  // Disconnect client if successful websocket handshake hasn't occurred in 10 seconds.
-  addTimer(config().get<int>("handshake_timeout") * 1000, [wptrClient, this](TimerCtx* ctx) {
-    auto c = wptrClient.lock();
+  // Disconnect if a successful WebSocket handshake hasn't occurred in time.
+  addTimer(config().get<int>("handshake_timeout") * 1000, [weakConnection, this](TimerCtx* ctx) {
+    auto connection = weakConnection.lock();
 
-    if (c && c->getState() != ConnectionState::WEBSOCKET && c->getState() != ConnectionState::SSE) {
-      LOG->debug("Client {} failed to handshake in {} seconds. Removing.", c->getIP(), config().get<int>("handshake_timeout"));
-      c->shutdown();
+    if (connection && connection->getState() != ConnectionState::WEBSOCKET && connection->getState() != ConnectionState::SSE) {
+      LOG->debug("Connection {} failed to handshake in {} seconds. Removing.", connection->getIP(), config().get<int>("handshake_timeout"));
+      connection->shutdown();
     }
   });
 
-  // Send a websocket PING frame to the client every Config.getPingInterval() second.
+  // Send a WebSocket PING frame at the configured interval.
   addTimer(
-      config().get<int>("ping_interval") * 1000, [wptrClient](TimerCtx* ctx) {
-        auto c = wptrClient.lock();
+      config().get<int>("ping_interval") * 1000, [weakConnection](TimerCtx* ctx) {
+        auto connection = weakConnection.lock();
 
-        if (!c || c->isShutdown()) {
+        if (!connection || connection->isShutdown()) {
           ctx->repeat = false;
           return;
         }
 
-        if (c->getState() == ConnectionState::WEBSOCKET) {
-          websocket::Response::sendData(c, "", websocket::FrameType::PING_FRAME);
-        } else if (c->getState() == ConnectionState::SSE) {
-          sse::Response::sendPing(c);
+        if (connection->getState() == ConnectionState::WEBSOCKET) {
+          websocket::Response::sendData(connection, "", websocket::FrameType::PING_FRAME);
+        } else if (connection->getState() == ConnectionState::SSE) {
+          sse::Response::sendPing(connection);
         }
 
-        // TODO: Disconnect client if lastPong was Config.getPingInterval() * 1000 * 3 ago.
+        // TODO: Disconnect if the last PONG exceeds the allowed interval.
       },
       true);
 
   _metrics.current_connections_count++;
   _metrics.total_connect_count++;
 
-  return client;
+  return connection;
 }
 
 /**
@@ -446,29 +454,28 @@ void Worker::_workerMain() {
         continue;
       }
 
-      auto client = static_cast<Connection*>(eventConnectionList[i].data.ptr)->getSharedPtr();
+      auto connection = static_cast<Connection*>(eventConnectionList[i].data.ptr)->getSharedPtr();
 
-      // Mark the client for shutdown if client disconnects or
-      // if there is an error.
+      // Mark the connection for shutdown on disconnect or error.
       if ((eventConnectionList[i].events & EPOLLERR) || (eventConnectionList[i].events & EPOLLHUP) || (eventConnectionList[i].events & EPOLLRDHUP)) {
-        client->shutdown();
+        connection->shutdown();
       }
 
-      // If client is marked for shutdown remove the connection.
-      if (client->isShutdown()) {
-        _removeConnection(client);
+      // Remove connections marked for shutdown.
+      if (connection->isShutdown()) {
+        _removeConnection(connection);
         continue;
       }
 
       // Flush send buffer if socket is ready for write.
       if (eventConnectionList[i].events & EPOLLOUT) {
-        client->flushSendBuffer();
+        connection->flushSendBuffer();
         continue;
       }
 
-      // Read data from client if data is available.
+      // Read data when the connection is ready.
       if (eventConnectionList[i].events & EPOLLIN) {
-        client->read();
+        connection->read();
       }
     }
 

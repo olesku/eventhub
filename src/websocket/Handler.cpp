@@ -22,7 +22,7 @@ namespace websocket {
  * @param data Request data.
  * @param ctx HandlerContext (server, worker, client).
  */
-void Handler::HandleRequest(HandlerContext&& ctx, FrameType frameType, const std::string& data) {
+void Handler::handleMessage(HandlerContext&& ctx, FrameType frameType, const std::string& data) {
   switch (frameType) {
     case FrameType::TEXT_FRAME:
       _handleTextFrame(ctx, data);
@@ -49,7 +49,7 @@ void Handler::HandleRequest(HandlerContext&& ctx, FrameType frameType, const std
   }
 }
 
-void Handler::HandleError(HandlerContext&& ctx, ParserError error) {
+void Handler::handleError(HandlerContext&& ctx, ParserError error) {
   LOG->debug("WebSocket error from {}: {}. Closing connection.", ctx.connection()->getIP(), errorMessage(error));
   std::uint16_t closeCode = 1002; // Protocol error.
   if (error == ParserError::MESSAGE_TOO_BIG) {

@@ -5,6 +5,7 @@ set(SOURCES
   src/ConfigTest.cpp
   src/TopicTest.cpp
   src/EventLoopTest.cpp
+  src/HttpParserTest.cpp
   src/RedisTest.cpp
   src/AccessControllerTest.cpp
   src/UtilTest.cpp

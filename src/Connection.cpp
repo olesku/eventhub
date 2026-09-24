@@ -25,8 +25,9 @@
 
 namespace eventhub {
 
-Connection::Connection(int fd, struct sockaddr_in* csin, Worker* worker, Config& cfg) :
-  EventhubBase(cfg), _fd(fd), _worker(worker) {
+Connection::Connection(int fd, struct sockaddr_in* csin, Worker* worker, Config& cfg,
+                       ConnectionCallbacks callbacks) :
+  EventhubBase(cfg), _fd(fd), _worker(worker), _callbacks(std::move(callbacks)) {
 
   _is_shutdown             = false;
   _is_shutdown_after_flush = false;
@@ -51,8 +52,31 @@ Connection::Connection(int fd, struct sockaddr_in* csin, Worker* worker, Config&
 
   LOG->trace("Client {} connected.", getIP());
 
-  _http_parser = std::make_unique<http::Parser>();
-  _websocket_parser = std::make_unique<websocket::Parser>(MAX_DATA_FRAME_SIZE);
+  http::ParserCallbacks httpCallbacks;
+  httpCallbacks.onRequest = [this](const http::Request& request) {
+    if (_callbacks.onHttpRequest) {
+      _callbacks.onHttpRequest(*this, request);
+    }
+  };
+  httpCallbacks.onError = [this](http::ParseError error) {
+    if (_callbacks.onHttpError) {
+      _callbacks.onHttpError(*this, error);
+    }
+  };
+  _http_parser = std::make_unique<http::Parser>(std::move(httpCallbacks));
+
+  websocket::ParserCallbacks websocketCallbacks;
+  websocketCallbacks.onMessage = [this](websocket::FrameType frameType, const std::string& data) {
+    if (_callbacks.onWebSocketMessage) {
+      _callbacks.onWebSocketMessage(*this, frameType, data);
+    }
+  };
+  websocketCallbacks.onError = [this](websocket::ParserError error) {
+    if (_callbacks.onWebSocketError) {
+      _callbacks.onWebSocketError(*this, error);
+    }
+  };
+  _websocket_parser = std::make_unique<websocket::Parser>(MAX_DATA_FRAME_SIZE, std::move(websocketCallbacks));
   _access_controller = std::make_unique<AccessController>(cfg);
 
   // Set initial state.
@@ -138,6 +162,11 @@ void Connection::_parseRequest(std::size_t bytesRead) {
   switch (getState()) {
     case ConnectionState::HTTP:
       _http_parser->parse(_read_buffer.data(), bytesRead);
+      // A request callback may upgrade the protocol. Keep the parser alive
+      // until that callback and parse() have both returned.
+      if (getState() != ConnectionState::HTTP) {
+        _http_parser.reset();
+      }
       break;
 
     case ConnectionState::WEBSOCKET:
@@ -258,10 +287,6 @@ int Connection::removeFromEpoll() {
 }
 
 ConnectionState Connection::setState(ConnectionState newState) {
-  if (newState == ConnectionState::WEBSOCKET && _http_parser.get()) {
-    _http_parser.reset();
-  }
-
   _state = newState;
   return newState;
 }

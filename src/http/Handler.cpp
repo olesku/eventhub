@@ -10,7 +10,8 @@
 #include "Server.hpp"
 #include "Util.hpp"
 #include "http/Handler.hpp"
-#include "http/Parser.hpp"
+#include "http/Request.hpp"
+#include "http/Types.hpp"
 #include "http/Response.hpp"
 #include "metrics/JsonRenderer.hpp"
 #include "metrics/PrometheusRenderer.hpp"
@@ -20,34 +21,24 @@
 
 namespace eventhub {
 namespace http {
-void Handler::HandleRequest(HandlerContext&& ctx, Parser* req, RequestState reqState) {
-  switch (reqState) {
-    case RequestState::REQ_INCOMPLETE:
-      return;
-
-    case RequestState::REQ_TO_BIG:
-      ctx.connection()->shutdown();
-      return;
-      break;
-
-    case RequestState::REQ_OK:
-      _handlePath(ctx, req);
-      break;
-
-    default:
-      ctx.connection()->shutdown();
-  }
+void Handler::handleRequest(HandlerContext&& ctx, const Request& request) {
+  _handlePath(ctx, request);
 }
 
-void Handler::_handlePath(HandlerContext& ctx, Parser* req) {
-  std::string method = req->getMethod();
+void Handler::handleError(HandlerContext&& ctx, ParseError error) {
+  (void)error;
+  ctx.connection()->shutdown();
+}
+
+void Handler::_handlePath(HandlerContext& ctx, const Request& request) {
+  std::string method = request.method();
   Util::strToLower(method);
 
   // Only allow get and options requests.
   // Answer with CORS headers on options request.
   if (method == "options") {
     Response resp(204);
-    _setCorsHeaders(req, resp);
+    _setCorsHeaders(request, resp);
     resp.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
     resp.setHeader("Connection", "close");
 
@@ -64,9 +55,9 @@ void Handler::_handlePath(HandlerContext& ctx, Parser* req) {
   }
 
   // Healthcheck endpoint.
-  if (req->getPath() == "/healthz") {
+  if (request.path() == "/healthz") {
     Response resp(200);
-    _setCorsHeaders(req, resp);
+    _setCorsHeaders(request, resp);
     resp.setHeader("Content-Type", "application/json");
     resp.setHeader("Connection", "close");
     resp.setBody("{ \"status\": \"ok\" }\r\n");
@@ -77,13 +68,13 @@ void Handler::_handlePath(HandlerContext& ctx, Parser* req) {
   }
 
   // Metrics endpoint.
-  if (req->getPath() == "/metrics" || req->getPath() == "/metrics/") {
+  if (request.path() == "/metrics" || request.path() == "/metrics/") {
     Response resp(200);
-    _setCorsHeaders(req, resp);
+    _setCorsHeaders(request, resp);
     resp.setHeader("Connection", "close");
 
     std::string m;
-    if (req->getQueryString("format") == "json") {
+    if (request.queryParameter("format") == "json") {
       m = metrics::JsonRenderer::RenderMetrics(ctx.server());
       resp.setHeader("Content-Type", "application/json");
     } else {
@@ -101,10 +92,10 @@ void Handler::_handlePath(HandlerContext& ctx, Parser* req) {
   // Check authorization.
   std::string authToken;
 
-  if (!req->getHeader("authorization").empty()) {
-    authToken = req->getHeader("authorization");
-  } else if (!req->getQueryString("auth").empty()) {
-    authToken = Util::uriDecode(req->getQueryString("auth"));
+  if (!request.header("authorization").empty()) {
+    authToken = request.header("authorization");
+  } else if (!request.queryParameter("auth").empty()) {
+    authToken = Util::uriDecode(request.queryParameter("auth"));
   } else if (!ctx.server()->config().get<bool>("disable_auth")) {
     _badRequest(ctx, "No authentication token was given.", 401);
     return;
@@ -115,24 +106,24 @@ void Handler::_handlePath(HandlerContext& ctx, Parser* req) {
     return;
   }
 
-  if (req->getHeader("accept") == "text/event-stream") {
+  if (request.header("accept") == "text/event-stream") {
     if (!ctx.server()->config().get<bool>("enable_sse")) {
       _badRequest(ctx, "SSE is not enabled in this setup.", 501);
       return;
     }
 
-    sse::Handler::HandleRequest(ctx, req);
-  } else if (req->getHeader("upgrade") == "websocket") {
-    _websocketHandshake(ctx, req);
+    sse::Handler::handleRequest(ctx, request);
+  } else if (request.header("upgrade") == "websocket") {
+    _websocketHandshake(ctx, request);
   } else {
     _badRequest(ctx, "Invalid request.");
     return;
   }
 }
 
-bool Handler::_websocketHandshake(HandlerContext& ctx, Parser* req) {
-  const auto secWsKey = req->getHeader("sec-websocket-key");
-  if (req->getHeader("upgrade").compare("websocket") != 0 || secWsKey.empty()) {
+bool Handler::_websocketHandshake(HandlerContext& ctx, const Request& request) {
+  const auto secWsKey = request.header("sec-websocket-key");
+  if (request.header("upgrade").compare("websocket") != 0 || secWsKey.empty()) {
     _badRequest(ctx, "Invalid websocket request.");
     return false;
   }
@@ -150,8 +141,8 @@ bool Handler::_websocketHandshake(HandlerContext& ctx, Parser* req) {
   resp.setHeader("sec-websocket-accept", secWsAccept);
 
   // FIXME: We should check against a list of supported protocols here.
-  if (!req->getHeader("Sec-WebSocket-Protocol").empty()) {
-    resp.setHeader("Sec-WebSocket-Protocol", req->getHeader("Sec-WebSocket-Protocol"));
+  if (!request.header("Sec-WebSocket-Protocol").empty()) {
+    resp.setHeader("Sec-WebSocket-Protocol", request.header("Sec-WebSocket-Protocol"));
   }
 
   ctx.connection()->write(resp.get());
@@ -174,8 +165,8 @@ void Handler::_badRequest(HandlerContext& ctx, const std::string& reason, int st
   ctx.connection()->shutdownAfterFlush();
 }
 
-void Handler::_setCorsHeaders(Parser* req, Response& resp) {
-  const auto& origin = req->getHeader("Origin");
+void Handler::_setCorsHeaders(const Request& request, Response& resp) {
+  const auto origin = request.header("Origin");
 
   if (origin.empty()) {
     resp.setHeader("Access-Control-Allow-Origin", "*");

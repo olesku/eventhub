@@ -1,219 +1,140 @@
-#include <string.h>
-#include <spdlog/logger.h>
-#include <map>
-#include <string>
-#include <memory>
-
 #include "http/Parser.hpp"
+
+#include <string>
+#include <utility>
+
 #include "Util.hpp"
 #include "http/picohttpparser.h"
-#include "Logger.hpp"
 
-namespace eventhub {
-namespace http {
+namespace eventhub::http {
 
-/**
-  Constructor.
-**/
-Parser::Parser() {
-  _resetState();
-  _callback = [](http::Parser* req, http::RequestState reqState) {
-    LOG->error("HTTP parser callback was called before it was initialized.");
-  };
+std::string Request::header(std::string name) const {
+  Util::strToLower(name);
+  const auto header = _headers.find(name);
+  return header == _headers.end() ? std::string{} : header->second;
 }
 
-/**
-  Destructor.
-**/
-Parser::~Parser() {}
+std::string Request::queryParameter(std::string name) const {
+  Util::strToLower(name);
+  const auto parameter = _query_parameters.find(name);
+  return parameter == _query_parameters.end() ? std::string{} : parameter->second;
+}
 
-/**
-    Parse the request.
-    @param data Raw http request data.
-    @param len Length of data.
-  **/
-void Parser::parse(const char* data, std::size_t len) {
-  int pret;
+void Request::_reset() {
+  _method.clear();
+  _path.clear();
+  _headers.clear();
+  _query_parameters.clear();
+}
 
-  if (_is_complete) {
-    if (len == 0) {
-      return _callback(this, RequestState::REQ_OK);
+void Request::_parseQueryString(const std::string& query) {
+  std::size_t position = 0;
+  while (position < query.size()) {
+    const auto equals = query.find('=', position);
+    if (equals == std::string::npos) {
+      break;
     }
 
-    // Previously we kept stale headers/query params around, so a second
-    // request would quietly re-use the old state. Resetting here ensures that
-    // every HTTP message is parsed from a clean slate.
+    const auto ampersand = query.find('&', equals + 1);
+    auto name = query.substr(position, equals - position);
+    auto value = query.substr(equals + 1,
+                              ampersand == std::string::npos
+                                  ? std::string::npos
+                                  : ampersand - (equals + 1));
+    position = ampersand == std::string::npos ? query.size() : ampersand + 1;
+
+    if (!name.empty() && !value.empty()) {
+      Util::strToLower(name);
+      _query_parameters[name] = std::move(value);
+    }
+  }
+}
+
+Parser::Parser(ParserCallbacks callbacks) : _callbacks(std::move(callbacks)) {
+  _resetState();
+}
+
+void Parser::parse(const char* data, std::size_t len) {
+  if (_failed) {
+    return;
+  }
+
+  if (_is_complete) {
     _resetState();
   }
 
   _bytes_read_prev = _bytes_read;
-
-  // Request is to large.
   if ((_bytes_read + len) > HTTP_BUFSIZ) {
-    _error_message = "REQ_TO_BIG: Request to large.";
-    return _callback(this, RequestState::REQ_TO_BIG);
+    _failed = true;
+    if (_callbacks.onError) {
+      _callbacks.onError(ParseError::REQUEST_TOO_LARGE);
+    }
+    return;
   }
 
   _bytes_read += len;
   _buf.append(data, len);
-
   _phr_num_headers = sizeof(_phr_headers) / sizeof(_phr_headers[0]);
 
-  // std::string already guarantees contiguous storage, so we avoid the old
-  // pattern of manually writing a terminator that could overflow the buffer.
-  pret = phr_parse_request(_buf.c_str(), _bytes_read, &_phr_method, &_phr_method_len, &_phr_path,
-                           &_phr_path_len, &_phr_minor_version, _phr_headers, &_phr_num_headers, _bytes_read_prev);
+  const int result = phr_parse_request(
+      _buf.c_str(), _bytes_read, &_phr_method, &_phr_method_len, &_phr_path,
+      &_phr_path_len, &_phr_minor_version, _phr_headers, &_phr_num_headers,
+      _bytes_read_prev);
 
-  // Parse error.
-  if (pret == -1) {
-    _error_message = "REQ_FAILED: Parse failed.";
-    return _callback(this, RequestState::REQ_FAILED);
+  if (result == -1) {
+    _failed = true;
+    if (_callbacks.onError) {
+      _callbacks.onError(ParseError::INVALID_REQUEST);
+    }
+    return;
   }
 
-  // Request incomplete.
-  if (pret == -2) {
-    return _callback(this, RequestState::REQ_INCOMPLETE);
+  // Incomplete input is internal parser state, not an application event.
+  if (result == -2) {
+    return;
   }
 
-  if (_phr_method_len > 0)
-    _method.insert(0, _phr_method, _phr_method_len);
+  if (_phr_method_len > 0) {
+    _request._method.assign(_phr_method, _phr_method_len);
+  }
 
   if (_phr_path_len > 0) {
-    std::string rawPath;
-    rawPath.insert(0, _phr_path, _phr_path_len);
-
-    std::size_t qsPos = rawPath.find_first_of('?', 0);
-    if (qsPos != std::string::npos) {
-      std::string qStr;
-      qStr  = rawPath.substr(qsPos + 1, std::string::npos);
-      _path = rawPath.substr(0, qsPos);
-      _parse_query_string(qStr);
+    const std::string rawPath(_phr_path, _phr_path_len);
+    const auto queryPosition = rawPath.find('?');
+    if (queryPosition == std::string::npos) {
+      _request._path = rawPath;
     } else {
-      _path = rawPath.substr(0, rawPath.find_last_of(' ', 0));
+      _request._path = rawPath.substr(0, queryPosition);
+      _request._parseQueryString(rawPath.substr(queryPosition + 1));
     }
   }
 
-  for (int i = 0; i < static_cast<int>(_phr_num_headers); i++) {
-    std::string name, value;
-    name.insert(0, _phr_headers[i].name, _phr_headers[i].name_len);
-    value.insert(0, _phr_headers[i].value, _phr_headers[i].value_len);
+  for (std::size_t i = 0; i < _phr_num_headers; ++i) {
+    std::string name(_phr_headers[i].name, _phr_headers[i].name_len);
+    std::string value(_phr_headers[i].value, _phr_headers[i].value_len);
     Util::strToLower(name);
-    _headers[name] = value;
+    _request._headers[std::move(name)] = std::move(value);
   }
 
   _is_complete = true;
-
-  return _callback(this, RequestState::REQ_OK);
-}
-
-/**
-    Get the HTTP request path.
-  **/
-const std::string& Parser::getPath() {
-  return _path;
-}
-
-/**
-    Get the HTTP request method.
-  **/
-const std::string& Parser::getMethod() {
-  return _method;
-}
-
-/**
-    Get a spesific header.
-    @param header Header to get.
-  **/
-const std::string Parser::getHeader(std::string header) {
-  Util::strToLower(header);
-
-  if (_headers.find(header) != _headers.end()) {
-    return _headers[header];
+  if (_callbacks.onRequest) {
+    _callbacks.onRequest(_request);
   }
-
-  return "";
-}
-
-const std::map<std::string, std::string>& Parser::getHeaders() {
-  return _headers;
-}
-
-/**
-    Extracts query parameters from a string if they exist.
-    @param buf The string to parse.
-  **/
-std::size_t Parser::_parse_query_string(const std::string& buf) {
-  std::size_t pos = 0;
-
-  while (pos < buf.size()) {
-    const auto eqlpos = buf.find('=', pos);
-    if (eqlpos == std::string::npos) {
-      break;
-    }
-
-    const auto amp = buf.find('&', eqlpos + 1);
-    std::string param = buf.substr(pos, eqlpos - pos);
-    std::string val   = buf.substr(eqlpos + 1, (amp == std::string::npos) ? std::string::npos : amp - (eqlpos + 1));
-
-    pos = (amp == std::string::npos) ? buf.size() : amp + 1;
-
-    if (!param.empty() && !val.empty()) {
-      Util::strToLower(param);
-      _qsmap[param] = val;
-    }
-  }
-
-  // Earlier we chopped off the final character of each value, so make it
-  // explicit that we now keep the full token.
-  return _qsmap.size();
-}
-
-/**
-    Get a spesific query string parameter.
-    @param param Parameter to get.
-  **/
-const std::string Parser::getQueryString(std::string param) {
-  Util::strToLower(param);
-
-  if (_qsmap.find(param) != _qsmap.end()) {
-    return _qsmap[param];
-  }
-
-  return "";
-}
-
-/**
-    Returns number of query strings in the request.
-  **/
-std::size_t Parser::numQueryString() {
-  return _qsmap.size();
-}
-
-const std::string& Parser::getErrorMessage() {
-  return _error_message;
-}
-
-void Parser::setCallback(ParserCallback callback) {
-  _callback = callback;
 }
 
 void Parser::_resetState() {
   _buf.clear();
-  _headers.clear();
-  _qsmap.clear();
-  _method.clear();
-  _path.clear();
-  _error_message.clear();
-  _bytes_read      = 0;
-  _bytes_read_prev = 0;
-  _is_complete     = false;
-  _phr_method      = nullptr;
-  _phr_path        = nullptr;
-  _phr_num_headers = 0;
-  _phr_method_len  = 0;
-  _phr_path_len    = 0;
+  _request._reset();
+  _bytes_read        = 0;
+  _bytes_read_prev   = 0;
+  _is_complete       = false;
+  _failed            = false;
+  _phr_method        = nullptr;
+  _phr_path          = nullptr;
+  _phr_num_headers   = 0;
+  _phr_method_len    = 0;
+  _phr_path_len      = 0;
   _phr_minor_version = 0;
 }
 
-} // namespace http
-} // namespace eventhub
+} // namespace eventhub::http
