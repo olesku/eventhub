@@ -13,7 +13,8 @@ namespace eventhub {
 
 class SSLConnection final : public Connection {
 public:
-  SSLConnection(int fd, struct sockaddr_in* csin, Worker* worker, Config& cfg, SSL_CTX* ctx);
+  SSLConnection(int fd, struct sockaddr_in* csin, Worker* worker, Config& cfg,
+                ConnectionCallbacks callbacks, SSL_CTX* ctx);
   ~SSLConnection();
 
   ssize_t flushSendBuffer();

@@ -1,55 +1,35 @@
 #pragma once
 
-#include <functional>
-#include <map>
-#include <memory>
 #include <string>
 
+#include "http/Request.hpp"
 #include "http/picohttpparser.h"
 #include "http/Types.hpp"
 
-namespace eventhub {
-namespace http {
+namespace eventhub::http {
 
 class Parser final {
 #define HTTP_BUFSIZ 8192
 #define HTTP_REQUEST_MAX_HEADERS 100
 
 public:
-  Parser();
-  ~Parser();
+  explicit Parser(ParserCallbacks callbacks = {});
   void parse(const char* data, std::size_t len);
-  const std::string& getPath();
-  const std::string& getMethod();
-  const std::map<std::string, std::string>& getHeaders();
-  const std::string getHeader(std::string header);
-  const std::string getQueryString(std::string param);
-  std::size_t numQueryString();
-  const std::string& getErrorMessage();
-  void setCallback(ParserCallback callback);
 
 private:
   std::string _buf;
   int _bytes_read;
   int _bytes_read_prev;
   bool _is_complete;
+  bool _failed;
   const char *_phr_method, *_phr_path;
   struct phr_header _phr_headers[HTTP_REQUEST_MAX_HEADERS];
   std::size_t _phr_num_headers, _phr_method_len, _phr_path_len;
   int _phr_minor_version;
-  std::string _path;
-  std::string _method;
-  std::string _error_message;
-  std::map<std::string, std::string> _headers;
-  std::map<std::string, std::string> _query_parameters;
-  std::map<std::string, std::string> _qsmap;
+  Request _request;
+  ParserCallbacks _callbacks;
 
-  std::size_t _parse_query_string(const std::string& buf);
   void _resetState();
-  ParserCallback _callback;
 };
 
-} // namespace http
-} // namespace eventhub
-
-
+} // namespace eventhub::http

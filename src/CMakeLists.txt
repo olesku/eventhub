@@ -3,7 +3,6 @@ set (SOURCES
   http/Parser.cpp
   http/Handler.cpp
   http/Response.cpp
-  websocket/ws_parser.cpp
   websocket/Parser.cpp
   websocket/Handler.cpp
   websocket/Response.cpp

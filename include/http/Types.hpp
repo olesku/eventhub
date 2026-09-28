@@ -1,22 +1,19 @@
 #pragma once
 
-#include <cstdint>
 #include <functional>
-#include <string>
 
-namespace eventhub {
-namespace http {
+namespace eventhub::http {
 
-enum class RequestState {
-  REQ_FAILED,
-  REQ_INCOMPLETE,
-  REQ_TO_BIG,
-  REQ_OK
+enum class ParseError {
+  INVALID_REQUEST,
+  REQUEST_TOO_LARGE
 };
 
-using ParserCallback = std::function<void(class Parser* req, RequestState state)>;
+class Request;
 
-} // namespace http
-} // namespace eventhub
+struct ParserCallbacks {
+  std::function<void(const Request&)> onRequest;
+  std::function<void(ParseError)> onError;
+};
 
-
+} // namespace eventhub::http

@@ -5,6 +5,7 @@
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <ctime>
+#include <functional>
 #include <list>
 #include <memory>
 #include <mutex>
@@ -15,9 +16,9 @@
 
 #include "Forward.hpp"
 #include "EventhubBase.hpp"
-#include "websocket/Types.hpp"
 #include "http/Types.hpp"
 #include "jsonrpc/jsonrpcpp.hpp"
+#include "websocket/Types.hpp"
 
 namespace eventhub {
 using ConnectionPtr          = std::shared_ptr<Connection>;
@@ -36,9 +37,18 @@ struct TopicSubscription {
   jsonrpcpp::Id rpcSubscriptionRequestId;
 };
 
+struct ConnectionCallbacks {
+  // Callbacks run synchronously while the connection is alive. References to
+  // the connection, request and payload are valid only for the callback call.
+  std::function<void(Connection&, const http::Request&)> onHttpRequest;
+  std::function<void(Connection&, http::ParseError)> onHttpError;
+  std::function<void(Connection&, websocket::FrameType, const std::string&)> onWebSocketMessage;
+  std::function<void(Connection&, websocket::ParserError)> onWebSocketError;
+};
+
 class Connection : public EventhubBase, public std::enable_shared_from_this<Connection> {
 public:
-  Connection(int fd, struct sockaddr_in* csin, Worker* worker, Config& cfg);
+  Connection(int fd, struct sockaddr_in* csin, Worker* worker, Config& cfg, ConnectionCallbacks callbacks);
   virtual ~Connection();
 
   void write(const std::string& data);
@@ -61,9 +71,6 @@ public:
   std::size_t unsubscribeAll();
   std::vector<std::string> listSubscriptions();
 
-  void onHTTPRequest(http::ParserCallback callback);
-  void onWebsocketRequest(websocket::ParserCallback callback);
-
   void shutdownAfterFlush();
   void shutdown();
   bool isShutdown() { return _is_shutdown; }
@@ -77,8 +84,6 @@ protected:
   std::vector<char> _read_buffer;
   std::mutex _write_lock;
   std::mutex _subscription_list_lock;
-  std::unique_ptr<http::Parser> _http_parser;
-  std::unique_ptr<websocket::Parser> _websocket_parser;
   std::unique_ptr<AccessController> _access_controller;
   ConnectionState _state;
   bool _is_shutdown;
@@ -90,6 +95,11 @@ protected:
   void _disableEpollOut();
   std::size_t _pruneWriteBuffer(std::size_t bytes);
   void _parseRequest(std::size_t bytesRead);
+
+private:
+  ConnectionCallbacks _callbacks;
+  std::unique_ptr<http::Parser> _http_parser;
+  std::unique_ptr<websocket::Parser> _websocket_parser;
 };
 
 } // namespace eventhub

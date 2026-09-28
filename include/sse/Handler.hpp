@@ -12,7 +12,7 @@ namespace sse {
 
 class Handler final {
 public:
-  static void HandleRequest(HandlerContext& ctx, http::Parser* req);
+  static void handleRequest(HandlerContext& ctx, const http::Request& request);
 
 private:
   Handler() {}
@@ -21,5 +21,3 @@ private:
 
 } // namespace sse
 } // namespace eventhub
-
-
