@@ -25,3 +25,7 @@ python tests/harness/e2e.py --start-redis --start-eventhub --with-auth
 ```bash
 python tests/harness/stress.py --start-redis --start-eventhub --subscribers 100 --publishers 2 --messages 1000
 ```
+
+The stress test exits non-zero if any message is lost or the timeout is hit.
+Use `--summary-file` to append a Markdown summary, e.g. `$GITHUB_STEP_SUMMARY`
+in CI. Latency is reported but not used as a pass/fail criterion.

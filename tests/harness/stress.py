@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import random
+import sys
 import time
 from pathlib import Path
 
@@ -127,10 +128,11 @@ async def run_stress(args):
         publishers.append(asyncio.create_task(publisher_task()))
 
     start = time.time()
+    timed_out = False
     try:
         await asyncio.wait_for(done.wait(), timeout=args.timeout)
     except asyncio.TimeoutError:
-        pass
+        timed_out = True
 
     elapsed = time.time() - start
     for task in publishers:
@@ -156,6 +158,40 @@ async def run_stress(args):
             f"min_ms: {summary['min_ms']:.3f} max_ms: {summary['max_ms']:.3f}"
         )
 
+    ok = received == expected
+    if timed_out:
+        print(f"Timed out after {args.timeout}s waiting for messages")
+    if not ok:
+        print(f"FAIL: expected {expected} messages, received {received}")
+
+    if args.summary_file:
+        write_summary(args, expected, received, elapsed, published, summary, ok)
+
+    return ok
+
+
+def write_summary(args, expected, received, elapsed, published, summary, ok):
+    lines = [
+        "## Stress test",
+        "",
+        f"**{'OK' if ok else 'FAILED'}**: {args.subscribers} subscribers, "
+        f"{args.publishers} publishers, {args.messages} messages per publisher",
+        "",
+        "| Metric | Value |",
+        "|---|---|",
+        f"| Expected / received | {expected} / {received} |",
+        f"| Elapsed | {elapsed:.2f} s |",
+    ]
+    if elapsed > 0:
+        lines.append(f"| Publish rate | {published / elapsed:.0f} msgs/s |")
+        lines.append(f"| Delivery rate | {received / elapsed:.0f} msgs/s |")
+    for key in ("avg_ms", "p50_ms", "p95_ms", "p99_ms", "max_ms"):
+        if key in summary:
+            lines.append(f"| {key[:-3]} latency | {summary[key]:.2f} ms |")
+
+    with open(args.summary_file, "a") as f:
+        f.write("\n".join(lines) + "\n")
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Eventhub stress test harness")
@@ -174,6 +210,7 @@ def parse_args():
     parser.add_argument("--rate", type=float, default=0.0, help="Messages per second per publisher; 0 = no throttle")
     parser.add_argument("--timeout", type=float, default=30.0)
     parser.add_argument("--sample-limit", type=int, default=100000)
+    parser.add_argument("--summary-file", default="", help="Append a Markdown summary to this file (e.g. $GITHUB_STEP_SUMMARY)")
     parser.add_argument("--verbose", action="store_true")
     return parser.parse_args()
 
@@ -213,10 +250,13 @@ def main():
         if not args.url:
             args.url = "ws://127.0.0.1:8080"
 
-        asyncio.run(run_stress(args))
+        ok = asyncio.run(run_stress(args))
     finally:
         for proc in reversed(managed):
             proc.stop()
+
+    if not ok:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
