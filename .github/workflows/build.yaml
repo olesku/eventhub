@@ -118,3 +118,12 @@ jobs:
       run: |
         LD_LIBRARY_PATH=$GITHUB_WORKSPACE/build:/usr/local/lib:/usr/lib \
         python tests/harness/e2e.py --start-eventhub --check-data-integrity --with-auth
+
+    # Fails on lost messages only; latency is reported in the job summary but
+    # not gated, since shared runners are too noisy for stable thresholds.
+    - name: Run stress test
+      run: |
+        LD_LIBRARY_PATH=$GITHUB_WORKSPACE/build:/usr/local/lib:/usr/lib \
+        python tests/harness/stress.py --start-eventhub --with-auth \
+          --subscribers 100 --publishers 2 --messages 1000 --timeout 60 \
+          --summary-file "$GITHUB_STEP_SUMMARY"
