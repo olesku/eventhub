@@ -11,6 +11,7 @@
 #include <deque>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -80,23 +81,21 @@ const std::string Redis::_getNextCacheId(long long timestamp) {
 }
 
 // Add a message to the cache.
-const std::string Redis::cacheMessage(const std::string& topic, const std::string& payload, const std::string& origin, long long timestamp, unsigned long ttl) {
+// A ttl of 0 means the message should not be cached, and std::nullopt means use default_cache_ttl.
+const std::string Redis::cacheMessage(const std::string& topic, const std::string& payload, const std::string& origin, long long timestamp, std::optional<unsigned long> ttl) {
   if (timestamp == 0) {
     timestamp = Util::getTimeSinceEpoch();
   }
 
   auto cacheId = _getNextCacheId(timestamp);
 
-  // Do not cache message if cache functionality is disabled.
-  if (!config().get<bool>("enable_cache")) {
+  // Do not cache message if cache functionality is disabled or caching was explicitly disabled with ttl 0.
+  if (!config().get<bool>("enable_cache") || (ttl.has_value() && *ttl == 0)) {
     return cacheId;
   }
 
-  if (ttl == 0) {
-    ttl = config().get<int>("default_cache_ttl");
-  }
-
-  auto expireAt = Util::getTimeSinceEpoch() + (ttl * 1000);
+  const auto cacheTtl = ttl.value_or(config().get<int>("default_cache_ttl"));
+  auto expireAt       = Util::getTimeSinceEpoch() + (cacheTtl * 1000);
   auto zKey     = CacheItemMeta{cacheId, expireAt, origin}.toStr();
 
   _redisInstance->hset(REDIS_CACHE_DATA_PATH(topic), cacheId, payload);

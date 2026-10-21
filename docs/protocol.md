@@ -4,7 +4,7 @@ Eventhub uses [JSON-RPC](http://www.jsonrpc.org/) over WebSocket as transport pr
 | RPC method                          | Parameters                          | Description                                 |
 |-------------------------------------|------------------------------       |---------------------------------------------|
 | [subscribe](#subscribe)             | *topic, since*                      | Subscribe to a topic or pattern.
-| [publish](#publish)                 | *topic, message*                    | Publish to a topic.
+| [publish](#publish)                 | *topic, message, timestamp, ttl*    | Publish to a topic.
 | [unsubscribe](#unsubscribe)         | *topic*                             | Unsubscribe from a topic or pattern.
 | [unsubscribeall](#unsubscribeall)   | *None*                              | Unsubscribe from all current subscriptions.
 | [list](#list)                       | *None*                              | List all current subscriptions.
@@ -91,6 +91,15 @@ All messages received on a subscribed topic or pattern will have the same `id` a
   }
 }
 ```
+
+Optional parameters:
+
+| Parameter   | Description |
+|-------------|-------------|
+| `timestamp` | Timestamp in milliseconds to index the message with in the cache. If omitted, receipt time is used. |
+| `ttl`       | How long the message is kept in the cache, in seconds. If omitted, `default_cache_ttl` is used. If set to `0`, the message is not cached at all; it is only delivered to current subscribers. Has no effect when `enable_cache` is `false`. |
+
+*Note that `ttl: 0` means "do not cache" for `publish`, while for [set](#set) it means "store without expiry".*
 
 ## unsubscribe
 **Request:**

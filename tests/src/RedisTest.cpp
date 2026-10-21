@@ -82,16 +82,16 @@ TEST_CASE("Test redis", "[Redis") {
 
   GIVEN("If we cache some items") {
 
-    redis.cacheMessage("test/channel1", "Test 1", "petter@testmann.no", 0, 0);
-    redis.cacheMessage("test/channel1", "Test 2", "petter@testmann.no", 0, 0);
-    redis.cacheMessage("test/channel1", "Test 3", "petter@testmann.no", 0, 0);
-    redis.cacheMessage("test/channel1", "Test 4", "petter@testmann.no", 0, 0);
+    redis.cacheMessage("test/channel1", "Test 1", "petter@testmann.no");
+    redis.cacheMessage("test/channel1", "Test 2", "petter@testmann.no");
+    redis.cacheMessage("test/channel1", "Test 3", "petter@testmann.no");
+    redis.cacheMessage("test/channel1", "Test 4", "petter@testmann.no");
 
-    redis.cacheMessage("test/channel2", "Test 5", "petter@testmann.no", 0, 0);
-    redis.cacheMessage("test/channel2", "Test 6", "petter@testmann.no", 0, 0);
-    redis.cacheMessage("test/channel2", "Test 7", "petter@testmann.no", 0, 0);
-    redis.cacheMessage("test/channel2", "Test 9", "", 0, 0);
-    auto msgId = redis.cacheMessage("test/channel2", "Test 8", "petter@testmann.no", 0, 0);
+    redis.cacheMessage("test/channel2", "Test 5", "petter@testmann.no");
+    redis.cacheMessage("test/channel2", "Test 6", "petter@testmann.no");
+    redis.cacheMessage("test/channel2", "Test 7", "petter@testmann.no");
+    redis.cacheMessage("test/channel2", "Test 9", "");
+    auto msgId = redis.cacheMessage("test/channel2", "Test 8", "petter@testmann.no");
 
     THEN("Cache size should be larger than 0 when requesting a matching pattern") {
       nlohmann::json j;
@@ -168,6 +168,33 @@ TEST_CASE("Test redis", "[Redis") {
 
     THEN("toStr should return 1000-1:10000") {
       REQUIRE(item.toStr() == "1000-1:10000");
+    }
+  }
+
+  GIVEN("That we cache a message with ttl 0") {
+    redis.connection().del("eventhub_test:test/nocache:cache");
+    redis.connection().del("eventhub_test:test/nocache:scores");
+
+    auto id = redis.cacheMessage("test/nocache", "Not cached", "petter@testmann.no", 0, 0);
+
+    THEN("We should get an id back but the message should not be cached") {
+      nlohmann::json j;
+      REQUIRE(!id.empty());
+      REQUIRE(redis.getCacheSince("test/nocache", 0, -1, false, j) == 0);
+      REQUIRE(j.size() == 0);
+    }
+  }
+
+  GIVEN("That we cache a message without ttl") {
+    redis.connection().del("eventhub_test:test/defaultttl:cache");
+    redis.connection().del("eventhub_test:test/defaultttl:scores");
+
+    redis.cacheMessage("test/defaultttl", "Cached", "petter@testmann.no");
+
+    THEN("The message should be cached with default_cache_ttl") {
+      nlohmann::json j;
+      REQUIRE(redis.getCacheSince("test/defaultttl", 0, -1, false, j) == 1);
+      REQUIRE(j.size() == 1);
     }
   }
 

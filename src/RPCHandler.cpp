@@ -1,6 +1,7 @@
 #include <fmt/format.h>
 #include <spdlog/logger.h>
 #include <sstream>
+#include <optional>
 #include <string>
 #include <cstdint>
 #include <exception>
@@ -236,7 +237,7 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
   std::string message;
   std::stringstream msg;
   long long timestamp;
-  std::size_t ttl;
+  std::optional<unsigned long> ttl;
 
   auto accessController = ctx.connection()->getAccessController();
   auto params           = req->params();
@@ -270,7 +271,7 @@ void RPCHandler::_handlePublish(HandlerContext& ctx, jsonrpcpp::request_ptr req)
   try {
     ttl = params.get("ttl").get<unsigned long>();
   } catch (...) {
-    ttl = 0;
+    ttl = std::nullopt;
   }
 
   try {

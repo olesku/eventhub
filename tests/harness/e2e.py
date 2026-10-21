@@ -62,6 +62,28 @@ async def test_eventlog(client):
         raise AssertionError(f"eventlog expected >=3 items, got {len(items)}")
 
 
+async def test_ttl_zero_not_cached(client):
+    event = asyncio.Event()
+    now_ms = int(time.time() * 1000)
+
+    async def on_msg(topic, message):
+        if topic == "e2e/nocache" and message == "live-only":
+            event.set()
+
+    await client.subscribe("e2e/nocache", on_msg)
+    await client.publish("e2e/nocache", "live-only", {"timestamp": now_ms, "ttl": 0})
+    await client.publish("e2e/nocache", "default-ttl", {"timestamp": now_ms + 1})
+
+    await asyncio.wait_for(event.wait(), timeout=5)
+
+    items = await client.get_eventlog("e2e/nocache", {"since": now_ms})
+    messages = [item["message"] for item in items]
+    if "live-only" in messages:
+        raise AssertionError("message published with ttl 0 was cached")
+    if "default-ttl" not in messages:
+        raise AssertionError(f"message published without ttl was not cached: {messages}")
+
+
 async def test_kvstore(client):
     await client.set("kv/test-key", "value")
     val = await client.get("kv/test-key")
@@ -303,6 +325,7 @@ async def run_e2e(args):
     await test_basic(client)
     await test_patterns(client)
     await test_eventlog(client)
+    await test_ttl_zero_not_cached(client)
     await test_kvstore(client)
     if args.check_data_integrity:
         await test_data_integrity(args.url, token)
