@@ -145,3 +145,29 @@ jobs:
         env:
           IMAGE_TAG: ${{ inputs.image_tag }}
         run: docker buildx imagetools inspect "${IMAGE}:${IMAGE_TAG}"
+
+      - name: Write job summary
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          TAG_LATEST: ${{ inputs.tag_latest }}
+          PACKAGE_URL: ${{ github.server_url }}/${{ github.repository }}/pkgs/container/${{ github.event.repository.name }}
+        run: |
+          set -euo pipefail
+          digest=$(docker buildx imagetools inspect "${IMAGE}:${IMAGE_TAG}" --format '{{.Manifest.Digest}}')
+          {
+            echo "## Docker image"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Image | \`${IMAGE}:${IMAGE_TAG}\` |"
+            if [ "${TAG_LATEST}" = "true" ]; then
+              echo "| Also tagged | \`${IMAGE}:latest\` |"
+            fi
+            echo "| Digest | \`${IMAGE}@${digest}\` |"
+            echo "| Platforms | linux/amd64, linux/arm64 |"
+            echo "| Package | ${PACKAGE_URL} |"
+            echo
+            echo '```sh'
+            echo "docker pull ${IMAGE}:${IMAGE_TAG}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
