@@ -7,6 +7,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <vector>
 #include <functional>
@@ -51,7 +52,7 @@ public:
 
   void publishMessage(const std::string& topic, const std::string& id, const std::string& payload, const std::string& origin="");
   void psubscribe(const std::string& pattern, RedisMsgCallback callback);
-  const std::string cacheMessage(const std::string& topic, const std::string& payload, const std::string& origin, long long timestamp = 0, unsigned long ttl = 0);
+  const std::string cacheMessage(const std::string& topic, const std::string& payload, const std::string& origin, long long timestamp = 0, std::optional<unsigned long> ttl = std::nullopt);
   std::size_t getCacheSince(const std::string& topicPattern, long long since, long long limit, bool isPattern, nlohmann::json& result);
   std::size_t getCacheSinceId(const std::string& topicPattern, const std::string& sinceId, long long limit, bool isPattern, nlohmann::json& result);
   std::size_t purgeExpiredCacheItems();
