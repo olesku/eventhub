@@ -183,7 +183,7 @@ void Connection::_parseRequest(std::size_t bytesRead) {
  * Add data to send buffer and enable EPOLLOUT on the socket.
  */
 void Connection::write(const std::string& data) {
-  write({data});
+  write(std::initializer_list<std::string_view>{data});
 }
 
 void Connection::write(std::initializer_list<std::string_view> chunks) {
