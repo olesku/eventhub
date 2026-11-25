@@ -9,9 +9,8 @@
 
 #include "Topic.hpp"
 #include "Connection.hpp"
+#include "PublishedEvent.hpp"
 #include "sse/Response.hpp"
-#include "websocket/Response.hpp"
-#include "websocket/Types.hpp"
 #include "Logger.hpp"
 #include "jwt/json/json.hpp"
 
@@ -30,16 +29,22 @@ TopicSubscriberList::iterator Topic::addSubscriber(ConnectionPtr conn, const jso
 
 /**
  * Publish a message to this topic.
- * @param data Message to publish.
+ * @param event Shared message to publish.
  */
-void Topic::publish(const std::string& data) {
+void Topic::publish(const PublishedEvent& event) {
   std::lock_guard<std::mutex> lock(_subscriber_lock);
-  nlohmann::json jsonData;
 
   try {
-    jsonData = nlohmann::json::parse(data);
+    if (_subscriber_list.empty()) {
+      return;
+    }
+    const auto& jsonData = event.json();
+    if (jsonData.is_discarded()) {
+      LOG->debug("Invalid publish to {}: expected JSON.", _id);
+      return;
+    }
 
-    for (auto subscriber : _subscriber_list) {
+    for (const auto& subscriber : _subscriber_list) {
       auto c = subscriber.first.lock();
 
       if (!c || c->isShutdown()) {
@@ -47,11 +52,9 @@ void Topic::publish(const std::string& data) {
       }
 
       if (c->getState() == ConnectionState::WEBSOCKET) {
-        websocket::Response::sendData(c,
-                                      jsonrpcpp::Response(subscriber.second, jsonData).to_json().dump(),
-                                      websocket::FrameType::TEXT_FRAME);
+        event.websocketMessage().sendTo(*c, subscriber.second);
       } else if (c->getState() == ConnectionState::SSE) {
-        sse::Response::sendEvent(c, jsonData["id"], jsonData["message"]);
+        sse::Response::sendEvent(c, jsonData.at("id"), jsonData.at("message"));
       }
     }
   }

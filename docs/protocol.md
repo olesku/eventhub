@@ -17,6 +17,8 @@ Eventhub uses [JSON-RPC](http://www.jsonrpc.org/) over WebSocket as transport pr
 
 **Important:** Each request must have a unique `id` attribute as specified by JSON-RPC. It can be a number or a string.
 
+WebSocket clients can offer `permessage-deflate` during the handshake. Eventhub negotiates it without context takeover and shares the compressed result of a live publication across subscriptions, preserving each subscription's JSON-RPC ID. Clients without the extension, RPC replies, and live events that would not get smaller are sent without compression. SSE is unaffected.
+
 If you are implementing your own client I can recommend using the nice [websocat](https://github.com/vi/websocat) client for debugging and getting familiar with the protocol. It has built in jsonrpc support using the ```--jsonrpc``` flag. This is using line-mode per default, so remember to send the request as a single line when using it.
 
 ## Example requests

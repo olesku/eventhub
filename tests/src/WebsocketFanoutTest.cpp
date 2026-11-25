@@ -1,0 +1,136 @@
+#include <future>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
+
+#include "catch.hpp"
+#include "Config.hpp"
+#include "ConnectionWorker.hpp"
+#include "HandlerContext.hpp"
+#include "PublishedEvent.hpp"
+#include "Server.hpp"
+#include "TopicManager.hpp"
+#include "http/Handler.hpp"
+#include "http/Parser.hpp"
+#include "websocket/Compression.hpp"
+
+namespace eventhub {
+namespace {
+
+class CapturedConnection final : public Connection {
+public:
+  using Connection::Connection;
+
+  ssize_t flushSendBuffer() override {
+    const auto size = _write_buffer.size();
+    writes.emplace_back();
+    writes.back().swap(_write_buffer);
+    return size;
+  }
+
+  std::vector<std::string> writes;
+};
+
+void upgrade(Config& cfg, Server& server, Worker& worker, const std::shared_ptr<CapturedConnection>& conn,
+             const std::string& extensionHeaders, bool compressed) {
+  http::Parser parser({[&](const http::Request& request) {
+    http::Handler::handleRequest(HandlerContext(cfg, &server, &worker, conn), request);
+  }, {}});
+  const auto request = "GET / HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\nConnection: upgrade\r\n"
+                       "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n" +
+                       extensionHeaders + "\r\n";
+  parser.parse(request.data(), request.size());
+  REQUIRE(conn->writes.size() == 1);
+  CHECK(conn->writes.front().find("HTTP/1.1 101 ") == 0);
+  if (compressed) {
+    CHECK(conn->writes.front().find("Sec-WebSocket-Extensions: permessage-deflate; server_no_context_takeover; client_no_context_takeover\r\n") !=
+          std::string::npos);
+  } else {
+    CHECK(conn->writes.front().find("Sec-WebSocket-Extensions:") == std::string::npos);
+  }
+  CHECK(conn->hasWebSocketCompression() == compressed);
+  REQUIRE(conn->getState() == ConnectionState::WEBSOCKET);
+  conn->writes.clear();
+}
+
+std::string_view textPayload(const std::string& frame, bool compressed) {
+  REQUIRE(frame.size() >= 2);
+  REQUIRE(static_cast<unsigned char>(frame[0]) == (compressed ? 0xc1 : 0x81));
+  const auto tag = static_cast<unsigned char>(frame[1]);
+  REQUIRE(tag <= 127);
+  const std::size_t extension = tag < 126 ? 0 : (tag == 126 ? 2 : 8);
+  REQUIRE(frame.size() >= 2 + extension);
+  std::uint64_t size = extension ? 0 : tag;
+  for (std::size_t i = 0; i < extension; ++i) {
+    size = (size << 8) | static_cast<unsigned char>(frame[2 + i]);
+  }
+  REQUIRE(tag == (size < 126 ? size : (size <= 65535 ? 126 : 127)));
+  REQUIRE(size == frame.size() - 2 - extension);
+  return std::string_view(frame).substr(2 + extension);
+}
+
+} // namespace
+
+TEST_CASE("WebSocket fanout shares compressed bytes across workers and topic matches", "[websocket][compression]") {
+  using Type = ConfigValueType;
+  using Setting = ConfigValueSettings;
+  Config cfg({{"redis_host", Type::STRING, "localhost", Setting::REQUIRED},
+              {"redis_port", Type::INT, "6379", Setting::REQUIRED},
+              {"redis_pool_size", Type::INT, "1", Setting::REQUIRED},
+              {"redis_password", Type::STRING, "", Setting::OPTIONAL},
+              {"redis_prefix", Type::STRING, "eventhub_test", Setting::OPTIONAL},
+              {"disable_auth", Type::BOOL, "true", Setting::REQUIRED},
+              {"jwt_secret", Type::STRING, "test", Setting::REQUIRED}});
+  cfg.load();
+  Server server(cfg);
+  Worker first(&server, 1);
+  Worker second(&server, 2);
+  sockaddr_in address{};
+  auto a = std::make_shared<CapturedConnection>(-1, &address, &first, cfg, ConnectionCallbacks{});
+  auto b = std::make_shared<CapturedConnection>(-1, &address, &second, cfg, ConnectionCallbacks{});
+  auto plain = std::make_shared<CapturedConnection>(-1, &address, &first, cfg, ConnectionCallbacks{});
+  auto sse = std::make_shared<CapturedConnection>(-1, &address, &second, cfg, ConnectionCallbacks{});
+
+  upgrade(cfg, server, first, a, "Sec-WebSocket-Extensions: permessage-deflate\r\n", true);
+  upgrade(cfg, server, second, b, "Sec-WebSocket-Extensions: permessage-deflate; client_max_window_bits\r\n", true);
+  upgrade(cfg, server, first, plain, "", false);
+  sse->setState(ConnectionState::SSE);
+
+  const jsonrpcpp::Id idA(17);
+  const jsonrpcpp::Id idB(std::string(70000, 'b') + "\"ö");
+  const jsonrpcpp::Id idPlain("plain-id");
+  a->subscribe("fanout/topic", idA);
+  b->subscribe("fanout/+", idB);
+  plain->subscribe("fanout/#", idPlain);
+  sse->subscribe("fanout/topic", {});
+
+  const std::string message(72000, 'x');
+  const nlohmann::json result = {{"topic", "fanout/topic"}, {"id", "test-event"}, {"message", message}};
+  const PublishedEvent event(result.dump());
+  auto delivery = std::async(std::launch::async, [&] { first.getTopicManager()->publish("fanout/topic", event); });
+  second.getTopicManager()->publish("fanout/topic", event);
+  delivery.get();
+
+  REQUIRE(a->writes.size() == 1);
+  REQUIRE(b->writes.size() == 1);
+  REQUIRE(plain->writes.size() == 1);
+  REQUIRE(sse->writes.size() == 1);
+  const auto payloadA = textPayload(a->writes.front(), true);
+  const auto payloadB = textPayload(b->writes.front(), true);
+  const auto originalA = jsonrpcpp::Response(idA, result).to_json().dump();
+  const auto originalB = jsonrpcpp::Response(idB, result).to_json().dump();
+  std::string decoded;
+  REQUIRE(websocket::decompressMessage(payloadA, originalA.size(), decoded) == websocket::InflateResult::OK);
+  CHECK(decoded == originalA);
+  REQUIRE(websocket::decompressMessage(payloadB, originalB.size(), decoded) == websocket::InflateResult::OK);
+  CHECK(decoded == originalB);
+  // The second recipient has a different ID spanning two stored blocks, but
+  // the wire bytes after its prefix must match the first recipient exactly.
+  CHECK(payloadA.substr(5 + 6 + idA.to_json().dump().size()) == payloadB.substr(10 + 6 + idB.to_json().dump().size()));
+  CHECK(textPayload(plain->writes.front(), false) == jsonrpcpp::Response(idPlain, result).to_json().dump());
+  CHECK(sse->writes.front() == "id: test-event\ndata: " + message + "\n\n");
+}
+
+} // namespace eventhub

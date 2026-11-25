@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "catch.hpp"
+#include "websocket/Compression.hpp"
 #include "websocket/Parser.hpp"
 
 namespace eventhub::websocket {
@@ -62,13 +63,22 @@ void feedChunks(Parser& parser, std::string_view input, std::size_t chunkSize) {
   }
 }
 
+std::string compressedFrame(FrameType type, std::string_view payload, bool final = true) {
+  auto wire = frame(type, payload, final);
+  wire.front() |= 0x40;
+  return wire;
+}
+
 // Every error must be terminal, including when valid data follows in the same
 // socket read. Repeat with bytewise input to exercise partial invalid headers.
-void expectError(const std::string& input, ParserError expected, std::size_t limit = 100000) {
+void expectError(const std::string& input, ParserError expected, std::size_t limit = 100000, bool compression = false) {
   for (auto chunkSize : {std::size_t{1}, input.size() + 100}) {
     CAPTURE(expected, limit, chunkSize);
     Recorder recorder;
     Parser parser(limit, recorder.callbacks());
+    if (compression) {
+      parser.enableCompression();
+    }
     feedChunks(parser, input + frame(FrameType::TEXT_FRAME, "must not be delivered"), chunkSize);
     parser.parse(frame(FrameType::TEXT_FRAME, "nor this"));
     parser.parse({});
@@ -349,6 +359,73 @@ TEST_CASE("WebSocket propagates callback exceptions and stops parsing", "[websoc
   parser.parse(frame(FrameType::TEXT_FRAME, "must not be delivered"));
   REQUIRE(recorder.messages.empty());
   REQUIRE(recorder.errors.empty());
+}
+
+TEST_CASE("WebSocket receives compressed messages, plain data and interleaved controls", "[websocket][compression]") {
+  // RFC 7692 section 7.2.3.1: compressed "Hello". The limit independently
+  // bounds bytes on the wire and bytes after decompression.
+  const auto hello = bytes({0xf2, 0x48, 0xcd, 0xc9, 0xc9, 0x07, 0x00});
+  const auto text = std::string(32768, 'x') + "ö";
+  const auto compressed = compressMessage(text);
+  REQUIRE(compressed.size() < text.size());
+  const auto wire = compressedFrame(FrameType::TEXT_FRAME, std::string_view(compressed).substr(0, 3), false) +
+                    frame(FrameType::PING_FRAME, "ping") +
+                    frame(FrameType::CONTINUATION_FRAME, std::string_view(compressed).substr(3)) +
+                    frame(FrameType::TEXT_FRAME, "plain") +
+                    compressedFrame(FrameType::BINARY_FRAME, hello) +
+                    compressedFrame(FrameType::TEXT_FRAME, bytes({0}));
+
+  for (auto chunkSize : {std::size_t{1}, wire.size()}) {
+    Recorder recorder;
+    Parser parser(text.size(), recorder.callbacks());
+    parser.enableCompression();
+    feedChunks(parser, wire, chunkSize);
+    REQUIRE(recorder.errors.empty());
+    REQUIRE(recorder.messages == std::vector<Message>{{FrameType::PING_FRAME, "ping"}, {FrameType::TEXT_FRAME, text},
+                                                      {FrameType::TEXT_FRAME, "plain"}, {FrameType::BINARY_FRAME, "Hello"},
+                                                      {FrameType::TEXT_FRAME, ""}});
+  }
+}
+
+TEST_CASE("WebSocket rejects incorrect compression framing and invalid inflated data", "[websocket][compression]") {
+  const auto hello = bytes({0xf2, 0x48, 0xcd, 0xc9, 0xc9, 0x07, 0x00});
+  expectError(compressedFrame(FrameType::TEXT_FRAME, hello), ParserError::RESERVED_BITS_SET);
+  expectError(compressedFrame(FrameType::PING_FRAME, "ping"), ParserError::RESERVED_BITS_SET, 100000, true);
+  expectError(compressedFrame(FrameType::TEXT_FRAME, hello, false) + compressedFrame(FrameType::CONTINUATION_FRAME, ""),
+              ParserError::RESERVED_BITS_SET, 100000, true);
+  expectError(compressedFrame(FrameType::TEXT_FRAME, std::string_view(hello).substr(0, hello.size() - 1)),
+              ParserError::INVALID_COMPRESSED_PAYLOAD, 100000, true);
+  expectError(compressedFrame(FrameType::TEXT_FRAME, bytes({0xff, 0xff})), ParserError::INVALID_COMPRESSED_PAYLOAD, 100000, true);
+  expectError(compressedFrame(FrameType::TEXT_FRAME, compressMessage(bytes({0xff}))), ParserError::INVALID_UTF8, 100000, true);
+  expectError(compressedFrame(FrameType::TEXT_FRAME, compressMessage(std::string(32769, 'a'))),
+              ParserError::MESSAGE_TOO_BIG, 32768, true);
+}
+
+TEST_CASE("WebSocket accepts the RFC example with a final DEFLATE block", "[websocket][compression]") {
+  // RFC 7692 section 7.2.3.4: BFINAL is set before the last empty block.
+  Recorder recorder;
+  Parser parser(32, recorder.callbacks());
+  parser.enableCompression();
+  parser.parse(compressedFrame(FrameType::TEXT_FRAME, bytes({0xf3, 0x48, 0xcd, 0xc9, 0xc9, 0x07, 0x00, 0x00})));
+  REQUIRE(recorder.errors.empty());
+  REQUIRE(recorder.messages == std::vector<Message>{{FrameType::TEXT_FRAME, "Hello"}});
+}
+
+TEST_CASE("WebSocket negotiates only compatible permessage-deflate offers", "[websocket][compression]") {
+  constexpr std::string_view expected = "permessage-deflate; server_no_context_takeover; client_no_context_takeover";
+  REQUIRE(negotiateCompression("").empty());
+  REQUIRE(negotiateCompression("x-permessage-deflate").empty());
+  REQUIRE(negotiateCompression("permessage-deflate") == expected);
+  REQUIRE(negotiateCompression("permessage-deflate; client_max_window_bits") == expected);
+  REQUIRE(negotiateCompression("permessage-deflate; server_no_context_takeover; client_no_context_takeover") == expected);
+  REQUIRE(negotiateCompression("permessage-deflate; server_max_window_bits=12").empty());
+  REQUIRE(negotiateCompression("permessage-deflate; server_max_window_bits=\"15\"") ==
+          std::string(expected) + "; server_max_window_bits=15");
+  REQUIRE(negotiateCompression("permessage-deflate; client_max_window_bits=07").empty());
+  REQUIRE(negotiateCompression("permessage-deflate; client_max_window_bits=15; client_max_window_bits=15").empty());
+  REQUIRE(negotiateCompression("permessage-deflate; client_no_context_takeover=1").empty());
+  REQUIRE(negotiateCompression("permessage-deflate;").empty());
+  REQUIRE(negotiateCompression("permessage-deflate; other=1, permessage-deflate ; client_max_window_bits=12") == expected);
 }
 
 } // namespace eventhub::websocket

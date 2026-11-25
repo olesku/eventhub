@@ -16,6 +16,7 @@
 #include "metrics/JsonRenderer.hpp"
 #include "metrics/PrometheusRenderer.hpp"
 #include "sse/Handler.hpp"
+#include "websocket/Compression.hpp"
 #include "AccessController.hpp"
 #include "Connection.hpp"
 
@@ -139,6 +140,12 @@ bool Handler::_websocketHandshake(HandlerContext& ctx, const Request& request) {
   response.setHeader("upgrade", "websocket");
   response.setHeader("connection", "upgrade");
   response.setHeader("sec-websocket-accept", secWsAccept);
+  const auto extensions = request.header("Sec-WebSocket-Extensions");
+  const auto compression = websocket::negotiateCompression(extensions);
+  if (!compression.empty()) {
+    response.setHeader("Sec-WebSocket-Extensions", std::string(compression));
+    ctx.connection()->enableWebSocketCompression();
+  }
 
   // FIXME: We should check against a list of supported protocols here.
   if (!request.header("Sec-WebSocket-Protocol").empty()) {

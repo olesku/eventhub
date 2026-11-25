@@ -22,7 +22,7 @@ public:
 
   TopicSubscriberList::iterator addSubscriber(ConnectionPtr conn, const jsonrpcpp::Id subscriptionRequestId);
   void deleteSubscriberByIterator(TopicSubscriberList::iterator it);
-  void publish(const std::string& data);
+  void publish(const PublishedEvent& event);
   std::size_t getSubscriberCount();
 
 private:
@@ -32,5 +32,4 @@ private:
 };
 
 }; // namespace eventhub
-
 

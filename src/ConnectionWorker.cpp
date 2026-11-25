@@ -353,9 +353,9 @@ void Worker::_removeConnection(ConnectionPtr conn) {
   _metrics.total_disconnect_count++;
 }
 
-void Worker::publish(const std::string& topicName, const std::string& data) {
-  _ev->addJob([this, topicName, data]() {
-    _topic_manager->publish(topicName, data);
+void Worker::publish(const std::string& topicName, std::shared_ptr<const PublishedEvent> event) {
+  _ev->addJob([this, topicName, event = std::move(event)]() {
+    _topic_manager->publish(topicName, *event);
   });
   _signalWork();
 }

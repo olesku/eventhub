@@ -10,6 +10,7 @@ set(SOURCES
   src/AccessControllerTest.cpp
   src/UtilTest.cpp
   src/WebsocketParserTest.cpp
+  src/WebsocketFanoutTest.cpp
   src/KVStoreTest.cpp
   src/main.cpp
 )

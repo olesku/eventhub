@@ -183,20 +183,35 @@ void Connection::_parseRequest(std::size_t bytesRead) {
  * Add data to send buffer and enable EPOLLOUT on the socket.
  */
 void Connection::write(const std::string& data) {
+  write({data});
+}
+
+void Connection::write(std::initializer_list<std::string_view> chunks) {
   std::lock_guard<std::mutex> lock(_write_lock);
 
   if (isShutdown()) {
     return;
   }
 
-  if ((_write_buffer.length() + data.length()) > NET_WRITE_BUFFER_MAX) {
-    _write_buffer.clear();
-    shutdown();
-    LOG->error("Client {} exceeded max write buffer size of {}.", getIP(), NET_WRITE_BUFFER_MAX);
-    return;
+  auto size = _write_buffer.size();
+  for (const auto chunk : chunks) {
+    if (chunk.size() > NET_WRITE_BUFFER_MAX - size) {
+      _write_buffer.clear();
+      shutdown();
+      LOG->error("Client {} exceeded max write buffer size of {}.", getIP(), NET_WRITE_BUFFER_MAX);
+      return;
+    }
+    size += chunk.size();
   }
 
-  _write_buffer.append(data);
+  if (size > _write_buffer.capacity()) {
+    _write_buffer.reserve(size);
+  }
+  for (const auto chunk : chunks) {
+    if (!chunk.empty()) {
+      _write_buffer.append(chunk);
+    }
+  }
 
   if (!_write_buffer.empty()) {
     flushSendBuffer();
@@ -305,6 +320,11 @@ void Connection::subscribe(const std::string& topicPattern, const jsonrpcpp::Id 
 
 ConnectionState Connection::getState() {
   return _state;
+}
+
+void Connection::enableWebSocketCompression() {
+  _websocket_parser->enableCompression();
+  _websocket_compression = true;
 }
 
 AccessController* Connection::getAccessController() {

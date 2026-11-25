@@ -34,6 +34,7 @@
 #include "ConnectionWorker.hpp"
 #include "KVStore.hpp"
 #include "Logger.hpp"
+#include "PublishedEvent.hpp"
 
 namespace eventhub {
 
@@ -411,9 +412,10 @@ Worker* Server::getWorker() {
 }
 
 void Server::publish(const std::string& topicName, const std::string& data) {
+  auto event = std::make_shared<const PublishedEvent>(data);
   std::lock_guard<std::mutex> lock(_connection_workers_lock);
   for (auto& worker : _connection_workers.getWorkerList()) {
-    worker->publish(topicName, data);
+    worker->publish(topicName, event);
   }
 }
 

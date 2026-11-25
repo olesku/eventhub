@@ -24,6 +24,9 @@ OPTION(SKIP_TESTS "Skip building tests" 0)
 # Projects headers
 include_directories ("${PROJECT_SOURCE_DIR}/include")
 
+# zlib
+find_package(ZLIB REQUIRED)
+
 # Fmt
 find_package(fmt REQUIRED)
 
