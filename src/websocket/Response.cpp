@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <string_view>
 
+#include "PublishedEvent.hpp"
 #include "websocket/Compression.hpp"
 
 namespace eventhub::websocket {
@@ -37,28 +38,19 @@ void Response::sendData(ConnectionPtr conn, const std::string& data, FrameType f
   sendFrame(*conn, frameType, false, {}, data);
 }
 
-FanoutMessage::FanoutMessage(const nlohmann::json& result) : _suffix(result.dump()) {
-  _suffix.insert(0, R"(,"jsonrpc":"2.0","result":)");
-  _suffix += '}';
-}
-
-void FanoutMessage::sendTo(Connection& conn, const jsonrpcpp::Id& id) const {
+void Response::sendEvent(Connection& conn, const jsonrpcpp::Id& id, const PublishedEvent& event) {
   const auto prefix = R"({"id":)" + id.to_json().dump();
+  const auto& suffix = event.websocketSuffix();
   if (conn.hasWebSocketCompression()) {
-    std::call_once(_compression_once, [this] {
-      auto compressed = compressMessage(_suffix);
-      if (compressed.size() < _suffix.size()) {
-        _compressed_suffix.swap(compressed);
-      }
-    });
-    if (!_compressed_suffix.empty() && _compressed_suffix.size() + storedPrefixOverhead(prefix.size()) < _suffix.size()) {
+    const auto& compressed = event.compressedWebsocketSuffix();
+    if (!compressed.empty() && compressed.size() + storedPrefixOverhead(prefix.size()) < suffix.size()) {
       // Store the subscriber-specific ID in byte-aligned blocks so every
       // subscriber can use the same compressed, context-independent suffix.
-      sendFrame(conn, FrameType::TEXT_FRAME, true, encodeStoredPrefix(prefix), _compressed_suffix);
+      sendFrame(conn, FrameType::TEXT_FRAME, true, encodeStoredPrefix(prefix), compressed);
       return;
     }
   }
-  sendFrame(conn, FrameType::TEXT_FRAME, false, prefix, _suffix);
+  sendFrame(conn, FrameType::TEXT_FRAME, false, prefix, suffix);
 }
 
 } // namespace eventhub::websocket

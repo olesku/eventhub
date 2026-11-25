@@ -11,6 +11,7 @@
 #include "Connection.hpp"
 #include "PublishedEvent.hpp"
 #include "sse/Response.hpp"
+#include "websocket/Response.hpp"
 #include "Logger.hpp"
 #include "jwt/json/json.hpp"
 
@@ -52,7 +53,7 @@ void Topic::publish(const PublishedEvent& event) {
       }
 
       if (c->getState() == ConnectionState::WEBSOCKET) {
-        event.websocketMessage().sendTo(*c, subscriber.second);
+        websocket::Response::sendEvent(*c, subscriber.second, event);
       } else if (c->getState() == ConnectionState::SSE) {
         sse::Response::sendEvent(c, jsonData.at("id"), jsonData.at("message"));
       }

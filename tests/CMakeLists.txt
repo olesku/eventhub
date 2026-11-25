@@ -17,6 +17,9 @@ set(SOURCES
 
 add_executable(eventhub_tests ${SOURCES})
 
+# Count compressor resets in fanout tests without instrumenting production code.
+set_property(TARGET eventhub_tests APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--wrap=deflateReset")
+
 target_link_libraries(eventhub_tests eventhub_core)
 target_link_libraries(eventhub_tests fmt::fmt)
 target_link_libraries(eventhub_tests ${CMAKE_THREAD_LIBS_INIT})

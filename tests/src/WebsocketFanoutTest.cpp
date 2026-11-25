@@ -1,9 +1,11 @@
+#include <atomic>
 #include <future>
 #include <memory>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
+#include <zlib.h>
 
 #include "catch.hpp"
 #include "Config.hpp"
@@ -15,6 +17,21 @@
 #include "http/Handler.hpp"
 #include "http/Parser.hpp"
 #include "websocket/Compression.hpp"
+
+namespace {
+std::atomic<std::size_t> compressionCount{0};
+}
+
+// The test executable redirects calls from eventhub_core here. Each message
+// compression resets its thread-local deflater exactly once, regardless of size.
+// These symbol names are required by the linker's --wrap option.
+// NOLINTNEXTLINE(readability-identifier-naming)
+extern "C" int __real_deflateReset(z_streamp stream);
+// NOLINTNEXTLINE(readability-identifier-naming)
+extern "C" int __wrap_deflateReset(z_streamp stream) {
+  compressionCount.fetch_add(1, std::memory_order_relaxed);
+  return __real_deflateReset(stream);
+}
 
 namespace eventhub {
 namespace {
@@ -108,10 +125,24 @@ TEST_CASE("WebSocket fanout shares compressed bytes across workers and topic mat
 
   const std::string message(72000, 'x');
   const nlohmann::json result = {{"topic", "fanout/topic"}, {"id", "test-event"}, {"message", message}};
+  const auto before = compressionCount.load();
+  // Reading the plain representations must not trigger compression.
+  const PublishedEvent plainEvent(result.dump());
+  CHECK(plainEvent.json() == result);
+  CHECK_FALSE(plainEvent.websocketSuffix().empty());
+  CHECK(compressionCount.load() == before);
+
   const PublishedEvent event(result.dump());
-  auto delivery = std::async(std::launch::async, [&] { first.getTopicManager()->publish("fanout/topic", event); });
+  std::promise<void> start;
+  auto ready = start.get_future();
+  auto delivery = std::async(std::launch::async, [&] {
+    ready.wait();
+    first.getTopicManager()->publish("fanout/topic", event);
+  });
+  start.set_value();
   second.getTopicManager()->publish("fanout/topic", event);
   delivery.get();
+  CHECK(compressionCount.load() == before + 1);
 
   REQUIRE(a->writes.size() == 1);
   REQUIRE(b->writes.size() == 1);
@@ -131,6 +162,15 @@ TEST_CASE("WebSocket fanout shares compressed bytes across workers and topic mat
   CHECK(payloadA.substr(5 + 6 + idA.to_json().dump().size()) == payloadB.substr(10 + 6 + idB.to_json().dump().size()));
   CHECK(textPayload(plain->writes.front(), false) == jsonrpcpp::Response(idPlain, result).to_json().dump());
   CHECK(sse->writes.front() == "id: test-event\ndata: " + message + "\n\n");
+
+  // Further matches reuse the cache; a new publication gets its own cache.
+  first.getTopicManager()->publish("fanout/topic", event);
+  second.getTopicManager()->publish("fanout/topic", event);
+  CHECK(compressionCount.load() == before + 1);
+  const PublishedEvent nextEvent(result.dump());
+  first.getTopicManager()->publish("fanout/topic", nextEvent);
+  second.getTopicManager()->publish("fanout/topic", nextEvent);
+  CHECK(compressionCount.load() == before + 2);
 }
 
 } // namespace eventhub

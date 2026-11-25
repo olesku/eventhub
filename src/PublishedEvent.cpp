@@ -1,5 +1,7 @@
 #include "PublishedEvent.hpp"
 
+#include "websocket/Compression.hpp"
+
 namespace eventhub {
 
 const nlohmann::json& PublishedEvent::json() const {
@@ -10,9 +12,25 @@ const nlohmann::json& PublishedEvent::json() const {
   return _json;
 }
 
-const websocket::FanoutMessage& PublishedEvent::websocketMessage() const {
-  std::call_once(_websocket_once, [this] { _websocket_message.emplace(json()); });
-  return *_websocket_message;
+const std::string& PublishedEvent::websocketSuffix() const {
+  std::call_once(_websocket_once, [this] {
+    auto suffix = json().dump();
+    suffix.insert(0, R"(,"jsonrpc":"2.0","result":)");
+    suffix += '}';
+    _websocket_suffix.swap(suffix);
+  });
+  return _websocket_suffix;
+}
+
+const std::string& PublishedEvent::compressedWebsocketSuffix() const {
+  std::call_once(_compression_once, [this] {
+    const auto& suffix = websocketSuffix();
+    auto compressed = websocket::compressMessage(suffix);
+    if (compressed.size() < suffix.size()) {
+      _compressed_suffix.swap(compressed);
+    }
+  });
+  return _compressed_suffix;
 }
 
 } // namespace eventhub
