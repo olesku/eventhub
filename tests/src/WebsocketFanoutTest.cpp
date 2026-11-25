@@ -17,6 +17,8 @@
 #include "http/Handler.hpp"
 #include "http/Parser.hpp"
 #include "websocket/Compression.hpp"
+#include "websocket/Handler.hpp"
+#include "websocket/Response.hpp"
 
 namespace {
 std::atomic<std::size_t> compressionCount{0};
@@ -35,6 +37,21 @@ extern "C" int __wrap_deflateReset(z_streamp stream) {
 
 namespace eventhub {
 namespace {
+
+using Type = ConfigValueType;
+using Setting = ConfigValueSettings;
+const ConfigMap websocketConfig = {
+    {"redis_host", Type::STRING, "localhost", Setting::REQUIRED},
+    {"redis_port", Type::INT, "6379", Setting::REQUIRED},
+    {"redis_pool_size", Type::INT, "1", Setting::REQUIRED},
+    {"redis_password", Type::STRING, "", Setting::OPTIONAL},
+    {"redis_prefix", Type::STRING, "eventhub_test", Setting::OPTIONAL},
+    {"disable_auth", Type::BOOL, "true", Setting::REQUIRED},
+    {"jwt_secret", Type::STRING, "test", Setting::REQUIRED},
+    {"enable_cache", Type::BOOL, "true", Setting::REQUIRED},
+    {"default_cache_ttl", Type::INT, "60", Setting::REQUIRED},
+    {"max_cache_request_limit", Type::INT, "100", Setting::REQUIRED},
+};
 
 class CapturedConnection final : public Connection {
 public:
@@ -91,15 +108,7 @@ std::string_view textPayload(const std::string& frame, bool compressed) {
 } // namespace
 
 TEST_CASE("WebSocket fanout shares compressed bytes across workers and topic matches", "[websocket][compression]") {
-  using Type = ConfigValueType;
-  using Setting = ConfigValueSettings;
-  Config cfg({{"redis_host", Type::STRING, "localhost", Setting::REQUIRED},
-              {"redis_port", Type::INT, "6379", Setting::REQUIRED},
-              {"redis_pool_size", Type::INT, "1", Setting::REQUIRED},
-              {"redis_password", Type::STRING, "", Setting::OPTIONAL},
-              {"redis_prefix", Type::STRING, "eventhub_test", Setting::OPTIONAL},
-              {"disable_auth", Type::BOOL, "true", Setting::REQUIRED},
-              {"jwt_secret", Type::STRING, "test", Setting::REQUIRED}});
+  Config cfg(websocketConfig);
   cfg.load();
   Server server(cfg);
   Worker first(&server, 1);
@@ -171,6 +180,52 @@ TEST_CASE("WebSocket fanout shares compressed bytes across workers and topic mat
   first.getTopicManager()->publish("fanout/topic", nextEvent);
   second.getTopicManager()->publish("fanout/topic", nextEvent);
   CHECK(compressionCount.load() == before + 2);
+}
+
+TEST_CASE("WebSocket eventlog compresses only when negotiated and beneficial", "[websocket][compression]") {
+  Config cfg(websocketConfig);
+  cfg.load();
+  Server server(cfg);
+  Worker worker(&server, 1);
+  sockaddr_in address{};
+  auto compressed = std::make_shared<CapturedConnection>(-1, &address, &worker, cfg, ConnectionCallbacks{});
+  auto plain = std::make_shared<CapturedConnection>(-1, &address, &worker, cfg, ConnectionCallbacks{});
+
+  upgrade(cfg, server, worker, compressed, "Sec-WebSocket-Extensions: permessage-deflate\r\n", true);
+  upgrade(cfg, server, worker, plain, "", false);
+
+  const std::string topic = "websocket/eventlog-compression";
+  const std::string message(4096, 'x');
+  const auto eventId = server.getRedis().cacheMessage(topic, message, "");
+  const std::string request = R"({"jsonrpc":"2.0","id":7,"method":"eventlog","params":{"topic":"websocket/eventlog-compression","since":1,"limit":1}})";
+  for (const auto& conn : {compressed, plain}) {
+    websocket::Handler::handleMessage(HandlerContext(cfg, &server, &worker, conn), websocket::FrameType::TEXT_FRAME, request);
+    REQUIRE(conn->writes.size() == 1);
+  }
+
+  const auto payload = textPayload(compressed->writes.front(), true);
+  const auto original = textPayload(plain->writes.front(), false);
+  CHECK(payload.size() < original.size());
+  std::string decoded;
+  REQUIRE(websocket::decompressMessage(payload, original.size(), decoded) == websocket::InflateResult::OK);
+  CHECK(decoded == original);
+  const auto reply = nlohmann::json::parse(decoded);
+  CHECK(reply.at("id") == 7);
+  const auto& items = reply.at("result").at("items");
+  REQUIRE(items.size() == 1);
+  CHECK(items.at(0).at("id") == eventId);
+  CHECK(items.at(0).at("message") == message);
+
+  // Even on a negotiated connection, a payload that doesn't shrink stays plain.
+  websocket::Response::sendCompressibleText(*compressed, "x");
+  REQUIRE(compressed->writes.size() == 2);
+  CHECK(textPayload(compressed->writes.back(), false) == "x");
+
+  // Other RPC replies remain uncompressed.
+  websocket::Handler::handleMessage(HandlerContext(cfg, &server, &worker, compressed), websocket::FrameType::TEXT_FRAME,
+                                    R"({"jsonrpc":"2.0","id":"compressible-compressible-compressible-compressible","method":"ping"})");
+  REQUIRE(compressed->writes.size() == 3);
+  CHECK(nlohmann::json::parse(textPayload(compressed->writes.back(), false)).at("result").contains("pong"));
 }
 
 } // namespace eventhub

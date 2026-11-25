@@ -38,6 +38,17 @@ void Response::sendData(ConnectionPtr conn, const std::string& data, FrameType f
   sendFrame(*conn, frameType, false, {}, data);
 }
 
+void Response::sendCompressibleText(Connection& conn, const std::string& data) {
+  if (conn.hasWebSocketCompression()) {
+    const auto compressed = compressMessage(data);
+    if (!compressed.empty() && compressed.size() < data.size()) {
+      sendFrame(conn, FrameType::TEXT_FRAME, true, {}, compressed);
+      return;
+    }
+  }
+  sendFrame(conn, FrameType::TEXT_FRAME, false, {}, data);
+}
+
 void Response::sendEvent(Connection& conn, const jsonrpcpp::Id& id, const PublishedEvent& event) {
   const auto prefix = R"({"id":)" + id.to_json().dump();
   const auto& suffix = event.websocketSuffix();
