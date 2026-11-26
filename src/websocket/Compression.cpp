@@ -4,6 +4,7 @@
 #include <array>
 #include <cstdint>
 #include <limits>
+#define ZLIB_CONST
 #include <zlib.h>
 
 namespace eventhub::websocket {
@@ -137,7 +138,7 @@ std::string compressMessage(std::string_view message) {
     return {};
   }
   std::string output(bound, '\0');
-  stream.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(message.data()));
+  stream.next_in = reinterpret_cast<const Bytef*>(message.data());
   stream.avail_in = static_cast<uInt>(message.size());
   stream.next_out = reinterpret_cast<Bytef*>(output.data());
   stream.avail_out = static_cast<uInt>(output.size());
@@ -163,7 +164,7 @@ InflateResult decompressMessage(std::string_view message, std::size_t limit, std
   if (!inflater.ready || inflateReset(&stream) != Z_OK) {
     return InflateResult::INVALID;
   }
-  stream.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(message.data()));
+  stream.next_in = reinterpret_cast<const Bytef*>(message.data());
   stream.avail_in = static_cast<uInt>(message.size());
   std::array<char, 16384> buffer;
   do {
@@ -192,7 +193,7 @@ InflateResult decompressMessage(std::string_view message, std::size_t limit, std
   if (inflateSyncPoint(&stream) != 1) {
     return InflateResult::INVALID;
   }
-  stream.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(trailer.data()));
+  stream.next_in = reinterpret_cast<const Bytef*>(trailer.data());
   stream.avail_in = trailer.size();
   stream.next_out = reinterpret_cast<Bytef*>(buffer.data());
   stream.avail_out = buffer.size();
