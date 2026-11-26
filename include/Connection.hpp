@@ -102,6 +102,7 @@ protected:
   void _disableEpollOut();
   std::size_t _pruneWriteBuffer(std::size_t bytes);
   void _parseRequest(std::size_t bytesRead);
+  void _countState(ConnectionState state, bool entering);
 
 private:
   bool _websocket_compression = false;

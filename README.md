@@ -188,7 +188,8 @@ WebSocket traffic is counted both as transferred and as it would have been witho
 |websocket_received_bytes                 | counter | Message payload bytes received from clients
 |websocket_received_uncompressed_bytes    | counter | The same messages after decompression
 |websocket_connections_count              | gauge   | Connections that are WebSocket right now
-|compression_connections_count            | gauge   | Those of them that negotiated permessage-deflate
+|sse_connections_count                    | gauge   | Connections that are Server-Sent Events right now
+|compression_connections_count            | gauge   | WebSocket connections that negotiated permessage-deflate
 |inflation_limit_rejected_count           | counter | Messages refused for expanding more than allowed
 
 The compression ratio for sent traffic is `rate(websocket_sent_bytes[5m]) / rate(websocket_sent_uncompressed_bytes[5m])`.

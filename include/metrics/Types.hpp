@@ -21,9 +21,10 @@ struct WorkerMetrics {
   std::atomic<unsigned long long> websocket_received_bytes{0};
   std::atomic<unsigned long long> websocket_received_uncompressed_bytes{0};
 
-  // Connections that are WebSocket right now, and how many of those have
-  // negotiated permessage-deflate.
+  // Connections that are WebSocket or SSE right now, and how many of the
+  // WebSocket ones have negotiated permessage-deflate.
   std::atomic<unsigned long> websocket_connections_count{0};
+  std::atomic<unsigned long> sse_connections_count{0};
   std::atomic<unsigned long> compression_connections_count{0};
 
   // Messages refused because they expanded more than the allowed ratio.
@@ -53,6 +54,7 @@ struct AggregatedMetrics {
                         websocket_received_bytes(0),
                         websocket_received_uncompressed_bytes(0),
                         websocket_connections_count(0),
+                        sse_connections_count(0),
                         compression_connections_count(0),
                         inflation_limit_rejected_count(0){};
 
@@ -72,6 +74,7 @@ struct AggregatedMetrics {
   unsigned long long websocket_received_bytes;
   unsigned long long websocket_received_uncompressed_bytes;
   unsigned long websocket_connections_count;
+  unsigned long sse_connections_count;
   unsigned long compression_connections_count;
   unsigned long long inflation_limit_rejected_count;
 };

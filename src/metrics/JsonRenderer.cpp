@@ -31,6 +31,7 @@ const std::string JsonRenderer::RenderMetrics(Server* server) {
   j["websocket_received_bytes"]              = metrics.websocket_received_bytes;
   j["websocket_received_uncompressed_bytes"] = metrics.websocket_received_uncompressed_bytes;
   j["websocket_connections_count"]           = metrics.websocket_connections_count;
+  j["sse_connections_count"]                 = metrics.sse_connections_count;
   j["compression_connections_count"]         = metrics.compression_connections_count;
   j["inflation_limit_rejected_count"]        = metrics.inflation_limit_rejected_count;
 

@@ -98,9 +98,7 @@ Connection::~Connection() {
     _worker->getMetrics().compression_connections_count--;
   }
 
-  if (_state == ConnectionState::WEBSOCKET && _worker) {
-    _worker->getMetrics().websocket_connections_count--;
-  }
+  _countState(_state, false);
 
   close(_fd);
   unsubscribeAll();
@@ -325,16 +323,31 @@ int Connection::removeFromEpoll() {
 }
 
 ConnectionState Connection::setState(ConnectionState newState) {
-  if (_worker && newState != _state) {
-    if (newState == ConnectionState::WEBSOCKET) {
-      _worker->getMetrics().websocket_connections_count++;
-    } else if (_state == ConnectionState::WEBSOCKET) {
-      _worker->getMetrics().websocket_connections_count--;
-    }
+  if (newState != _state) {
+    _countState(_state, false);
+    _countState(newState, true);
   }
 
   _state = newState;
   return newState;
+}
+
+/**
+ * Keep the per-protocol connection gauges in step with this connection.
+ * @param state State the connection enters or leaves.
+ * @param entering True when entering the state, false when leaving it.
+ */
+void Connection::_countState(ConnectionState state, bool entering) {
+  if (!_worker) {
+    return;
+  }
+
+  auto& metrics = _worker->getMetrics();
+  if (state == ConnectionState::WEBSOCKET) {
+    entering ? metrics.websocket_connections_count++ : metrics.websocket_connections_count--;
+  } else if (state == ConnectionState::SSE) {
+    entering ? metrics.sse_connections_count++ : metrics.sse_connections_count--;
+  }
 }
 
 void Connection::subscribe(const std::string& topicPattern, const jsonrpcpp::Id subscriptionRequestId) {

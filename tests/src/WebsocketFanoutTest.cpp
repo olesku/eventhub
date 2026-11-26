@@ -265,6 +265,7 @@ TEST_CASE("Metrics count WebSocket bytes on the wire and uncompressed", "[websoc
   auto sse = std::make_shared<CapturedConnection>(-1, &address, &worker, cfg, ConnectionCallbacks{});
   sse->setState(ConnectionState::SSE);
   CHECK(metrics.websocket_connections_count == 2);
+  CHECK(metrics.sse_connections_count == 1);
   CHECK(metrics.compression_connections_count == 1);
   CHECK(metrics.websocket_sent_bytes == 0);
 
@@ -323,6 +324,7 @@ TEST_CASE("Metrics count WebSocket bytes on the wire and uncompressed", "[websoc
   plain.reset();
   sse.reset();
   CHECK(metrics.websocket_connections_count == 1);
+  CHECK(metrics.sse_connections_count == 0);
   CHECK(metrics.compression_connections_count == 1);
   compressed.reset();
   CHECK(metrics.websocket_connections_count == 0);

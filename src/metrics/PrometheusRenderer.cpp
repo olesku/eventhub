@@ -33,6 +33,7 @@ const std::string PrometheusRenderer::RenderMetrics(Server* server) {
       {"websocket_received_bytes", "counter", metrics.websocket_received_bytes},
       {"websocket_received_uncompressed_bytes", "counter", metrics.websocket_received_uncompressed_bytes},
       {"websocket_connections_count", "gauge", metrics.websocket_connections_count},
+      {"sse_connections_count", "gauge", metrics.sse_connections_count},
       {"compression_connections_count", "gauge", metrics.compression_connections_count},
       {"inflation_limit_rejected_count", "counter", metrics.inflation_limit_rejected_count}};
 
