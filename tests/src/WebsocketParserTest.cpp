@@ -428,4 +428,31 @@ TEST_CASE("WebSocket negotiates only compatible permessage-deflate offers", "[we
   REQUIRE(negotiateCompression("permessage-deflate; other=1, permessage-deflate ; client_max_window_bits=12") == expected);
 }
 
+TEST_CASE("WebSocket compression handles exact 16 KiB output buffer boundary", "[websocket][compression]") {
+  // Deterministic incompressible payload so compressed size tracks input size 1:1.
+  std::string data;
+  data.reserve(16400);
+  std::uint32_t state = 0x12345678u;
+  for (std::size_t i = 0; i < 16400; ++i) {
+    state ^= state << 13;
+    state ^= state >> 17;
+    state ^= state << 5;
+    data.push_back(static_cast<char>(state & 0xff));
+  }
+
+  bool hitBoundary = false;
+  for (std::size_t len = 16300; len <= 16390; ++len) {
+    const std::string_view input(data.data(), len);
+    const auto compressed = compressMessage(input);
+    REQUIRE_FALSE(compressed.empty());
+    if (compressed.size() + 4 == 16384) {
+      hitBoundary = true;
+    }
+    std::string decoded;
+    REQUIRE(decompressMessage(compressed, input.size(), decoded) == InflateResult::OK);
+    REQUIRE(decoded == input);
+  }
+  REQUIRE(hitBoundary);
+}
+
 } // namespace eventhub::websocket

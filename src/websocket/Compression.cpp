@@ -132,18 +132,19 @@ std::string compressMessage(std::string_view message) {
   if (!deflater.ready || deflateReset(&stream) != Z_OK) {
     return {};
   }
+  const auto bound = deflateBound(&stream, static_cast<uLong>(message.size())) + 6;
+  if (bound > std::numeric_limits<uInt>::max()) {
+    return {};
+  }
+  std::string output(bound, '\0');
   stream.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(message.data()));
   stream.avail_in = static_cast<uInt>(message.size());
-  std::array<char, 16384> buffer;
-  std::string output;
-  do {
-    stream.next_out = reinterpret_cast<Bytef*>(buffer.data());
-    stream.avail_out = buffer.size();
-    if (deflate(&stream, Z_SYNC_FLUSH) != Z_OK) {
-      return {};
-    }
-    output.append(buffer.data(), buffer.size() - stream.avail_out);
-  } while (stream.avail_in != 0 || stream.avail_out == 0);
+  stream.next_out = reinterpret_cast<Bytef*>(output.data());
+  stream.avail_out = static_cast<uInt>(output.size());
+  if (deflate(&stream, Z_SYNC_FLUSH) != Z_OK || stream.avail_in != 0 || stream.avail_out == 0) {
+    return {};
+  }
+  output.resize(output.size() - stream.avail_out);
 
   if (output.size() <= trailer.size() || output.compare(output.size() - trailer.size(), trailer.size(), trailer) != 0) {
     return {};
@@ -157,12 +158,11 @@ InflateResult decompressMessage(std::string_view message, std::size_t limit, std
   if (message.empty() || message.size() > std::numeric_limits<uInt>::max()) {
     return InflateResult::INVALID;
   }
-  Inflater inflater;
-  if (!inflater.ready) {
+  thread_local Inflater inflater;
+  auto& stream = inflater.stream;
+  if (!inflater.ready || inflateReset(&stream) != Z_OK) {
     return InflateResult::INVALID;
   }
-
-  auto& stream = inflater.stream;
   stream.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(message.data()));
   stream.avail_in = static_cast<uInt>(message.size());
   std::array<char, 16384> buffer;

@@ -1,5 +1,7 @@
 #include "PublishedEvent.hpp"
 
+#include <string_view>
+
 #include "websocket/Compression.hpp"
 
 namespace eventhub {
@@ -14,9 +16,13 @@ const nlohmann::json& PublishedEvent::json() const {
 
 const std::string& PublishedEvent::websocketSuffix() const {
   std::call_once(_websocket_once, [this] {
-    auto suffix = json().dump();
-    suffix.insert(0, R"(,"jsonrpc":"2.0","result":)");
-    suffix += '}';
+    constexpr std::string_view prefix = R"(,"jsonrpc":"2.0","result":)";
+    const auto dumped = json().dump();
+    std::string suffix;
+    suffix.reserve(prefix.size() + dumped.size() + 1);
+    suffix.append(prefix);
+    suffix.append(dumped);
+    suffix.push_back('}');
     _websocket_suffix.swap(suffix);
   });
   return _websocket_suffix;
