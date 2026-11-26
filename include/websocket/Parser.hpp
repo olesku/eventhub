@@ -32,6 +32,10 @@ public:
   // close frame, further input is ignored.
   void parse(std::string_view input);
 
+  // Payload size of the latest data message as it was received, before any
+  // decompression. Meant to be read from the message callback.
+  std::size_t messageWireSize() const { return _message_wire_size; }
+
 private:
   enum class State {
     OPCODE,
@@ -65,6 +69,7 @@ private:
   std::uint8_t _length_bytes_remaining = 0;
   std::array<std::uint8_t, 4> _mask{};
   std::size_t _mask_position = 0;
+  std::size_t _message_wire_size = 0;
 
   // A control frame may arrive between data fragments without disturbing the
   // unfinished message. Keeping these separate also bounds control storage.

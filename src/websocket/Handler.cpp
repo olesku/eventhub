@@ -50,6 +50,10 @@ void Handler::handleMessage(HandlerContext&& ctx, FrameType frameType, const std
 }
 
 void Handler::handleError(HandlerContext&& ctx, ParserError error) {
+  if (error == ParserError::INFLATION_LIMIT_EXCEEDED) {
+    ctx.connection()->countInflationLimitRejected();
+  }
+
   if (error == ParserError::MESSAGE_TOO_BIG || error == ParserError::INFLATION_LIMIT_EXCEEDED) {
     // A legitimate client can hit the size limits, and all it sees is the
     // close code. Make the reason visible to the operator.

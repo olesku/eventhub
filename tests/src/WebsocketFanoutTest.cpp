@@ -65,8 +65,30 @@ public:
     return size;
   }
 
+  // Hand bytes to the connection as if they had been read from the socket.
+  void receive(std::string_view wire) {
+    _read_buffer.assign(wire.begin(), wire.end());
+    _parseRequest(wire.size());
+  }
+
   std::vector<std::string> writes;
 };
+
+// A client text frame. The mask is all zeroes, which leaves the payload as it is.
+std::string clientTextFrame(std::string_view payload, bool compressed) {
+  REQUIRE(payload.size() <= 65535);
+  std::string frame(1, static_cast<char>(compressed ? 0xc1 : 0x81));
+  if (payload.size() < 126) {
+    frame.push_back(static_cast<char>(0x80 | payload.size()));
+  } else {
+    frame.push_back(static_cast<char>(0x80 | 126));
+    frame.push_back(static_cast<char>(payload.size() >> 8));
+    frame.push_back(static_cast<char>(payload.size()));
+  }
+  frame.append(4, '\0');
+  frame.append(payload);
+  return frame;
+}
 
 void upgrade(Config& cfg, Server& server, Worker& worker, const std::shared_ptr<CapturedConnection>& conn,
              const std::string& extensionHeaders, bool compressed) {
@@ -226,6 +248,85 @@ TEST_CASE("WebSocket parser errors close with the matching status code", "[webso
     REQUIRE(conn->writes.size() == 1);
     CHECK(conn->writes.front() == std::string{static_cast<char>(0x88), 2, static_cast<char>(code >> 8), static_cast<char>(code & 0xff)});
   }
+}
+
+TEST_CASE("Metrics count WebSocket bytes on the wire and uncompressed", "[websocket][compression][metrics]") {
+  Config cfg(websocketConfig);
+  cfg.load();
+  Server server(cfg);
+  Worker worker(&server, 1);
+  const auto& metrics = worker.getMetrics();
+  sockaddr_in address{};
+  auto compressed = std::make_shared<CapturedConnection>(-1, &address, &worker, cfg, ConnectionCallbacks{});
+  auto plain = std::make_shared<CapturedConnection>(-1, &address, &worker, cfg, ConnectionCallbacks{});
+
+  upgrade(cfg, server, worker, compressed, "Sec-WebSocket-Extensions: permessage-deflate\r\n", true);
+  upgrade(cfg, server, worker, plain, "", false);
+  auto sse = std::make_shared<CapturedConnection>(-1, &address, &worker, cfg, ConnectionCallbacks{});
+  sse->setState(ConnectionState::SSE);
+  CHECK(metrics.websocket_connections_count == 2);
+  CHECK(metrics.compression_connections_count == 1);
+  CHECK(metrics.websocket_sent_bytes == 0);
+
+  // A published event: compressed for one subscriber, plain for the other.
+  const jsonrpcpp::Id idCompressed(1);
+  const jsonrpcpp::Id idPlain("plain");
+  compressed->subscribe("metrics/topic", idCompressed);
+  plain->subscribe("metrics/topic", idPlain);
+  const nlohmann::json result = {{"topic", "metrics/topic"}, {"id", "event"}, {"message", std::string(4096, 'x')}};
+  worker.getTopicManager()->publish("metrics/topic", PublishedEvent(result.dump()));
+  REQUIRE(compressed->writes.size() == 1);
+  REQUIRE(plain->writes.size() == 1);
+
+  const auto originalCompressed = jsonrpcpp::Response(idCompressed, result).to_json().dump().size();
+  const auto originalPlain = jsonrpcpp::Response(idPlain, result).to_json().dump().size();
+  const auto wireCompressed = textPayload(compressed->writes.front(), true).size();
+  REQUIRE(wireCompressed < originalCompressed);
+  CHECK(textPayload(plain->writes.front(), false).size() == originalPlain);
+  CHECK(metrics.websocket_sent_bytes == wireCompressed + originalPlain);
+  CHECK(metrics.websocket_sent_uncompressed_bytes == originalCompressed + originalPlain);
+
+  // An RPC reply that is compressed, and one that would not shrink.
+  auto sentWire = metrics.websocket_sent_bytes.load();
+  auto sentUncompressed = metrics.websocket_sent_uncompressed_bytes.load();
+  const std::string reply(2000, 'y');
+  websocket::Response::sendCompressibleText(*compressed, reply);
+  websocket::Response::sendCompressibleText(*compressed, "x");
+  REQUIRE(compressed->writes.size() == 3);
+  CHECK(metrics.websocket_sent_bytes == sentWire + textPayload(compressed->writes[1], true).size() + 1);
+  CHECK(metrics.websocket_sent_uncompressed_bytes == sentUncompressed + reply.size() + 1);
+
+  // Control frames are not application data.
+  sentWire = metrics.websocket_sent_bytes.load();
+  websocket::Response::sendData(plain, "ping", websocket::FrameType::PING_FRAME);
+  CHECK(metrics.websocket_sent_bytes == sentWire);
+
+  // Received messages, with and without compression.
+  const std::string text(1000, 'a');
+  const auto deflated = websocket::compressMessage(text);
+  REQUIRE(deflated.size() < text.size());
+  compressed->receive(clientTextFrame(deflated, true));
+  CHECK(metrics.websocket_received_bytes == deflated.size());
+  CHECK(metrics.websocket_received_uncompressed_bytes == text.size());
+  plain->receive(clientTextFrame("hello", false));
+  CHECK(metrics.websocket_received_bytes == deflated.size() + 5);
+  CHECK(metrics.websocket_received_uncompressed_bytes == text.size() + 5);
+
+  // A message refused by the inflation limit.
+  CHECK(metrics.inflation_limit_rejected_count == 0);
+  websocket::Handler::handleError(HandlerContext(cfg, &server, &worker, plain), websocket::ParserError::MESSAGE_TOO_BIG);
+  CHECK(metrics.inflation_limit_rejected_count == 0);
+  websocket::Handler::handleError(HandlerContext(cfg, &server, &worker, compressed), websocket::ParserError::INFLATION_LIMIT_EXCEEDED);
+  CHECK(metrics.inflation_limit_rejected_count == 1);
+
+  // The gauges follow the connections.
+  plain.reset();
+  sse.reset();
+  CHECK(metrics.websocket_connections_count == 1);
+  CHECK(metrics.compression_connections_count == 1);
+  compressed.reset();
+  CHECK(metrics.websocket_connections_count == 0);
+  CHECK(metrics.compression_connections_count == 0);
 }
 
 TEST_CASE("WebSocket eventlog compresses only when negotiated and beneficial", "[websocket][compression]") {

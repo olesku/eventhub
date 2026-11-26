@@ -32,6 +32,7 @@ public:
   unsigned int getWorkerId() { return _workerId; }
   int getEpollFileDescriptor() { return _epoll_fd; }
   const metrics::WorkerMetrics& getMetrics() { return _metrics; }
+  metrics::WorkerMetrics& metrics() { return _metrics; }
 
 private:
   unsigned int _workerId;
