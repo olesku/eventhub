@@ -129,6 +129,7 @@ def start_eventhub(
     enable_cache=True,
     enable_sse=False,
     enable_kvstore=True,
+    enable_compression=True,
     jwt_secret="eventhub_secret",
     quiet=True,
 ):
@@ -142,6 +143,7 @@ def start_eventhub(
             "ENABLE_CACHE": "true" if enable_cache else "false",
             "ENABLE_SSE": "true" if enable_sse else "false",
             "ENABLE_KVSTORE": "true" if enable_kvstore else "false",
+            "ENABLE_COMPRESSION": "true" if enable_compression else "false",
             "JWT_SECRET": jwt_secret,
         }
     )

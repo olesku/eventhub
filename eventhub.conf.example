@@ -23,6 +23,7 @@ default_cache_ttl           = 60
 # Websocket settings.
 ping_interval               = 30
 handshake_timeout           = 5
+enable_compression          = true
 
 # Enable Server-Sent-Events.
 enable_sse                  = false

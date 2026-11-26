@@ -75,10 +75,12 @@ async def run_stress(args):
             write=[args.topic, f"{args.topic}/#"],
         )
 
+    connect_kwargs = {"compression": None} if args.no_compression else {}
+
     subscribers = []
     for _ in range(args.subscribers):
         client = Eventhub(args.url, token)
-        await client.connect()
+        await client.connect(**connect_kwargs)
         subscribers.append(client)
 
     stats = LatencyStats(sample_limit=args.sample_limit)
@@ -109,7 +111,7 @@ async def run_stress(args):
 
     async def publisher_task():
         client = Eventhub(args.url, token)
-        await client.connect()
+        await client.connect(**connect_kwargs)
 
         delay = 0
         if args.rate > 0:
@@ -144,6 +146,7 @@ async def run_stress(args):
     summary = stats.summary_ms()
     print("Stress summary:")
     published = args.publishers * args.messages
+    print(f"  compression: {'disabled' if args.no_compression else 'enabled'}")
     print(f"  expected: {expected}")
     print(f"  received: {received}")
     print(f"  elapsed_s: {elapsed:.2f}")
@@ -180,6 +183,7 @@ def write_summary(args, expected, received, elapsed, published, summary, ok):
         "| Metric | Value |",
         "|---|---|",
         f"| Expected / received | {expected} / {received} |",
+        f"| Compression | {'disabled' if args.no_compression else 'enabled'} |",
         f"| Elapsed | {elapsed:.2f} s |",
     ]
     if elapsed > 0:
@@ -210,6 +214,7 @@ def parse_args():
     parser.add_argument("--rate", type=float, default=0.0, help="Messages per second per publisher; 0 = no throttle")
     parser.add_argument("--timeout", type=float, default=30.0)
     parser.add_argument("--sample-limit", type=int, default=100000)
+    parser.add_argument("--no-compression", action="store_true", help="Disable WebSocket permessage-deflate on clients")
     parser.add_argument("--summary-file", default="", help="Append a Markdown summary to this file (e.g. $GITHUB_STEP_SUMMARY)")
     parser.add_argument("--verbose", action="store_true")
     return parser.parse_args()

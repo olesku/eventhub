@@ -49,6 +49,7 @@ const ConfigMap websocketConfig = {
     {"disable_auth", Type::BOOL, "true", Setting::REQUIRED},
     {"jwt_secret", Type::STRING, "test", Setting::REQUIRED},
     {"enable_cache", Type::BOOL, "true", Setting::REQUIRED},
+    {"enable_compression", Type::BOOL, "true", Setting::REQUIRED},
     {"default_cache_ttl", Type::INT, "60", Setting::REQUIRED},
     {"max_cache_request_limit", Type::INT, "100", Setting::REQUIRED},
 };
@@ -227,6 +228,23 @@ TEST_CASE("WebSocket eventlog compresses only when negotiated and beneficial", "
                                     R"({"jsonrpc":"2.0","id":"compressible-compressible-compressible-compressible","method":"ping"})");
   REQUIRE(compressed->writes.size() == 3);
   CHECK(nlohmann::json::parse(textPayload(compressed->writes.back(), false)).at("result").contains("pong"));
+}
+
+TEST_CASE("WebSocket compression is not negotiated when disabled in config", "[websocket][compression]") {
+  ConfigMap disabledConfig = websocketConfig;
+  for (auto& entry : disabledConfig) {
+    if (entry.name == "enable_compression") {
+      entry.defaultValue = "false";
+    }
+  }
+  Config cfg(disabledConfig);
+  cfg.load();
+  Server server(cfg);
+  Worker worker(&server, 1);
+  sockaddr_in address{};
+  auto conn = std::make_shared<CapturedConnection>(-1, &address, &worker, cfg, ConnectionCallbacks{});
+
+  upgrade(cfg, server, worker, conn, "Sec-WebSocket-Extensions: permessage-deflate\r\n", false);
 }
 
 } // namespace eventhub
