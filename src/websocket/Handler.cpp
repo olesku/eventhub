@@ -54,7 +54,7 @@ void Handler::handleError(HandlerContext&& ctx, ParserError error) {
   std::uint16_t closeCode = 1002; // Protocol error.
   if (error == ParserError::MESSAGE_TOO_BIG) {
     closeCode = 1009;
-  } else if (error == ParserError::INVALID_UTF8) {
+  } else if (error == ParserError::INVALID_UTF8 || error == ParserError::INVALID_COMPRESSED_PAYLOAD) {
     closeCode = 1007;
   }
   const std::string payload{static_cast<char>(closeCode >> 8), static_cast<char>(closeCode & 0xff)};

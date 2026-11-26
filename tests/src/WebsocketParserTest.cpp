@@ -401,6 +401,39 @@ TEST_CASE("WebSocket rejects incorrect compression framing and invalid inflated 
               ParserError::MESSAGE_TOO_BIG, 32768, true);
 }
 
+TEST_CASE("WebSocket bounds how far a compressed message may expand", "[websocket][compression]") {
+  constexpr std::size_t maxMessageSize = 8 * 1024 * 1000;
+  STATIC_REQUIRE(inflatedSizeLimit(0, maxMessageSize) == minInflatedSizeLimit);
+  STATIC_REQUIRE(inflatedSizeLimit(1024, maxMessageSize) == minInflatedSizeLimit);
+  STATIC_REQUIRE(inflatedSizeLimit(4096, maxMessageSize) == 4096 * maxInflationRatio);
+  STATIC_REQUIRE(inflatedSizeLimit(maxMessageSize, maxMessageSize) == maxMessageSize);
+  STATIC_REQUIRE(inflatedSizeLimit(std::numeric_limits<std::size_t>::max(), maxMessageSize) == maxMessageSize);
+  STATIC_REQUIRE(inflatedSizeLimit(4096, 1000) == 1000);
+
+  // Well below the message size limit, but far more than its wire bytes earn.
+  const auto bomb = compressMessage(std::string(1024 * 1024, 'a'));
+  REQUIRE(bomb.size() * maxInflationRatio < 1024 * 1024);
+  expectError(compressedFrame(FrameType::TEXT_FRAME, bomb), ParserError::MESSAGE_TOO_BIG, maxMessageSize, true);
+
+  // The same size is fine when the client actually sent a fair share of it.
+  std::string text;
+  std::uint32_t state = 0x12345678u;
+  while (text.size() < 1024 * 1024) {
+    state ^= state << 13;
+    state ^= state >> 17;
+    state ^= state << 5;
+    text.push_back(static_cast<char>('a' + state % 26));
+  }
+  const auto compressed = compressMessage(text);
+  REQUIRE(compressed.size() < text.size());
+  Recorder recorder;
+  Parser parser(maxMessageSize, recorder.callbacks());
+  parser.enableCompression();
+  parser.parse(compressedFrame(FrameType::TEXT_FRAME, compressed));
+  REQUIRE(recorder.errors.empty());
+  REQUIRE(recorder.messages == std::vector<Message>{{FrameType::TEXT_FRAME, text}});
+}
+
 TEST_CASE("WebSocket accepts the RFC example with a final DEFLATE block", "[websocket][compression]") {
   // RFC 7692 section 7.2.3.4: BFINAL is set before the last empty block.
   Recorder recorder;

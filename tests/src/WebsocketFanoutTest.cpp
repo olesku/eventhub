@@ -183,6 +183,50 @@ TEST_CASE("WebSocket fanout shares compressed bytes across workers and topic mat
   CHECK(compressionCount.load() == before + 2);
 }
 
+TEST_CASE("A subscriber that cannot take an event does not stop fanout to the rest", "[websocket]") {
+  Config cfg(websocketConfig);
+  cfg.load();
+  Server server(cfg);
+  Worker worker(&server, 1);
+  sockaddr_in address{};
+  auto websocket = std::make_shared<CapturedConnection>(-1, &address, &worker, cfg, ConnectionCallbacks{});
+  auto sse = std::make_shared<CapturedConnection>(-1, &address, &worker, cfg, ConnectionCallbacks{});
+  upgrade(cfg, server, worker, websocket, "", false);
+  sse->setState(ConnectionState::SSE);
+
+  // New subscribers go first in the list, so the SSE one is served first.
+  const jsonrpcpp::Id id(3);
+  websocket->subscribe("fanout/partial", id);
+  sse->subscribe("fanout/partial", {});
+
+  // SSE needs a string "message"; WebSocket forwards the JSON as it is.
+  const nlohmann::json result = {{"topic", "fanout/partial"}, {"id", "no-message"}};
+  worker.getTopicManager()->publish("fanout/partial", PublishedEvent(result.dump()));
+
+  CHECK(sse->writes.empty());
+  REQUIRE(websocket->writes.size() == 1);
+  CHECK(textPayload(websocket->writes.front(), false) == jsonrpcpp::Response(id, result).to_json().dump());
+}
+
+TEST_CASE("WebSocket parser errors close with the matching status code", "[websocket]") {
+  Config cfg(websocketConfig);
+  cfg.load();
+  Server server(cfg);
+  Worker worker(&server, 1);
+  sockaddr_in address{};
+  using websocket::ParserError;
+  for (const auto& [error, code] : {std::pair{ParserError::INVALID_OPCODE, 1002}, std::pair{ParserError::INVALID_UTF8, 1007},
+                                    std::pair{ParserError::INVALID_COMPRESSED_PAYLOAD, 1007},
+                                    std::pair{ParserError::MESSAGE_TOO_BIG, 1009}}) {
+    CAPTURE(code);
+    auto conn = std::make_shared<CapturedConnection>(-1, &address, &worker, cfg, ConnectionCallbacks{});
+    upgrade(cfg, server, worker, conn, "", false);
+    websocket::Handler::handleError(HandlerContext(cfg, &server, &worker, conn), error);
+    REQUIRE(conn->writes.size() == 1);
+    CHECK(conn->writes.front() == std::string{static_cast<char>(0x88), 2, static_cast<char>(code >> 8), static_cast<char>(code & 0xff)});
+  }
+}
+
 TEST_CASE("WebSocket eventlog compresses only when negotiated and beneficial", "[websocket][compression]") {
   Config cfg(websocketConfig);
   cfg.load();
