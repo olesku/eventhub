@@ -82,6 +82,8 @@ std::string_view errorMessage(ParserError error) noexcept {
       return "payload length exceeds 63 bits";
     case ParserError::MESSAGE_TOO_BIG:
       return "message exceeds the configured size limit";
+    case ParserError::INFLATION_LIMIT_EXCEEDED:
+      return "compressed message expands more than the allowed ratio";
     case ParserError::INVALID_COMPRESSED_PAYLOAD:
       return "invalid permessage-deflate payload";
     case ParserError::INVALID_CLOSE_PAYLOAD:
@@ -251,12 +253,15 @@ void Parser::_finishFrame() {
     }
     if (_message_compressed) {
       std::string inflated;
-      switch (decompressMessage(_message, inflatedSizeLimit(_message.size(), _max_message_size), inflated)) {
+      const auto limit = inflatedSizeLimit(_message.size(), _max_message_size);
+      switch (decompressMessage(_message, limit, inflated)) {
         case InflateResult::OK:
           _message.swap(inflated);
           break;
         case InflateResult::TOO_BIG:
-          return _fail(ParserError::MESSAGE_TOO_BIG);
+          // Tell an honest but very repetitive message apart from one that is
+          // simply larger than any message may be.
+          return _fail(limit < _max_message_size ? ParserError::INFLATION_LIMIT_EXCEEDED : ParserError::MESSAGE_TOO_BIG);
         case InflateResult::INVALID:
           return _fail(ParserError::INVALID_COMPRESSED_PAYLOAD);
       }

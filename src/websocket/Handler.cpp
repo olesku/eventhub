@@ -50,9 +50,15 @@ void Handler::handleMessage(HandlerContext&& ctx, FrameType frameType, const std
 }
 
 void Handler::handleError(HandlerContext&& ctx, ParserError error) {
-  LOG->debug("WebSocket error from {}: {}. Closing connection.", ctx.connection()->getIP(), errorMessage(error));
+  if (error == ParserError::INFLATION_LIMIT_EXCEEDED) {
+    // A legitimate client can hit this with large, highly repetitive data, and
+    // all it sees is the close code. Make the reason visible to the operator.
+    LOG->warn("WebSocket error from {}: {}. Closing connection.", ctx.connection()->getIP(), errorMessage(error));
+  } else {
+    LOG->debug("WebSocket error from {}: {}. Closing connection.", ctx.connection()->getIP(), errorMessage(error));
+  }
   std::uint16_t closeCode = 1002; // Protocol error.
-  if (error == ParserError::MESSAGE_TOO_BIG) {
+  if (error == ParserError::MESSAGE_TOO_BIG || error == ParserError::INFLATION_LIMIT_EXCEEDED) {
     closeCode = 1009;
   } else if (error == ParserError::INVALID_UTF8 || error == ParserError::INVALID_COMPRESSED_PAYLOAD) {
     closeCode = 1007;

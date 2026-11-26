@@ -413,7 +413,7 @@ TEST_CASE("WebSocket bounds how far a compressed message may expand", "[websocke
   // Well below the message size limit, but far more than its wire bytes earn.
   const auto bomb = compressMessage(std::string(1024 * 1024, 'a'));
   REQUIRE(bomb.size() * maxInflationRatio < 1024 * 1024);
-  expectError(compressedFrame(FrameType::TEXT_FRAME, bomb), ParserError::MESSAGE_TOO_BIG, maxMessageSize, true);
+  expectError(compressedFrame(FrameType::TEXT_FRAME, bomb), ParserError::INFLATION_LIMIT_EXCEEDED, maxMessageSize, true);
 
   // The same size is fine when the client actually sent a fair share of it.
   std::string text;
