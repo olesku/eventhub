@@ -251,7 +251,7 @@ void Parser::_finishFrame() {
     }
     if (_message_compressed) {
       std::string inflated;
-      switch (decompressMessage(_message, _max_message_size, inflated)) {
+      switch (decompressMessage(_message, inflatedSizeLimit(_message.size(), _max_message_size), inflated)) {
         case InflateResult::OK:
           _message.swap(inflated);
           break;

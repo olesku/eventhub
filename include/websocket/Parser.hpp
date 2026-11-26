@@ -23,6 +23,7 @@ public:
   void setCallbacks(ParserCallbacks callbacks);
 
   // Enable RFC 7692 with no client context takeover, before parsing frames.
+  // Compressed messages are also bounded by inflatedSizeLimit().
   void enableCompression() { _compression_enabled = true; }
 
   // Callbacks are optional and run synchronously in wire order. Do not reenter

@@ -52,10 +52,15 @@ void Topic::publish(const PublishedEvent& event) {
         continue;
       }
 
-      if (c->getState() == ConnectionState::WEBSOCKET) {
-        websocket::Response::sendEvent(*c, subscriber.second, event);
-      } else if (c->getState() == ConnectionState::SSE) {
-        sse::Response::sendEvent(c, jsonData.at("id"), jsonData.at("message"));
+      // One subscriber failing must not keep the event from the rest.
+      try {
+        if (c->getState() == ConnectionState::WEBSOCKET) {
+          websocket::Response::sendEvent(*c, subscriber.second, event);
+        } else if (c->getState() == ConnectionState::SSE) {
+          sse::Response::sendEvent(c, jsonData.at("id"), jsonData.at("message"));
+        }
+      } catch (std::exception& e) {
+        LOG->debug("Failed to deliver publish to {} for {}: {}.", _id, c->getIP(), e.what());
       }
     }
   }
