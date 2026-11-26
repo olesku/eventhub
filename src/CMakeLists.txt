@@ -4,6 +4,7 @@ set (SOURCES
   http/Handler.cpp
   http/Response.cpp
   websocket/Parser.cpp
+  websocket/Compression.cpp
   websocket/Handler.cpp
   websocket/Response.cpp
   sse/Handler.cpp
@@ -16,6 +17,7 @@ set (SOURCES
   KVStore.cpp
   Util.cpp
   Topic.cpp
+  PublishedEvent.cpp
   TopicManager.cpp
   Server.cpp
   Connection.cpp
@@ -25,6 +27,7 @@ set (SOURCES
 )
 
 add_library(eventhub_core ${SOURCES})
+target_link_libraries(eventhub_core PUBLIC ZLIB::ZLIB)
 
 add_executable(eventhub main.cpp)
 

@@ -1,4 +1,5 @@
 #include "websocket/Parser.hpp"
+#include "websocket/Compression.hpp"
 
 #include <algorithm>
 #include <utility>
@@ -81,6 +82,8 @@ std::string_view errorMessage(ParserError error) noexcept {
       return "payload length exceeds 63 bits";
     case ParserError::MESSAGE_TOO_BIG:
       return "message exceeds the configured size limit";
+    case ParserError::INVALID_COMPRESSED_PAYLOAD:
+      return "invalid permessage-deflate payload";
     case ParserError::INVALID_CLOSE_PAYLOAD:
       return "invalid close frame payload";
     case ParserError::INVALID_UTF8:
@@ -147,11 +150,14 @@ void Parser::parse(std::string_view input) {
 }
 
 void Parser::_readOpcode(std::uint8_t byte) {
-  if ((byte & 0x70) != 0) {
+  const auto type = static_cast<FrameType>(byte & 0x0f);
+  const bool compressed = (byte & 0x40) != 0;
+  if ((byte & 0x30) != 0 ||
+      (compressed && (!_compression_enabled || (type != FrameType::TEXT_FRAME && type != FrameType::BINARY_FRAME)))) {
     return _fail(ParserError::RESERVED_BITS_SET);
   }
 
-  _frame_type = static_cast<FrameType>(byte & 0x0f);
+  _frame_type = type;
   _final      = (byte & 0x80) != 0;
   _control    = (byte & 0x08) != 0;
 
@@ -167,6 +173,7 @@ void Parser::_readOpcode(std::uint8_t byte) {
         return _fail(ParserError::INVALID_CONTINUATION);
       }
       _message_type = _frame_type;
+      _message_compressed = compressed;
       _message.clear();
       break;
     case FrameType::CLOSE_FRAME:
@@ -241,6 +248,18 @@ void Parser::_finishFrame() {
     _fragmented = !_final;
     if (!_final) {
       return;
+    }
+    if (_message_compressed) {
+      std::string inflated;
+      switch (decompressMessage(_message, _max_message_size, inflated)) {
+        case InflateResult::OK:
+          _message.swap(inflated);
+          break;
+        case InflateResult::TOO_BIG:
+          return _fail(ParserError::MESSAGE_TOO_BIG);
+        case InflateResult::INVALID:
+          return _fail(ParserError::INVALID_COMPRESSED_PAYLOAD);
+      }
     }
     if (_message_type == FrameType::TEXT_FRAME && !isValidUtf8(_message)) {
       return _fail(ParserError::INVALID_UTF8);

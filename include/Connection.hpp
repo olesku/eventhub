@@ -6,10 +6,12 @@
 #include <sys/socket.h>
 #include <ctime>
 #include <functional>
+#include <initializer_list>
 #include <list>
 #include <memory>
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -52,6 +54,7 @@ public:
   virtual ~Connection();
 
   void write(const std::string& data);
+  void write(std::initializer_list<std::string_view> chunks);
   virtual void read();
   virtual ssize_t flushSendBuffer();
 
@@ -60,6 +63,8 @@ public:
 
   ConnectionState setState(ConnectionState newState);
   ConnectionState getState();
+  void enableWebSocketCompression();
+  bool hasWebSocketCompression() const { return _websocket_compression; }
   AccessController* getAccessController();
   void assignConnectionListIterator(std::list<ConnectionPtr>::iterator connectionIterator);
   ConnectionListIterator getConnectionListIterator();
@@ -97,6 +102,7 @@ protected:
   void _parseRequest(std::size_t bytesRead);
 
 private:
+  bool _websocket_compression = false;
   ConnectionCallbacks _callbacks;
   std::unique_ptr<http::Parser> _http_parser;
   std::unique_ptr<websocket::Parser> _websocket_parser;

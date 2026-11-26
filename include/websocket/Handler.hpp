@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <zlib.h>
 
 #include "Forward.hpp"
 #include "websocket/Types.hpp"

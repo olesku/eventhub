@@ -412,12 +412,13 @@ void RPCHandler::_handleEventlog(HandlerContext& ctx, jsonrpcpp::request_ptr req
     return _sendInvalidParamsError(ctx, req, msg.str());
   }
 
-  _sendSuccessResponse(ctx, req,{
+  const nlohmann::json result = {
       {"action", "eventlog"},
       {"topic", topicName},
       {"status", "ok"},
       {"items", items}
-  });
+  };
+  websocket::Response::sendCompressibleText(*ctx.connection(), jsonrpcpp::Response(*req, result).to_json().dump());
 }
 
 /**

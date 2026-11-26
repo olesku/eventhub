@@ -56,7 +56,7 @@ jobs:
       run: |
         sudo apt-get update && \
         sudo apt-get -qq install clang cmake git openssl libssl-dev libhiredis-dev \
-        libspdlog-dev libfmt-dev ninja-build
+        libspdlog-dev libfmt-dev zlib1g-dev ninja-build
 
     - name: Install redis-plus-plus
       run: |

@@ -153,6 +153,7 @@ Required libraries:
 * [Hiredis](https://github.com/redis/hiredis)
 * [Redis-plus-plus](https://github.com/sewenew/redis-plus-plus)
 * [OpenSSL](https://www.openssl.org/)
+* [zlib](https://zlib.net/)
 
 Required tooling:
 * Git

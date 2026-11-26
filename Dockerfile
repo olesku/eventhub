@@ -9,7 +9,7 @@ LABEL org.opencontainers.image.title="eventhub" \
 
 RUN apt-get update && \
     apt-get -qq install clang cmake git openssl libssl-dev libhiredis-dev \
-    libspdlog-dev libfmt-dev ninja-build
+    libspdlog-dev libfmt-dev zlib1g-dev ninja-build
 
 RUN mkdir -p /usr/src/redis-plus-plus && cd /usr/src/redis-plus-plus && \
     git clone https://github.com/sewenew/redis-plus-plus.git . && \

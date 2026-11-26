@@ -12,4 +12,6 @@ services:
       - redis
 
   redis:
-    image: redis:alpine
+    image: docker.io/valkey/valkey:9-alpine
+    ports:
+      - "6379:6379"
