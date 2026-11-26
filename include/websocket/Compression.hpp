@@ -19,13 +19,17 @@ InflateResult decompressMessage(std::string_view message, std::size_t limit, std
 // Bounding the expansion ratio keeps the work a client can demand roughly
 // proportional to the bytes it sends; the floor leaves small messages alone.
 constexpr std::size_t minInflatedSizeLimit = 64 * 1024;
-constexpr std::size_t maxInflationRatio = 64;
+constexpr std::size_t maxInflationRatio    = 64;
+
 constexpr std::size_t inflatedSizeLimit(std::size_t compressedSize, std::size_t maxMessageSize) {
+  // Dividing instead of multiplying avoids overflow for huge sizes.
   if (compressedSize > maxMessageSize / maxInflationRatio) {
     return maxMessageSize;
   }
-  const auto scaled = compressedSize * maxInflationRatio;
+
+  const auto scaled  = compressedSize * maxInflationRatio;
   const auto allowed = scaled < minInflatedSizeLimit ? minInflatedSizeLimit : scaled;
+
   return allowed < maxMessageSize ? allowed : maxMessageSize;
 }
 

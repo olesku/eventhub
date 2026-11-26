@@ -140,9 +140,12 @@ bool Handler::_websocketHandshake(HandlerContext& ctx, const Request& request) {
   response.setHeader("upgrade", "websocket");
   response.setHeader("connection", "upgrade");
   response.setHeader("sec-websocket-accept", secWsAccept);
+
+  // Accept permessage-deflate if the client offered a variant we support.
   if (ctx.server()->config().get<bool>("enable_compression")) {
-    const auto extensions = request.header("Sec-WebSocket-Extensions");
+    const auto extensions  = request.header("Sec-WebSocket-Extensions");
     const auto compression = websocket::negotiateCompression(extensions);
+
     if (!compression.empty()) {
       response.setHeader("Sec-WebSocket-Extensions", std::string(compression));
       ctx.connection()->enableWebSocketCompression();

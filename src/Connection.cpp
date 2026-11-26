@@ -186,6 +186,12 @@ void Connection::write(const std::string& data) {
   write(std::initializer_list<std::string_view>{data});
 }
 
+/**
+ * Add several pieces of data to the send buffer as one write.
+ * Either all of them are added or, if they don't fit, none and the connection
+ * is shut down.
+ * @param chunks Pieces to append, in order.
+ */
 void Connection::write(std::initializer_list<std::string_view> chunks) {
   std::lock_guard<std::mutex> lock(_write_lock);
 
@@ -193,6 +199,8 @@ void Connection::write(std::initializer_list<std::string_view> chunks) {
     return;
   }
 
+  // Check that everything fits before touching the buffer. Subtracting
+  // avoids overflowing the sum.
   auto size = _write_buffer.size();
   for (const auto chunk : chunks) {
     if (chunk.size() > NET_WRITE_BUFFER_MAX - size) {
@@ -207,6 +215,7 @@ void Connection::write(std::initializer_list<std::string_view> chunks) {
   if (size > _write_buffer.capacity()) {
     _write_buffer.reserve(size);
   }
+
   for (const auto chunk : chunks) {
     if (!chunk.empty()) {
       _write_buffer.append(chunk);
