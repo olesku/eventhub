@@ -3,6 +3,7 @@ class Config;
 class Connection;
 class HandlerContext;
 class KVStore;
+class PublishedEvent;
 class Redis;
 class Server;
 class Topic;

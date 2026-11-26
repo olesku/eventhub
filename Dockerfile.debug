@@ -3,7 +3,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
     apt-get -qq install gcc g++ cmake git openssl libssl-dev libhiredis-dev gdb bash vim psmisc procps htop curl sudo \
-    libspdlog-dev libfmt-dev ninja-build
+    libspdlog-dev libfmt-dev zlib1g-dev ninja-build
 
 RUN mkdir -p /usr/src/redis-plus-plus && cd /usr/src/redis-plus-plus && \
     git clone https://github.com/sewenew/redis-plus-plus.git . && \

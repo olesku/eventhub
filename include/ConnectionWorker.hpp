@@ -27,7 +27,7 @@ public:
   TopicManager* getTopicManager() { return _topic_manager.get(); }
 
   void subscribeConnection(ConnectionPtr conn, const std::string& topicFilterName);
-  void publish(const std::string& topicName, const std::string& data);
+  void publish(const std::string& topicName, std::shared_ptr<const PublishedEvent> event);
   void addTimer(int64_t delay, std::function<void(TimerCtx* ctx)> callback, bool repeat = false);
   unsigned int getWorkerId() { return _workerId; }
   int getEpollFileDescriptor() { return _epoll_fd; }

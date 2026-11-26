@@ -113,6 +113,15 @@ void Parser::parse(const char* data, std::size_t len) {
     std::string name(_phr_headers[i].name, _phr_headers[i].name_len);
     std::string value(_phr_headers[i].value, _phr_headers[i].value_len);
     Util::strToLower(name);
+    // RFC 6455 allows multiple extension request headers; preserve offer order.
+    if (name == "sec-websocket-extensions") {
+      auto& offers = _request._headers[name];
+      if (!offers.empty()) {
+        offers += ", ";
+      }
+      offers += value;
+      continue;
+    }
     _request._headers[std::move(name)] = std::move(value);
   }
 

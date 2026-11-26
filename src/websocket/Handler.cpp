@@ -63,8 +63,7 @@ void Handler::handleError(HandlerContext&& ctx, ParserError error) {
 }
 
 /**
- * Handle websocket data frame.
- * @param conn Connection
+ * Handle a complete websocket text message.
  */
 void Handler::_handleTextFrame(HandlerContext& ctx, const std::string& data) {
   thread_local jsonrpcpp::Parser parser;

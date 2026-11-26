@@ -90,4 +90,13 @@ TEST_CASE("HTTP parser resets request data between messages", "[http]") {
   REQUIRE(staleHeaders == std::vector<std::string>{"value", ""});
 }
 
+TEST_CASE("HTTP parser preserves WebSocket extension offers in repeated headers", "[http]") {
+  std::string offers;
+  Parser parser({[&](const Request& request) { offers = request.header("Sec-WebSocket-Extensions"); }, {}});
+  const std::string input = "GET / HTTP/1.1\r\nSec-WebSocket-Extensions: permessage-deflate; server_max_window_bits=12\r\n"
+                            "sec-websocket-extensions: permessage-deflate; client_max_window_bits\r\n\r\n";
+  parser.parse(input.data(), input.size());
+  REQUIRE(offers == "permessage-deflate; server_max_window_bits=12, permessage-deflate; client_max_window_bits");
+}
+
 } // namespace eventhub::http

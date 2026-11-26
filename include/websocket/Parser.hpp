@@ -10,7 +10,7 @@
 
 namespace eventhub::websocket {
 
-// Incremental server-side RFC 6455 parser, without protocol extensions.
+// Incremental server-side RFC 6455 parser.
 // Client frames must be masked. Input can end anywhere in a header or payload;
 // it is never modified or retained. Only received payload bytes are buffered.
 class Parser final {
@@ -21,6 +21,9 @@ public:
 
   // Replace handlers between parse calls without resetting the stream state.
   void setCallbacks(ParserCallbacks callbacks);
+
+  // Enable RFC 7692 with no client context takeover, before parsing frames.
+  void enableCompression() { _compression_enabled = true; }
 
   // Callbacks are optional and run synchronously in wire order. Do not reenter
   // or destroy the parser from a callback, or use it concurrently. Exceptions
@@ -54,6 +57,8 @@ private:
   bool _final                          = false;
   bool _control                        = false;
   bool _fragmented                     = false;
+  bool _compression_enabled            = false;
+  bool _message_compressed              = false;
   std::uint64_t _bytes_remaining       = 0;
   std::uint8_t _length_tag             = 0;
   std::uint8_t _length_bytes_remaining = 0;

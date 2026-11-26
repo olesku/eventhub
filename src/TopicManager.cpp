@@ -50,14 +50,14 @@ std::pair<TopicPtr, TopicSubscriberList::iterator> TopicManager::subscribeConnec
 /*
 * Publish to a topic.
 * @param topicName topic to publish to.
-* @param data message to publish.
+* @param event shared message to publish.
 */
-void TopicManager::publish(const std::string& topicName, const std::string& data) {
+void TopicManager::publish(const std::string& topicName, const PublishedEvent& event) {
   std::lock_guard<std::mutex> lock(_topic_list_lock);
 
   for (auto& topic : _topic_list) {
     if (isFilterMatched(topic.first, topicName)) {
-      topic.second->publish(data);
+      topic.second->publish(event);
     }
   }
 }
