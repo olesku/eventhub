@@ -92,6 +92,75 @@ async def test_kvstore(client):
     await client.delete("kv/test-key")
 
 
+def _negotiated_extensions(ws):
+    response = getattr(ws, "response", None)
+    if response is not None and getattr(response, "headers", None) is not None:
+        return response.headers.get("Sec-WebSocket-Extensions", "")
+    headers = getattr(ws, "response_headers", None)
+    if headers is not None:
+        return headers.get("Sec-WebSocket-Extensions", "")
+    return ""
+
+
+async def test_compression(url, token):
+    topic = f"e2e/compression/{int(time.time() * 1000)}"
+    payload = "compression-payload-" + ("x" * 4096)
+    now_ms = int(time.time() * 1000)
+
+    compressed_client = Eventhub(url, token)
+    plain_client = Eventhub(url, token)
+    await compressed_client.connect(compression="deflate")
+    await plain_client.connect(compression=None)
+
+    try:
+        compressed_ext = _negotiated_extensions(compressed_client._websocket)
+        plain_ext = _negotiated_extensions(plain_client._websocket)
+        if "permessage-deflate" not in compressed_ext:
+            raise AssertionError(
+                f"expected permessage-deflate negotiation, got: {compressed_ext!r}"
+            )
+        if plain_ext:
+            raise AssertionError(
+                f"expected no extension for uncompressed client, got: {plain_ext!r}"
+            )
+
+        got_compressed = asyncio.Event()
+        got_plain = asyncio.Event()
+        received = {}
+
+        async def on_compressed(t, msg):
+            if t == topic:
+                received["compressed"] = msg
+                got_compressed.set()
+
+        async def on_plain(t, msg):
+            if t == topic:
+                received["plain"] = msg
+                got_plain.set()
+
+        await compressed_client.subscribe(topic, on_compressed)
+        await plain_client.subscribe(topic, on_plain)
+        await compressed_client.publish(topic, payload, {"timestamp": now_ms, "ttl": 60})
+
+        await asyncio.wait_for(
+            asyncio.gather(got_compressed.wait(), got_plain.wait()),
+            timeout=5,
+        )
+        if received.get("compressed") != payload:
+            raise AssertionError("compressed subscriber received corrupted payload")
+        if received.get("plain") != payload:
+            raise AssertionError("plain subscriber received corrupted payload")
+
+        for name, client in (("compressed", compressed_client), ("plain", plain_client)):
+            items = await client.get_eventlog(topic, {"since": now_ms})
+            messages = [item["message"] for item in items]
+            if payload not in messages:
+                raise AssertionError(f"{name} client missing payload in eventlog")
+    finally:
+        await compressed_client.disconnect()
+        await plain_client.disconnect()
+
+
 async def test_data_integrity(
     url,
     token,
@@ -327,6 +396,7 @@ async def run_e2e(args):
     await test_eventlog(client)
     await test_ttl_zero_not_cached(client)
     await test_kvstore(client)
+    await test_compression(args.url, token)
     if args.check_data_integrity:
         await test_data_integrity(args.url, token)
         await test_wildcard_topic_integrity(args.url, token)

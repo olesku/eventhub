@@ -117,6 +117,7 @@ All configuration options can also be set using [environment variables](https://
 |ssl_cert_check_interval      | How often to check for cert changes           | 300
 |disable_unsecure_listener    | Disable unsecure listener when ssl is enabled | false
 |enable_kvstore               | Enable key/value store functionality          | true
+|enable_compression           | Enable WebSocket permessage-deflate           | true
 
 ## Docker
 The easiest way is to use our docker image.

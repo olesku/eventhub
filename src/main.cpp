@@ -141,6 +141,7 @@ int main(int argc, char** argv) {
       { "ping_interval",             ConfigValueType::INT,    "30",        ConfigValueSettings::REQUIRED },
       { "handshake_timeout",         ConfigValueType::INT,    "5",         ConfigValueSettings::REQUIRED },
       { "enable_sse",                ConfigValueType::BOOL,   "false",     ConfigValueSettings::REQUIRED },
+      { "enable_compression",        ConfigValueType::BOOL,   "true",      ConfigValueSettings::REQUIRED },
       { "enable_ssl",                ConfigValueType::BOOL,   "false",     ConfigValueSettings::REQUIRED },
       { "ssl_listen_port",           ConfigValueType::INT,    "8443",      ConfigValueSettings::REQUIRED },
       { "ssl_ca_certificate",        ConfigValueType::STRING, "",          ConfigValueSettings::OPTIONAL },
