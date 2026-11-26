@@ -2,10 +2,11 @@ cmake_minimum_required(VERSION 3.5)
 project (eventhub)
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
-set(CMAKE_C_FLAGS "-Wall")
+# Keep flags given on the command line (e.g. -fsanitize=...) instead of replacing them.
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
 set(CMAKE_C_COMPILER "clang")
 set(CMAKE_CXX_COMPILER "clang++")
-set(CMAKE_CXX_FLAGS "-Wall -std=c++17 -DSPDLOG_FMT_EXTERNAL=ON -Wno-deprecated-declarations")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++17 -DSPDLOG_FMT_EXTERNAL=ON -Wno-deprecated-declarations")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
