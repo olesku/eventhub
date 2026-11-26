@@ -217,7 +217,8 @@ TEST_CASE("WebSocket parser errors close with the matching status code", "[webso
   using websocket::ParserError;
   for (const auto& [error, code] : {std::pair{ParserError::INVALID_OPCODE, 1002}, std::pair{ParserError::INVALID_UTF8, 1007},
                                     std::pair{ParserError::INVALID_COMPRESSED_PAYLOAD, 1007},
-                                    std::pair{ParserError::MESSAGE_TOO_BIG, 1009}}) {
+                                    std::pair{ParserError::MESSAGE_TOO_BIG, 1009},
+                                    std::pair{ParserError::INFLATION_LIMIT_EXCEEDED, 1009}}) {
     CAPTURE(code);
     auto conn = std::make_shared<CapturedConnection>(-1, &address, &worker, cfg, ConnectionCallbacks{});
     upgrade(cfg, server, worker, conn, "", false);
