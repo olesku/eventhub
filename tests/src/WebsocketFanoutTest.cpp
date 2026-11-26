@@ -195,6 +195,7 @@ TEST_CASE("WebSocket eventlog compresses only when negotiated and beneficial", "
   upgrade(cfg, server, worker, plain, "", false);
 
   const std::string topic = "websocket/eventlog-compression";
+  server.getRedis().connection().del({"eventhub_test:" + topic + ":cache", "eventhub_test:" + topic + ":scores"});
   const std::string message(4096, 'x');
   const auto eventId = server.getRedis().cacheMessage(topic, message, "");
   const std::string request = R"({"jsonrpc":"2.0","id":7,"method":"eventlog","params":{"topic":"websocket/eventlog-compression","since":1,"limit":1}})";
