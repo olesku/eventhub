@@ -69,8 +69,8 @@ Connection::Connection(int fd, struct sockaddr_in* csin, Worker* worker, Config&
   websocketCallbacks.onMessage = [this](websocket::FrameType frameType, const std::string& data) {
     // Control frames are never compressed and carry no application data.
     if (_worker && (frameType == websocket::FrameType::TEXT_FRAME || frameType == websocket::FrameType::BINARY_FRAME)) {
-      _worker->metrics().websocket_received_bytes += _websocket_parser->messageWireSize();
-      _worker->metrics().websocket_received_uncompressed_bytes += data.size();
+      _worker->getMetrics().websocket_received_bytes += _websocket_parser->messageWireSize();
+      _worker->getMetrics().websocket_received_uncompressed_bytes += data.size();
     }
 
     if (_callbacks.onWebSocketMessage) {
@@ -95,11 +95,11 @@ Connection::~Connection() {
   LOG->trace("Client {} disconnected.", getIP());
 
   if (_websocket_compression && _worker) {
-    _worker->metrics().compression_connections_count--;
+    _worker->getMetrics().compression_connections_count--;
   }
 
   if (_state == ConnectionState::WEBSOCKET && _worker) {
-    _worker->metrics().websocket_connections_count--;
+    _worker->getMetrics().websocket_connections_count--;
   }
 
   close(_fd);
@@ -327,9 +327,9 @@ int Connection::removeFromEpoll() {
 ConnectionState Connection::setState(ConnectionState newState) {
   if (_worker && newState != _state) {
     if (newState == ConnectionState::WEBSOCKET) {
-      _worker->metrics().websocket_connections_count++;
+      _worker->getMetrics().websocket_connections_count++;
     } else if (_state == ConnectionState::WEBSOCKET) {
-      _worker->metrics().websocket_connections_count--;
+      _worker->getMetrics().websocket_connections_count--;
     }
   }
 
@@ -357,7 +357,7 @@ void Connection::enableWebSocketCompression() {
   _websocket_parser->enableCompression();
 
   if (!_websocket_compression && _worker) {
-    _worker->metrics().compression_connections_count++;
+    _worker->getMetrics().compression_connections_count++;
   }
   _websocket_compression = true;
 }
@@ -369,8 +369,8 @@ void Connection::enableWebSocketCompression() {
  */
 void Connection::countWebSocketSent(std::size_t wireBytes, std::size_t uncompressedBytes) {
   if (_worker) {
-    _worker->metrics().websocket_sent_bytes += wireBytes;
-    _worker->metrics().websocket_sent_uncompressed_bytes += uncompressedBytes;
+    _worker->getMetrics().websocket_sent_bytes += wireBytes;
+    _worker->getMetrics().websocket_sent_uncompressed_bytes += uncompressedBytes;
   }
 }
 
@@ -379,7 +379,7 @@ void Connection::countWebSocketSent(std::size_t wireBytes, std::size_t uncompres
  */
 void Connection::countInflationLimitRejected() {
   if (_worker) {
-    _worker->metrics().inflation_limit_rejected_count++;
+    _worker->getMetrics().inflation_limit_rejected_count++;
   }
 }
 

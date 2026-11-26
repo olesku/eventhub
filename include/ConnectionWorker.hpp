@@ -31,8 +31,7 @@ public:
   void addTimer(int64_t delay, std::function<void(TimerCtx* ctx)> callback, bool repeat = false);
   unsigned int getWorkerId() { return _workerId; }
   int getEpollFileDescriptor() { return _epoll_fd; }
-  const metrics::WorkerMetrics& getMetrics() { return _metrics; }
-  metrics::WorkerMetrics& metrics() { return _metrics; }
+  metrics::WorkerMetrics& getMetrics() { return _metrics; }
 
 private:
   unsigned int _workerId;
