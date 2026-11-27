@@ -12,6 +12,23 @@ struct WorkerMetrics {
   std::atomic<unsigned long long> total_connect_count{0};
   std::atomic<unsigned long long> total_disconnect_count{0};
   std::atomic<unsigned long> eventloop_delay_ms{0};
+
+  // WebSocket message payload as transferred, and what the same messages
+  // take without permessage-deflate. The ratio between the two is the
+  // compression ratio; they are equal for connections without compression.
+  std::atomic<unsigned long long> websocket_sent_bytes{0};
+  std::atomic<unsigned long long> websocket_sent_uncompressed_bytes{0};
+  std::atomic<unsigned long long> websocket_received_bytes{0};
+  std::atomic<unsigned long long> websocket_received_uncompressed_bytes{0};
+
+  // Connections that are WebSocket or SSE right now, and how many of the
+  // WebSocket ones have negotiated permessage-deflate.
+  std::atomic<unsigned long> websocket_connections_count{0};
+  std::atomic<unsigned long> sse_connections_count{0};
+  std::atomic<unsigned long> compression_connections_count{0};
+
+  // Messages refused because they expanded more than the allowed ratio.
+  std::atomic<unsigned long long> inflation_limit_rejected_count{0};
 };
 
 struct ServerMetrics {
@@ -31,7 +48,15 @@ struct AggregatedMetrics {
                         current_connections_count(0),
                         total_connect_count(0),
                         total_disconnect_count(0),
-                        eventloop_delay_ms(0){};
+                        eventloop_delay_ms(0),
+                        websocket_sent_bytes(0),
+                        websocket_sent_uncompressed_bytes(0),
+                        websocket_received_bytes(0),
+                        websocket_received_uncompressed_bytes(0),
+                        websocket_connections_count(0),
+                        sse_connections_count(0),
+                        compression_connections_count(0),
+                        inflation_limit_rejected_count(0){};
 
   unsigned long server_start_unixtime;
   unsigned int worker_count;
@@ -43,6 +68,15 @@ struct AggregatedMetrics {
   unsigned long long total_connect_count;
   unsigned long long total_disconnect_count;
   unsigned long eventloop_delay_ms;
+
+  unsigned long long websocket_sent_bytes;
+  unsigned long long websocket_sent_uncompressed_bytes;
+  unsigned long long websocket_received_bytes;
+  unsigned long long websocket_received_uncompressed_bytes;
+  unsigned long websocket_connections_count;
+  unsigned long sse_connections_count;
+  unsigned long compression_connections_count;
+  unsigned long long inflation_limit_rejected_count;
 };
 
 } // namespace metrics

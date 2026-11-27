@@ -179,5 +179,22 @@ It's using Redis for intercommunication, so the only thing you have to do is to 
 Runtime metrics in [Prometheus](https://prometheus.io/) format is available at the `/metrics` endpoint.
 JSON is available at `/metrics?format=json`
 
+WebSocket traffic is counted both as transferred and as it would have been without compression:
+
+| Metric                                  | Type    | Description
+|-----------------------------------------|---------|--------------------------------------------------
+|websocket_sent_bytes                     | counter | Message payload bytes sent to clients
+|websocket_sent_uncompressed_bytes        | counter | The same messages without permessage-deflate
+|websocket_received_bytes                 | counter | Message payload bytes received from clients
+|websocket_received_uncompressed_bytes    | counter | The same messages after decompression
+|websocket_connections_count              | gauge   | Connections that are WebSocket right now
+|sse_connections_count                    | gauge   | Connections that are Server-Sent Events right now
+|compression_connections_count            | gauge   | WebSocket connections that negotiated permessage-deflate
+|inflation_limit_rejected_count           | counter | Messages refused for expanding more than allowed
+
+The compression ratio for sent traffic is `rate(websocket_sent_bytes[5m]) / rate(websocket_sent_uncompressed_bytes[5m])`.
+The share of clients using compression is `compression_connections_count / websocket_connections_count`.
+The counters are per delivery, so an event sent to many subscribers counts once for each of them.
+
 # License
 Eventhub is licensed under MIT. See [LICENSE](https://github.com/olesku/eventhub/blob/LICENSE).

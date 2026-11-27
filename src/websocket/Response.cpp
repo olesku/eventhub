@@ -18,8 +18,11 @@ namespace {
  * @param compressed Set RSV1, which marks a permessage-deflate payload.
  * @param prefix First part of the payload. Can be empty.
  * @param suffix Second part of the payload.
+ * @param uncompressedSize Size of the payload before compression, for the
+ *                         metrics. Ignored unless compressed is set.
  */
-void sendFrame(Connection& conn, FrameType type, bool compressed, std::string_view prefix, std::string_view suffix) {
+void sendFrame(Connection& conn, FrameType type, bool compressed, std::string_view prefix, std::string_view suffix,
+               std::size_t uncompressedSize = 0) {
   const std::uint64_t size = prefix.size() + suffix.size();
   char header[10];
 
@@ -45,6 +48,11 @@ void sendFrame(Connection& conn, FrameType type, bool compressed, std::string_vi
   }
 
   conn.write({std::string_view(header, headerSize), prefix, suffix});
+
+  // Only data messages count; control frames are not application data.
+  if (type == FrameType::TEXT_FRAME || type == FrameType::BINARY_FRAME) {
+    conn.countWebSocketSent(size, compressed ? uncompressedSize : size);
+  }
 }
 
 } // namespace
@@ -70,7 +78,7 @@ void Response::sendCompressibleText(Connection& conn, const std::string& data) {
     const auto compressed = compressMessage(data);
 
     if (!compressed.empty() && compressed.size() < data.size()) {
-      sendFrame(conn, FrameType::TEXT_FRAME, true, {}, compressed);
+      sendFrame(conn, FrameType::TEXT_FRAME, true, {}, compressed, data.size());
       return;
     }
   }
@@ -97,7 +105,7 @@ void Response::sendEvent(Connection& conn, const jsonrpcpp::Id& id, const Publis
     if (!compressed.empty() && compressed.size() + storedPrefixOverhead(prefix.size()) < suffix.size()) {
       // Store the subscriber-specific ID in byte-aligned blocks so every
       // subscriber can use the same compressed, context-independent suffix.
-      sendFrame(conn, FrameType::TEXT_FRAME, true, encodeStoredPrefix(prefix), compressed);
+      sendFrame(conn, FrameType::TEXT_FRAME, true, encodeStoredPrefix(prefix), compressed, prefix.size() + suffix.size());
       return;
     }
   }

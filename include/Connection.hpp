@@ -65,6 +65,8 @@ public:
   ConnectionState getState();
   void enableWebSocketCompression();
   bool hasWebSocketCompression() const { return _websocket_compression; }
+  void countWebSocketSent(std::size_t wireBytes, std::size_t uncompressedBytes);
+  void countInflationLimitRejected();
   AccessController* getAccessController();
   void assignConnectionListIterator(std::list<ConnectionPtr>::iterator connectionIterator);
   ConnectionListIterator getConnectionListIterator();
@@ -90,7 +92,7 @@ protected:
   std::mutex _write_lock;
   std::mutex _subscription_list_lock;
   std::unique_ptr<AccessController> _access_controller;
-  ConnectionState _state;
+  ConnectionState _state = ConnectionState::HTTP;
   bool _is_shutdown;
   bool _is_shutdown_after_flush;
   std::list<std::shared_ptr<Connection>>::iterator _connection_list_iterator;
@@ -100,6 +102,7 @@ protected:
   void _disableEpollOut();
   std::size_t _pruneWriteBuffer(std::size_t bytes);
   void _parseRequest(std::size_t bytesRead);
+  void _countState(ConnectionState state, bool entering);
 
 private:
   bool _websocket_compression = false;

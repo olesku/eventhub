@@ -26,6 +26,15 @@ const std::string JsonRenderer::RenderMetrics(Server* server) {
   j["total_disconnect_count"]    = metrics.total_disconnect_count;
   j["eventloop_delay_ms"]        = metrics.eventloop_delay_ms;
 
+  j["websocket_sent_bytes"]                  = metrics.websocket_sent_bytes;
+  j["websocket_sent_uncompressed_bytes"]     = metrics.websocket_sent_uncompressed_bytes;
+  j["websocket_received_bytes"]              = metrics.websocket_received_bytes;
+  j["websocket_received_uncompressed_bytes"] = metrics.websocket_received_uncompressed_bytes;
+  j["websocket_connections_count"]           = metrics.websocket_connections_count;
+  j["sse_connections_count"]                 = metrics.sse_connections_count;
+  j["compression_connections_count"]         = metrics.compression_connections_count;
+  j["inflation_limit_rejected_count"]        = metrics.inflation_limit_rejected_count;
+
   return j.dump(4) + "\r\n";
 }
 

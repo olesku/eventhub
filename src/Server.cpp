@@ -445,6 +445,15 @@ metrics::AggregatedMetrics Server::getAggregatedMetrics() {
     m.total_connect_count += wrkM.total_connect_count.load();
     m.total_disconnect_count += wrkM.total_disconnect_count.load();
     m.eventloop_delay_ms += wrkM.eventloop_delay_ms.load();
+
+    m.websocket_sent_bytes += wrkM.websocket_sent_bytes.load();
+    m.websocket_sent_uncompressed_bytes += wrkM.websocket_sent_uncompressed_bytes.load();
+    m.websocket_received_bytes += wrkM.websocket_received_bytes.load();
+    m.websocket_received_uncompressed_bytes += wrkM.websocket_received_uncompressed_bytes.load();
+    m.websocket_connections_count += wrkM.websocket_connections_count.load();
+    m.sse_connections_count += wrkM.sse_connections_count.load();
+    m.compression_connections_count += wrkM.compression_connections_count.load();
+    m.inflation_limit_rejected_count += wrkM.inflation_limit_rejected_count.load();
   }
 
   const auto workerCount = _connection_workers.getWorkerList().size();

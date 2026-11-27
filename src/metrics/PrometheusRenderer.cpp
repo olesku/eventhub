@@ -26,7 +26,16 @@ const std::string PrometheusRenderer::RenderMetrics(Server* server) {
       {"current_connections_count", "gauge", metrics.current_connections_count},
       {"total_connect_count", "counter", metrics.total_connect_count},
       {"total_disconnect_count", "counter", metrics.total_disconnect_count},
-      {"eventloop_delay_ms", "gauge", metrics.eventloop_delay_ms}};
+      {"eventloop_delay_ms", "gauge", metrics.eventloop_delay_ms},
+
+      {"websocket_sent_bytes", "counter", metrics.websocket_sent_bytes},
+      {"websocket_sent_uncompressed_bytes", "counter", metrics.websocket_sent_uncompressed_bytes},
+      {"websocket_received_bytes", "counter", metrics.websocket_received_bytes},
+      {"websocket_received_uncompressed_bytes", "counter", metrics.websocket_received_uncompressed_bytes},
+      {"websocket_connections_count", "gauge", metrics.websocket_connections_count},
+      {"sse_connections_count", "gauge", metrics.sse_connections_count},
+      {"compression_connections_count", "gauge", metrics.compression_connections_count},
+      {"inflation_limit_rejected_count", "counter", metrics.inflation_limit_rejected_count}};
 
   char h_buf[128] = {0};
   std::stringstream ss;

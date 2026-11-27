@@ -251,6 +251,7 @@ void Parser::_finishFrame() {
     if (!_final) {
       return;
     }
+    _message_wire_size = _message.size();
     if (_message_compressed) {
       std::string inflated;
       const auto limit = inflatedSizeLimit(_message.size(), _max_message_size);

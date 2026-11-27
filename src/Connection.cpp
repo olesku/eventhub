@@ -67,6 +67,12 @@ Connection::Connection(int fd, struct sockaddr_in* csin, Worker* worker, Config&
 
   websocket::ParserCallbacks websocketCallbacks;
   websocketCallbacks.onMessage = [this](websocket::FrameType frameType, const std::string& data) {
+    // Control frames are never compressed and carry no application data.
+    if (_worker && (frameType == websocket::FrameType::TEXT_FRAME || frameType == websocket::FrameType::BINARY_FRAME)) {
+      _worker->getMetrics().websocket_received_bytes += _websocket_parser->messageWireSize();
+      _worker->getMetrics().websocket_received_uncompressed_bytes += data.size();
+    }
+
     if (_callbacks.onWebSocketMessage) {
       _callbacks.onWebSocketMessage(*this, frameType, data);
     }
@@ -87,6 +93,12 @@ Connection::Connection(int fd, struct sockaddr_in* csin, Worker* worker, Config&
 
 Connection::~Connection() {
   LOG->trace("Client {} disconnected.", getIP());
+
+  if (_websocket_compression && _worker) {
+    _worker->getMetrics().compression_connections_count--;
+  }
+
+  _countState(_state, false);
 
   close(_fd);
   unsubscribeAll();
@@ -311,8 +323,31 @@ int Connection::removeFromEpoll() {
 }
 
 ConnectionState Connection::setState(ConnectionState newState) {
+  if (newState != _state) {
+    _countState(_state, false);
+    _countState(newState, true);
+  }
+
   _state = newState;
   return newState;
+}
+
+/**
+ * Keep the per-protocol connection gauges in step with this connection.
+ * @param state State the connection enters or leaves.
+ * @param entering True when entering the state, false when leaving it.
+ */
+void Connection::_countState(ConnectionState state, bool entering) {
+  if (!_worker) {
+    return;
+  }
+
+  auto& metrics = _worker->getMetrics();
+  if (state == ConnectionState::WEBSOCKET) {
+    entering ? metrics.websocket_connections_count++ : metrics.websocket_connections_count--;
+  } else if (state == ConnectionState::SSE) {
+    entering ? metrics.sse_connections_count++ : metrics.sse_connections_count--;
+  }
 }
 
 void Connection::subscribe(const std::string& topicPattern, const jsonrpcpp::Id subscriptionRequestId) {
@@ -333,7 +368,32 @@ ConnectionState Connection::getState() {
 
 void Connection::enableWebSocketCompression() {
   _websocket_parser->enableCompression();
+
+  if (!_websocket_compression && _worker) {
+    _worker->getMetrics().compression_connections_count++;
+  }
   _websocket_compression = true;
+}
+
+/**
+ * Account for a WebSocket message sent to this client.
+ * @param wireBytes Size of the payload as sent.
+ * @param uncompressedBytes Size of the same payload without compression.
+ */
+void Connection::countWebSocketSent(std::size_t wireBytes, std::size_t uncompressedBytes) {
+  if (_worker) {
+    _worker->getMetrics().websocket_sent_bytes += wireBytes;
+    _worker->getMetrics().websocket_sent_uncompressed_bytes += uncompressedBytes;
+  }
+}
+
+/**
+ * Account for a message from this client that was refused by the inflation limit.
+ */
+void Connection::countInflationLimitRejected() {
+  if (_worker) {
+    _worker->getMetrics().inflation_limit_rejected_count++;
+  }
 }
 
 AccessController* Connection::getAccessController() {
